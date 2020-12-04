@@ -1,8 +1,36 @@
-import { App, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, CachedMetadata, MetadataCache, parseFrontMatterTags, parseFrontMatterStringArray, SettingTab, parseFrontMatterEntry, TFile } from 'obsidian';
+import { Flashcard } from "src/entities/flashcard"
+import { Parser } from 'src/parser';
+import { Settings } from 'settings';
+import { SettingsTab } from 'src/gui/settings-tab';
+import { Anki } from 'src/anki';
+import { CardsService } from 'src/cards-service';
 
-export default class MyPlugin extends Plugin {
+
+export default class ObsidianFlashcard extends Plugin {
+	private settings: Settings
+	private cardsService: CardsService
+
+	// EXTRA
+	// this gives you back the app:// of a resource
+	// this.app.vault.adapter.getResourcePath("name")
+
+	// IMAGES inside the file
+	// let temp = this.app.metadataCache.getFileCache(this.app.workspace.getActiveFile()).embeds[2].link
+	// 
+	// this.app.vault.getAbstractFileByPath("resources/"+temp)
+
+	// Path
+	// this.app.vault.adapter.getBasePath()
+	// this.app.vault.adapter.getFullPath(attachmentFolder + attachment)
+	// this.app.vault.config.attachmentFolderPath     in my case that ś reso
+
+
 	onload() {
-		console.log('loading plugin');
+		// TODO test when file did not insert flashcards, but one of them is in Anki already
+		console.log('loading flashcard-plugin');
+		this.settings = new Settings()
+		this.cardsService = new CardsService(this.app, this.settings)
 
 		this.addRibbonIcon('dice', 'Sample Plugin', () => {
 			new Notice('This is a notice!');
@@ -11,16 +39,17 @@ export default class MyPlugin extends Plugin {
 		this.addStatusBarItem().setText('Status Bar Text');
 
 		this.addCommand({
-			id: 'open-sample-modal',
-			name: 'Open Sample Modal',
-			// callback: () => {
-			// 	console.log('Simple Callback');
-			// },
+			id: 'generate-flashcard-this-file',
+			name: 'Generate for this file',
 			checkCallback: (checking: boolean) => {
-				let leaf = this.app.workspace.activeLeaf;
-				if (leaf) {
+				let activeFile = this.app.workspace.getActiveFile()
+				if (activeFile) {
 					if (!checking) {
-						new SampleModal(this.app).open();
+						this.cardsService.execute(activeFile).then(res => {
+							new Notice(res.join(" "))
+						}).catch(err => {
+							Error(err)
+						})
 					}
 					return true;
 				}
@@ -28,56 +57,51 @@ export default class MyPlugin extends Plugin {
 			}
 		});
 
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.addCommand({
+			id: "anki-test", name: "Anki", callback: () => {
+				let anki: Anki = new Anki()
+				anki.getDeck().then(res => {
+					console.log(res)
+				})
+			}
+		})
+
+		this.addSettingTab(new SettingsTab(this.app, this));
 
 		this.registerEvent(this.app.on('codemirror', (cm: CodeMirror.Editor) => {
-			console.log('codemirror', cm);
+			//console.log('codemirror', cm);
 		}));
 
 		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt);
+			//console.log('click', evt);
 		});
 
 		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
 	}
 
-	onunload() {
-		console.log('unloading plugin');
+	async onunload() {
+		console.log('Unloading flashcard-obsidian and saving data.');
+		await this.saveData(this.settings);
 	}
 }
-
 class SampleModal extends Modal {
-	constructor(app: App) {
+	flashcards: Flashcard[];
+
+	constructor(app: App, flashcards: Flashcard[]) {
 		super(app);
+		this.flashcards = flashcards;
 	}
 
 	onOpen() {
-		let {contentEl} = this;
-		contentEl.setText('Woah!');
+		let { titleEl } = this;
+		let { contentEl } = this;
+
+		titleEl.setText('Generated flashcards!');
+		contentEl.setText(this.flashcards.join("\n\n"));
 	}
 
 	onClose() {
-		let {contentEl} = this;
+		let { contentEl } = this;
 		contentEl.empty();
-	}
-}
-
-class SampleSettingTab extends PluginSettingTab {
-	display(): void {
-		let {containerEl} = this;
-
-		containerEl.empty();
-
-		containerEl.createEl('h2', {text: 'Settings for my awesome plugin.'});
-
-		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text.setPlaceholder('Enter your secret')
-				.setValue('')
-				.onChange((value) => {
-					console.log('Secret: ' + value);
-				}));
-
 	}
 }

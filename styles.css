@@ -1,4 +1,32 @@
 /* Sets all the text color to red! */
 body {
-    color: red;
+  color: green;
+}
+
+.tag {
+  color: var(--text-normal);
+  background-color: var(--text-accent);
+  border: none;
+  font-size: 11px;
+  padding: 1px 8px;
+  text-align: center;
+  text-decoration: none;
+  margin: 0px 0px;
+  cursor: pointer;
+  border-radius: 14px;
+  display: inline;
+  vertical-align: middle;
+}
+
+.tag:hover {
+  color: var(--text-normal);
+  background-color: var(--text-accent-hover);
+}
+
+.tag[href="#flashcard"] {
+  background-color: #821515;
+}
+
+.tag[href="#flashcard-reverse"] {
+  background-color: #821515;
 }

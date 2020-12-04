@@ -1,4 +1,4 @@
-{
+{ 
   "compilerOptions": {
     "baseUrl": ".",
     "inlineSourceMap": true,
@@ -9,14 +9,17 @@
     "noImplicitAny": true,
     "moduleResolution": "node",
     "importHelpers": true,
+    "downlevelIteration": true,
     "lib": [
       "dom",
       "es5",
       "scripthost",
-      "es2015"
-    ]
+      "es2015",
+      "ES2020.String"
+      
+    ],
   },
   "include": [
-    "**/*.ts"
+    "**/*.ts",
   ]
 }
