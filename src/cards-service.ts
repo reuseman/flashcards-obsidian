@@ -4,6 +4,7 @@ import { Parser } from 'src/parser'
 import { Settings } from 'src/settings'
 import { Card } from 'src/entities/card'
 import { Flashcard } from 'src/entities/flashcard'
+import { arrayBufferToBase64 } from "src/utils"
 
 export class CardsService {
     // TODO right now you do not check for cards that when inserted/updated gives back null as ID
@@ -27,7 +28,6 @@ export class CardsService {
 
     public async execute(activeFile: TFile): Promise<string[]> {
         // TODO add note-type to Anki
-        // TODO check media problem
         try {
             await this.anki.ping()
         } catch (err) {
@@ -60,16 +60,7 @@ export class CardsService {
             let [cardsToCreate, cardsToUpdate] = this.filterByUpdate(ankiCards, cards)
             let cardsToDelete: number[] = this.parser.getCardsToDelete(this.file)
 
-            try {
-                // Currently the media are created for every run, this is not a problem since Anki APIs overwrite the file
-                // A more efficient way would be to keep track of the medias saved
-                await this.generateMediaLinks(cards)
-                await this.anki.storeMediaFiles(cards)
-            } catch (err) {
-                console.error(err)
-                Error("Error: Could not upload medias")
-            }
-
+            this.insertMedias(cards)
             await this.deleteCardsOnAnki(cardsToDelete, ankiBlocks)
             await this.updateCardsOnAnki(cardsToUpdate)
             await this.insertCardsOnAnki(cardsToCreate, frontmatter, deckName)
@@ -94,14 +85,16 @@ export class CardsService {
         }
     }
 
-    private arrayBufferToBase64(buffer: ArrayBuffer): string {
-        var binary = '';
-        var bytes = new Uint8Array(buffer);
-        var len = bytes.byteLength;
-        for (var i = 0; i < len; i++) {
-            binary += String.fromCharCode(bytes[i]);
+    private async insertMedias(cards: Card[]) {
+        try {
+            // Currently the media are created for every run, this is not a problem since Anki APIs overwrite the file
+            // A more efficient way would be to keep track of the medias saved
+            await this.generateMediaLinks(cards)
+            await this.anki.storeMediaFiles(cards)
+        } catch (err) {
+            console.error(err)
+            Error("Error: Could not upload medias")
         }
-        return window.btoa(binary);
     }
 
     private async generateMediaLinks(cards: Card[]) {
@@ -114,7 +107,7 @@ export class CardsService {
                     let file: TFile = this.app.vault.getAbstractFileByPath(attachmentsPath + "/" + media) as TFile
                     try {
                         let binaryMedia = await this.app.vault.readBinary(file)
-                        card.mediaBase64Encoded.push(this.arrayBufferToBase64(binaryMedia))
+                        card.mediaBase64Encoded.push(arrayBufferToBase64(binaryMedia))
                     } catch (err) {
                         Error("Error: Could not read media")
                     }
@@ -231,7 +224,6 @@ export class CardsService {
 
     private getAnkiIDs(blocks: RegExpMatchArray[]): number[] {
         let IDs: number[] = []
-
         for (let b of blocks) {
             IDs.push(Number(b[1]))
         }
@@ -260,7 +252,6 @@ export class CardsService {
                 }
             }
         } else {
-            console.log("No cards in Anki, I am going to create all of them")
             cardsToCreate = [...generatedCards]
         }
 

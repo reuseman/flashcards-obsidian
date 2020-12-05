@@ -3,7 +3,7 @@ import { Spaced } from "./entities/spaced"
 import { Cloze } from './entities/cloze';
 import { Settings } from 'src/settings';
 import * as showdown from 'showdown';
-
+import { wikiImageLinks, markdownImageLinks } from "src/utils";
 
 export class Parser {
     private settings: Settings
@@ -65,7 +65,7 @@ export class Parser {
 
     public getCardsToDelete(file: string): number[] {
         // Find block IDs with no content above it
-        let regex: RegExp = /^\s*(?:\n)(?:\^(\d{13}))(?:\n\s*?)?/gm
+        const regex: RegExp = /^\s*(?:\n)(?:\^(\d{13}))(?:\n\s*?)?/gm
         return [...file.matchAll(regex)].map((match) => { return Number(match[1]) })
     }
 
@@ -79,24 +79,26 @@ export class Parser {
 
         if (contextAware) {
             // https://regex101.com/r/agSp9X/4
-            headings = [...file.matchAll(/^ {0,3}(#{1,6}) +([^\n]+?) ?((?: *#\S+)*) *$/gim)]
+            const headingsRegex = /^ {0,3}(#{1,6}) +([^\n]+?) ?((?: *#\S+)*) *$/gim
+            headings = [...file.matchAll(headingsRegex)]
         }
 
         for (let match of matches) {
             let reversed: boolean = match[3].trim().toLowerCase() === "#flashcard-reverse"
             let headingLevel = match[1].trim().length !== 0 ? match[1].length : -1
-            // Match.index - 1 because otherwise in the context there will be even match[1], i.e. the question
+            // Match.index - 1 because otherwise in the context there will be even match[1], i.e. the question itself
             let context = contextAware ? this.getContext(headings, match.index - 1, headingLevel) : ""
 
             let originalQuestion = match[2].trim()
             let question = contextAware ? [...context, match[2].trim()].join(`${this.settings.contextSeparator}`) : match[2].trim()
             let answer = match[5].trim()
-
-            let imagesMedia: string[] = this.substituteImageLinks(question)
-            imagesMedia = imagesMedia.concat(this.substituteImageLinks(answer))
-
+            let imagesMedia: string[] = this.getImageLinks(question)
+            imagesMedia = imagesMedia.concat(this.getImageLinks(answer))
+            question = this.substituteImageLinks(question)
+            answer = this.substituteImageLinks(answer)
             question = this.mathToAnki(this.htmlConverter.makeHtml(question))
             answer = this.mathToAnki(this.htmlConverter.makeHtml(answer))
+
             let endingLine = match.index + match[0].length
             let tags: string[] = this.parseTags(match[4], globalTags)
             let id: number = match[6] ? Number(match[6]) : -1
@@ -110,13 +112,9 @@ export class Parser {
         return flashcards
     }
 
-    private substituteImageLinks(str: string): string[] {
-        // Supported images https://publish.obsidian.md/help/How+to/Embed+files
-        let wikiLinks = /!\[\[(.*\.(?:png|jpg|jpeg|gif|bmp|svg|tiff))\]\]/gim
-        let markdownLinks = /!\[\]\((.*\.(?:png|jpg|jpeg|gif|bmp|svg|tiff))\)/gim
-
-        let wikiMatches = str.matchAll(wikiLinks)
-        let markdownMatches = str.matchAll(markdownLinks)
+    private getImageLinks(str: string) {
+        let wikiMatches = str.matchAll(wikiImageLinks)
+        let markdownMatches = str.matchAll(markdownImageLinks)
         let links: string[] = []
 
         for (let wikiMatch of wikiMatches) {
@@ -127,13 +125,14 @@ export class Parser {
             links.push(decodeURIComponent(markdownMatch[1]))
         }
 
-        str.replace(wikiLinks, "<img src='$1'>")
-        // TODO markdown link maybe is not correct, it should be decoded (remove the 20%)
-        str.replace(markdownLinks, "<img src='$1'>")
-
-        console.log("Generated links:")
-        console.log(links)
         return links
+    }
+
+    private substituteImageLinks(str: string): string {
+        str = str.replace(wikiImageLinks, "<img src='$1'>")
+        str = str.replace(markdownImageLinks, "<img src='$1'>")
+
+        return str
     }
 
     private generateSpacedCards(file: string): Spaced[] {

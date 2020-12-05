@@ -58,14 +58,14 @@ export default class ObsidianFlashcard extends Plugin {
 
 		this.addCommand({
 			id: "anki-test", name: "Anki", callback: () => {
-				let anki: Anki = new Anki()
-				anki.storeMedia(this.app.vault).then(res => {
-					console.log("ok")
-					console.log(res)
-				}).catch(err => {
-					console.log("err")
-					console.log(err)
-				})
+				// let anki: Anki = new Anki()
+				// anki.storeMedia(this.app.vault).then(res => {
+				// 	console.log("ok")
+				// 	console.log(res)
+				// }).catch(err => {
+				// 	console.log("err")
+				// 	console.log(err)
+				// })
 			}
 		})
 
