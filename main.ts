@@ -1,7 +1,6 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, CachedMetadata, MetadataCache, parseFrontMatterTags, parseFrontMatterStringArray, SettingTab, parseFrontMatterEntry, TFile } from 'obsidian';
 import { Flashcard } from "src/entities/flashcard"
-import { Parser } from 'src/parser';
-import { Settings } from 'settings';
+import { Settings } from 'src/settings';
 import { SettingsTab } from 'src/gui/settings-tab';
 import { Anki } from 'src/anki';
 import { CardsService } from 'src/cards-service';
@@ -60,8 +59,12 @@ export default class ObsidianFlashcard extends Plugin {
 		this.addCommand({
 			id: "anki-test", name: "Anki", callback: () => {
 				let anki: Anki = new Anki()
-				anki.getDeck().then(res => {
+				anki.storeMedia(this.app.vault).then(res => {
+					console.log("ok")
 					console.log(res)
+				}).catch(err => {
+					console.log("err")
+					console.log(err)
 				})
 			}
 		})

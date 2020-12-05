@@ -1,6 +1,33 @@
+import { TFile, Vault } from 'obsidian';
 import { Card } from 'src/entities/card';
 
 export class Anki {
+    public async storeMediaFiles(cards: Card[]) {
+        let actions: any[] = []
+
+        console.log("IN anki.storeMediaFiles")
+        for (let card of cards) {
+            console.log(card)
+            for (let media of card.getMedias()) {
+                console.log("MEDIA")
+                console.log(media)
+                actions.push({
+                    "action": "storeMediaFile",
+                    "params": media
+                })
+            }
+        }
+
+        console.log("Actions created: ")
+        console.log(actions)
+
+        if (actions) {
+            return this.invoke("multi", 6, { "actions": actions })
+        } else {
+            return {}
+        }
+    }
+
     public async addCards(cards: Card[]): Promise<number[]> {
         let notes: any = []
 

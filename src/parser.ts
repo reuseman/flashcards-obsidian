@@ -1,15 +1,20 @@
 import { Flashcard } from './entities/flashcard';
 import { Spaced } from "./entities/spaced"
 import { Cloze } from './entities/cloze';
-import { Settings } from 'settings';
+import { Settings } from 'src/settings';
 import * as showdown from 'showdown';
 
 
 export class Parser {
     private settings: Settings
+    private htmlConverter
 
     constructor(settings: Settings) {
         this.settings = settings
+        this.htmlConverter = new showdown.Converter()
+        this.htmlConverter.setOption("simplifiedAutoLink", true)
+        this.htmlConverter.setOption("tables", true)
+        this.htmlConverter.setOption("tasks", true)
     }
 
 
@@ -65,11 +70,6 @@ export class Parser {
     }
 
     public generateFlashcards(file: string, globalTags: string[] = [], deckName: string): Flashcard[] {
-        let htmlConverter = new showdown.Converter()
-        htmlConverter.setOption("simplifiedAutoLink", true)
-        htmlConverter.setOption("tables", true)
-        htmlConverter.setOption("tasks", true)
-
         let contextAware = this.settings.contextAwareMode
         let flashcards: Flashcard[] = []
 
@@ -88,23 +88,52 @@ export class Parser {
             // Match.index - 1 because otherwise in the context there will be even match[1], i.e. the question
             let context = contextAware ? this.getContext(headings, match.index - 1, headingLevel) : ""
 
-            // todo image 
-            // todo code
             let originalQuestion = match[2].trim()
             let question = contextAware ? [...context, match[2].trim()].join(`${this.settings.contextSeparator}`) : match[2].trim()
-            question = this.mathToAnki(htmlConverter.makeHtml(question))
-            let answer = this.mathToAnki(htmlConverter.makeHtml(match[5].trim()))
+            let answer = match[5].trim()
+
+            let imagesMedia: string[] = this.substituteImageLinks(question)
+            imagesMedia = imagesMedia.concat(this.substituteImageLinks(answer))
+
+            question = this.mathToAnki(this.htmlConverter.makeHtml(question))
+            answer = this.mathToAnki(this.htmlConverter.makeHtml(answer))
             let endingLine = match.index + match[0].length
             let tags: string[] = this.parseTags(match[4], globalTags)
             let id: number = match[6] ? Number(match[6]) : -1
             let inserted: boolean = match[6] ? true : false
             let fields = { "Front": question, "Back": answer }
 
-            let flashcard = new Flashcard(id, deckName, originalQuestion, fields, reversed, endingLine, tags, inserted)
+            let flashcard = new Flashcard(id, deckName, originalQuestion, fields, reversed, endingLine, tags, inserted, imagesMedia)
             flashcards.push(flashcard)
         }
 
         return flashcards
+    }
+
+    private substituteImageLinks(str: string): string[] {
+        // Supported images https://publish.obsidian.md/help/How+to/Embed+files
+        let wikiLinks = /!\[\[(.*\.(?:png|jpg|jpeg|gif|bmp|svg|tiff))\]\]/gim
+        let markdownLinks = /!\[\]\((.*\.(?:png|jpg|jpeg|gif|bmp|svg|tiff))\)/gim
+
+        let wikiMatches = str.matchAll(wikiLinks)
+        let markdownMatches = str.matchAll(markdownLinks)
+        let links: string[] = []
+
+        for (let wikiMatch of wikiMatches) {
+            links.push(wikiMatch[1])
+        }
+
+        for (let markdownMatch of markdownMatches) {
+            links.push(decodeURIComponent(markdownMatch[1]))
+        }
+
+        str.replace(wikiLinks, "<img src='$1'>")
+        // TODO markdown link maybe is not correct, it should be decoded (remove the 20%)
+        str.replace(markdownLinks, "<img src='$1'>")
+
+        console.log("Generated links:")
+        console.log(links)
+        return links
     }
 
     private generateSpacedCards(file: string): Spaced[] {

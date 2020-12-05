@@ -1,7 +1,7 @@
 import { Anki } from 'src/anki'
-import { App, FrontMatterCache, Notice, parseFrontMatterEntry, parseFrontMatterTags, TFile } from 'obsidian'
+import { App, FileSystemAdapter, FrontMatterCache, Notice, parseFrontMatterEntry, parseFrontMatterTags, TFile } from 'obsidian'
 import { Parser } from 'src/parser'
-import { Settings } from 'settings'
+import { Settings } from 'src/settings'
 import { Card } from 'src/entities/card'
 import { Flashcard } from 'src/entities/flashcard'
 
@@ -27,6 +27,7 @@ export class CardsService {
 
     public async execute(activeFile: TFile): Promise<string[]> {
         // TODO add note-type to Anki
+        // TODO check media problem
         try {
             await this.anki.ping()
         } catch (err) {
@@ -59,7 +60,16 @@ export class CardsService {
             let [cardsToCreate, cardsToUpdate] = this.filterByUpdate(ankiCards, cards)
             let cardsToDelete: number[] = this.parser.getCardsToDelete(this.file)
 
-            this.printCards(cardsToCreate, cardsToUpdate, cardsToDelete) // TODO delete
+            try {
+                // Currently the media are created for every run, this is not a problem since Anki APIs overwrite the file
+                // A more efficient way would be to keep track of the medias saved
+                await this.generateMediaLinks(cards)
+                await this.anki.storeMediaFiles(cards)
+            } catch (err) {
+                console.error(err)
+                Error("Error: Could not upload medias")
+            }
+
             await this.deleteCardsOnAnki(cardsToDelete, ankiBlocks)
             await this.updateCardsOnAnki(cardsToUpdate)
             await this.insertCardsOnAnki(cardsToCreate, frontmatter, deckName)
@@ -80,9 +90,38 @@ export class CardsService {
             return this.notifications
         } catch (err) {
             console.error(err)
+            Error("Something went wrong")
         }
     }
 
+    private arrayBufferToBase64(buffer: ArrayBuffer): string {
+        var binary = '';
+        var bytes = new Uint8Array(buffer);
+        var len = bytes.byteLength;
+        for (var i = 0; i < len; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return window.btoa(binary);
+    }
+
+    private async generateMediaLinks(cards: Card[]) {
+        if (this.app.vault.adapter instanceof FileSystemAdapter) {
+            // @ts-ignore: Unreachable code error
+            let attachmentsPath = this.app.vault.config.attachmentFolderPath
+
+            for (let card of cards) {
+                for (let media of card.mediaNames) {
+                    let file: TFile = this.app.vault.getAbstractFileByPath(attachmentsPath + "/" + media) as TFile
+                    try {
+                        let binaryMedia = await this.app.vault.readBinary(file)
+                        card.mediaBase64Encoded.push(this.arrayBufferToBase64(binaryMedia))
+                    } catch (err) {
+                        Error("Error: Could not read media")
+                    }
+                }
+            };
+        }
+    }
 
     private async insertCardsOnAnki(cardsToCreate: Card[], frontmatter: FrontMatterCache, deckName: string): Promise<number> {
         if (cardsToCreate.length) {
@@ -148,15 +187,6 @@ export class CardsService {
                 this.totalOffset += id.length
             }
         }
-    }
-
-    public printCards(flashcardsToCreate: Card[], flashcardsToUpdate: Card[], flashcardsToDelete: number[]) {
-        console.info("Cards to create")
-        console.info(flashcardsToCreate)
-        console.info("Cards to update")
-        console.info(flashcardsToUpdate)
-        console.info("IDs of cards to delete")
-        console.info(flashcardsToDelete)
     }
 
     private async updateCardsOnAnki(cards: Card[]): Promise<number> {

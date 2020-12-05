@@ -1,8 +1,8 @@
 import { Card } from "src/entities/card";
 
 export class Flashcard extends Card {
-    constructor(id: number = -1, deckName: string, initialContent: string, fields: Record<string, string>, reversed: boolean, endOffset: number, tags: string[] = [], inserted: boolean = false) {
-        super(id, deckName, initialContent, fields, reversed, endOffset, tags, inserted)
+    constructor(id: number = -1, deckName: string, initialContent: string, fields: Record<string, string>, reversed: boolean, endOffset: number, tags: string[] = [], inserted: boolean = false, mediaNames: string[]) {
+        super(id, deckName, initialContent, fields, reversed, endOffset, tags, inserted, mediaNames)
     }
 
     public getCard(update: boolean = false): object {
@@ -24,6 +24,17 @@ export class Flashcard extends Card {
         return card
     }
 
+    public getMedias(): object[] {
+        let medias: object[] = []
+        this.mediaBase64Encoded.forEach((data, index) => {
+            medias.push({
+                "filename": this.mediaNames[index],
+                "data": data
+            })
+        })
+
+        return medias
+    }
 
     public toString = (): string => {
         return `Q: ${this.fields[0]}\nA: ${this.fields[1]}`
