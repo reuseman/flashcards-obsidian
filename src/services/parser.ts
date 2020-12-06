@@ -1,6 +1,4 @@
 import { Flashcard } from '../entities/flashcard';
-import { Spaced } from "../entities/spaced"
-import { Cloze } from '../entities/cloze';
 import { Settings } from 'src/settings';
 import * as showdown from 'showdown';
 import { Regex } from 'src/regex';
@@ -136,25 +134,6 @@ export class Parser {
         str = str.replace(this.regex.markdownImageLinks, "<img src='$1'>")
 
         return str
-    }
-
-    private generateSpacedCards(file: string): Spaced[] {
-        let spaced: Spaced[] = []
-
-        let regex: RegExp = new RegExp("[# ]*((?:[^\n]\n?)+) *(#spaced) ?", "gim")
-        let matches = file.matchAll(regex)
-
-        for (let match of matches) {
-            let spacedCard = new Spaced(match[1].trim(), match.index + match.length)
-            spaced.push(spacedCard)
-        }
-
-        return spaced
-    }
-
-    private generateClozeCards(): Cloze[] {
-        let clozeCards: Cloze[]
-        return clozeCards
     }
 
     private mathToAnki(str: string) {
