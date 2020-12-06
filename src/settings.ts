@@ -1,9 +1,18 @@
 export class Settings {
-    contextAwareMode: boolean = true
-    contextSeparator: string = ' > '
+    public contextAwareMode: boolean = true
+    public contextSeparator: string = ' > '
 
-    defaultDeck: string = "Default"
+    public deck: string = "Default"
+    private _flashcardsTag: string = "card"
 
-    ankiProfile: string = "?"
-    ankiPath: string = "?" // TODO can i boot automagically anki?
+    public get flashcardsTag() {
+        return this._flashcardsTag
+    }
+
+    public set flashcardsTag(tag: string) {
+        if (tag.length < 1) {
+            throw new Error("The tag must be at least of length 1.")
+        }
+        this._flashcardsTag = tag
+    }
 }

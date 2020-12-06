@@ -1,15 +1,17 @@
-import { Flashcard } from './entities/flashcard';
-import { Spaced } from "./entities/spaced"
-import { Cloze } from './entities/cloze';
+import { Flashcard } from '../entities/flashcard';
+import { Spaced } from "../entities/spaced"
+import { Cloze } from '../entities/cloze';
 import { Settings } from 'src/settings';
 import * as showdown from 'showdown';
-import { wikiImageLinks, markdownImageLinks } from "src/utils";
+import { Regex } from 'src/regex';
 
 export class Parser {
+    private regex: Regex
     private settings: Settings
     private htmlConverter
 
-    constructor(settings: Settings) {
+    constructor(regex: Regex, settings: Settings) {
+        this.regex = regex
         this.settings = settings
         this.htmlConverter = new showdown.Converter()
         this.htmlConverter.setOption("simplifiedAutoLink", true)
@@ -65,22 +67,23 @@ export class Parser {
 
     public getCardsToDelete(file: string): number[] {
         // Find block IDs with no content above it
-        const regex: RegExp = /^\s*(?:\n)(?:\^(\d{13}))(?:\n\s*?)?/gm
+        const regex: RegExp = /^\s*(?:\n)(?:\^(\d{13}))(?:\n\s*?)?/gm // TODO move to regex
         return [...file.matchAll(regex)].map((match) => { return Number(match[1]) })
     }
 
     public generateFlashcards(file: string, globalTags: string[] = [], deckName: string): Flashcard[] {
+        console.log(this.regex.flashscardsWithTag)
         let contextAware = this.settings.contextAwareMode
         let flashcards: Flashcard[] = []
 
-        let regex: RegExp = /( {0,3}[#]*)((?:[^\n]\n?)+?)(#flashcard(?:-reverse)?)((?: *#\w+)*) *?\n+((?:[^\n]\n?)*?(?=\^\d{13}|$))(?:\^(\d{13}))?/gim
+        // let regex: RegExp = /( {0,3}[#]*)((?:[^\n]\n?)+?)(#flashcard(?:-reverse)?)((?: *#\w+)*) *?\n+((?:[^\n]\n?)*?(?=\^\d{13}|$))(?:\^(\d{13}))?/gim
+        let regex = this.regex.flashscardsWithTag
         let matches = [...file.matchAll(regex)]
         let headings: any = []
 
         if (contextAware) {
             // https://regex101.com/r/agSp9X/4
-            const headingsRegex = /^ {0,3}(#{1,6}) +([^\n]+?) ?((?: *#\S+)*) *$/gim
-            headings = [...file.matchAll(headingsRegex)]
+            headings = [...file.matchAll(this.regex.headingsRegex)]
         }
 
         for (let match of matches) {
@@ -113,8 +116,8 @@ export class Parser {
     }
 
     private getImageLinks(str: string) {
-        let wikiMatches = str.matchAll(wikiImageLinks)
-        let markdownMatches = str.matchAll(markdownImageLinks)
+        let wikiMatches = str.matchAll(this.regex.wikiImageLinks)
+        let markdownMatches = str.matchAll(this.regex.markdownImageLinks)
         let links: string[] = []
 
         for (let wikiMatch of wikiMatches) {
@@ -129,8 +132,8 @@ export class Parser {
     }
 
     private substituteImageLinks(str: string): string {
-        str = str.replace(wikiImageLinks, "<img src='$1'>")
-        str = str.replace(markdownImageLinks, "<img src='$1'>")
+        str = str.replace(this.regex.wikiImageLinks, "<img src='$1'>")
+        str = str.replace(this.regex.markdownImageLinks, "<img src='$1'>")
 
         return str
     }

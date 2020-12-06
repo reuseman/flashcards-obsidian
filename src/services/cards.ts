@@ -1,18 +1,21 @@
-import { Anki } from 'src/anki'
+import { Anki } from 'src/services/anki'
 import { App, FileSystemAdapter, FrontMatterCache, Notice, parseFrontMatterEntry, parseFrontMatterTags, TFile } from 'obsidian'
-import { Parser } from 'src/parser'
+import { Parser } from 'src/services/parser'
 import { Settings } from 'src/settings'
 import { Card } from 'src/entities/card'
 import { Flashcard } from 'src/entities/flashcard'
 import { arrayBufferToBase64 } from "src/utils"
+import { Regex } from 'src/regex'
+import ObsidianFlashcard from 'main'
 
 export class CardsService {
     // TODO right now you do not check for cards that when inserted/updated gives back null as ID
     // TODO check the deletion for the reversed notes that have 2 cards bind
     private app: App
+    private settings: Settings
+    private regex: Regex
     private parser: Parser
     private anki: Anki
-    private settings: Settings
 
     private updateFile: boolean
     private totalOffset: number
@@ -21,12 +24,15 @@ export class CardsService {
 
     constructor(app: App, settings: Settings) {
         this.app = app
-        this.anki = new Anki()
-        this.parser = new Parser(settings)
         this.settings = settings
+        this.regex = new Regex(this.settings)
+        this.parser = new Parser(this.regex, this.settings)
+        this.anki = new Anki()
     }
 
     public async execute(activeFile: TFile): Promise<string[]> {
+        this.regex.update(this.settings)
+
         // TODO add note-type to Anki
         try {
             await this.anki.ping()
@@ -44,13 +50,14 @@ export class CardsService {
 
         // Parse frontmatter 
         let frontmatter = fileCachedMetadata.frontmatter
-        let deckName = this.settings.defaultDeck
+        let deckName = this.settings.deck
         if (frontmatter) {
             deckName = parseFrontMatterEntry(frontmatter, "cards-deck")
             globalTags = parseFrontMatterTags(frontmatter).map(tag => tag.substr(1))
         }
 
         try {
+            await this.anki.createDeck(deckName)
             this.file = await this.app.vault.read(activeFile)
             // TODO with empty check that does not call ankiCards line
             let ankiBlocks = this.parser.getAnkiIDsBlocks(this.file)
@@ -119,8 +126,6 @@ export class CardsService {
     private async insertCardsOnAnki(cardsToCreate: Card[], frontmatter: FrontMatterCache, deckName: string): Promise<number> {
         if (cardsToCreate.length) {
             let insertedCards = 0
-            // TODO before adding create deck if not exists
-            // TODO check if cardsToCreate is not empty? 
             try {
                 let ids = await this.anki.addCards(cardsToCreate)
                 // Add IDs from response to Flashcard[]
@@ -130,7 +135,7 @@ export class CardsService {
 
                 cardsToCreate.forEach(card => {
                     if (card.id === null) {
-                        new Notice(`Error, could not add: '${card.initialContent}'`)
+                        new Notice(`Error, could not add: '${card.initialContent}'`, ObsidianFlashcard.noticeTimeout)
                     } else {
                         insertedCards++
                     }
@@ -149,9 +154,8 @@ export class CardsService {
     }
 
     private updateFrontmatter(frontmatter: FrontMatterCache, deckName: string) {
-        // TODO evaluate https://regex101.com/r/bJySNf/1
         let newFrontmatter: string = ""
-        let cardsDeckLine: string = `cards-deck: Default\n`
+        let cardsDeckLine: string = `cards-deck: ${this.settings.deck}\n`
         if (frontmatter) {
             let oldFrontmatter: string = this.file.substring(frontmatter.position.start.offset, frontmatter.position.end.offset)
             if (!deckName) {
@@ -160,7 +164,7 @@ export class CardsService {
                 this.file = newFrontmatter + this.file.substring(frontmatter.position.end.offset, this.file.length + 1)
             }
         } else {
-            newFrontmatter = `---\n${cardsDeckLine}---\n`
+            newFrontmatter = `---\n${cardsDeckLine}---\n\n`
             this.totalOffset += newFrontmatter.length
             this.file = newFrontmatter + this.file
         }

@@ -18,10 +18,10 @@
   background-color: var(--text-accent-hover);
 }
 
-.tag[href="#flashcard"] {
+.tag[href="#card"] {
   background-color: #821515;
 }
 
-.tag[href="#flashcard-reverse"] {
+.tag[href="#card-reverse"] {
   background-color: #821515;
 }

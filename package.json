@@ -1,7 +1,7 @@
 {
-  "name": "obsidian-sample-plugin",
-  "version": "0.9.7",
-  "description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+  "name": "flashcards",
+  "version": "0.2.0",
+  "description": "An Anki integration.",
   "main": "main.js",
   "scripts": {
     "dev": "rollup --config rollup.config.js -w",
@@ -16,8 +16,8 @@
     "@rollup/plugin-typescript": "^6.0.0",
     "@types/node": "^14.14.2",
     "obsidian": "https://github.com/obsidianmd/obsidian-api/tarball/master",
-    "rollup": "^2.32.1",
-    "ts-node": "^9.0.0",
+    "rollup": "^2.34.1",
+    "ts-node": "^9.1.0",
     "tslib": "^2.0.3",
     "typescript": "^4.0.3"
   },
