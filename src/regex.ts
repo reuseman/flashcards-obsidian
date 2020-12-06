@@ -5,6 +5,7 @@ export class Regex {
     wikiImageLinks: RegExp
     markdownImageLinks: RegExp
     flashscardsWithTag: RegExp
+    cardsDeckLine: RegExp
 
     constructor(settings: Settings) {
         this.update(settings)
@@ -17,6 +18,8 @@ export class Regex {
         // Supported images https://publish.obsidian.md/help/How+to/Embed+files
         this.wikiImageLinks = /!\[\[(.*\.(?:png|jpg|jpeg|gif|bmp|svg|tiff))\]\]/gim
         this.markdownImageLinks = /!\[\]\((.*\.(?:png|jpg|jpeg|gif|bmp|svg|tiff))\)/gim
+
+        this.cardsDeckLine = /cards-deck: [\w\d]+/gi
 
         // Cards
         // https://regex101.com/r/p3yQwY/1

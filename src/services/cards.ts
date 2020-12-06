@@ -6,11 +6,10 @@ import { Card } from 'src/entities/card'
 import { Flashcard } from 'src/entities/flashcard'
 import { arrayBufferToBase64 } from "src/utils"
 import { Regex } from 'src/regex'
-import ObsidianFlashcard from 'main'
+import { noticeTimeout } from 'src/constants'
+
 
 export class CardsService {
-    // TODO right now you do not check for cards that when inserted/updated gives back null as ID
-    // TODO check the deletion for the reversed notes that have 2 cards bind
     private app: App
     private settings: Settings
     private regex: Regex
@@ -33,7 +32,6 @@ export class CardsService {
     public async execute(activeFile: TFile): Promise<string[]> {
         this.regex.update(this.settings)
 
-        // TODO add note-type to Anki
         try {
             await this.anki.ping()
         } catch (err) {
@@ -52,11 +50,12 @@ export class CardsService {
         let frontmatter = fileCachedMetadata.frontmatter
         let deckName = this.settings.deck
         if (frontmatter) {
-            deckName = parseFrontMatterEntry(frontmatter, "cards-deck")
+            deckName = parseFrontMatterEntry(frontmatter, "cards-deck") || this.settings.deck
             globalTags = parseFrontMatterTags(frontmatter).map(tag => tag.substr(1))
         }
 
         try {
+            await this.anki.createModels()
             await this.anki.createDeck(deckName)
             this.file = await this.app.vault.read(activeFile)
             // TODO with empty check that does not call ankiCards line
@@ -135,7 +134,7 @@ export class CardsService {
 
                 cardsToCreate.forEach(card => {
                     if (card.id === null) {
-                        new Notice(`Error, could not add: '${card.initialContent}'`, ObsidianFlashcard.noticeTimeout)
+                        new Notice(`Error, could not add: '${card.initialContent}'`, noticeTimeout)
                     } else {
                         insertedCards++
                     }
@@ -155,10 +154,10 @@ export class CardsService {
 
     private updateFrontmatter(frontmatter: FrontMatterCache, deckName: string) {
         let newFrontmatter: string = ""
-        let cardsDeckLine: string = `cards-deck: ${this.settings.deck}\n`
+        let cardsDeckLine: string = `cards-deck: ${deckName}\n`
         if (frontmatter) {
             let oldFrontmatter: string = this.file.substring(frontmatter.position.start.offset, frontmatter.position.end.offset)
-            if (!deckName) {
+            if (!oldFrontmatter.match(this.regex.cardsDeckLine)) {
                 newFrontmatter = oldFrontmatter.substring(0, oldFrontmatter.length - 3) + cardsDeckLine + "---"
                 this.totalOffset += cardsDeckLine.length
                 this.file = newFrontmatter + this.file.substring(frontmatter.position.end.offset, this.file.length + 1)
@@ -188,12 +187,12 @@ export class CardsService {
 
     private async updateCardsOnAnki(cards: Card[]): Promise<number> {
         if (cards.length) {
-            this.anki.updateCards(cards).then(res => {
+            try {
                 this.notifications.push(`Updated successfully ${cards.length}/${cards.length} cards.`)
-            }).catch(err => {
+            } catch (err) {
                 console.error(err)
                 Error("Error: Could not update cards on Anki")
-            })
+            }
 
             return cards.length
         }
