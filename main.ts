@@ -1,13 +1,11 @@
-import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, CachedMetadata, MetadataCache, parseFrontMatterTags, parseFrontMatterStringArray, SettingTab, parseFrontMatterEntry, TFile } from 'obsidian';
-import { Flashcard } from "src/entities/flashcard"
+import { Notice, Plugin } from 'obsidian';
 import { Settings } from 'src/settings';
 import { SettingsTab } from 'src/gui/settings-tab';
 import { CardsService } from 'src/services/cards';
 import { Anki } from 'src/services/anki';
-
+import { noticeTimeout } from 'src/constants'
 
 export default class ObsidianFlashcard extends Plugin {
-	static noticeTimeout = 15 * 1000
 	private settings: Settings
 	private cardsService: CardsService
 
@@ -46,7 +44,7 @@ export default class ObsidianFlashcard extends Plugin {
 				if (activeFile) {
 					if (!checking) {
 						this.cardsService.execute(activeFile).then(res => {
-							new Notice(res.join(" "), ObsidianFlashcard.noticeTimeout)
+							new Notice(res.join(" "), noticeTimeout)
 						}).catch(err => {
 							Error(err)
 						})

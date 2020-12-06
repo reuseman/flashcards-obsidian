@@ -32,7 +32,7 @@ export class Parser {
         let goalLevel: number = 6
 
         let i = headings.length - 1
-        // Get the level of the first heading upon the line
+        // Get the level of the first heading before the index (i.e. above the current line)
         if (headingLevel !== -1) {
             // This is the case of a #flashcard in a heading
             goalLevel = headingLevel - 1
@@ -87,7 +87,7 @@ export class Parser {
         }
 
         for (let match of matches) {
-            let reversed: boolean = match[3].trim().toLowerCase() === "#flashcard-reverse"
+            let reversed: boolean = match[3].trim().toLowerCase() === `#${this.settings.flashcardsTag}-reverse`
             let headingLevel = match[1].trim().length !== 0 ? match[1].length : -1
             // Match.index - 1 because otherwise in the context there will be even match[1], i.e. the question itself
             let context = contextAware ? this.getContext(headings, match.index - 1, headingLevel) : ""
@@ -157,7 +157,6 @@ export class Parser {
         return clozeCards
     }
 
-    // TODO maybe move it in anki
     private mathToAnki(str: string) {
         let mathBlockRegex = /(\$\$)(.*)(\$\$)/gi
         str = str.replace(mathBlockRegex, '\\($2\\)')
@@ -185,9 +184,5 @@ export class Parser {
 
     public getAnkiIDsBlocks(file: string): RegExpMatchArray[] {
         return Array.from(file.matchAll(/\^(\d{13})\s*/gm))
-    }
-
-    private convertImagesToHtml(str: string) {
-
     }
 }
