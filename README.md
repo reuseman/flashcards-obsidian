@@ -31,8 +31,6 @@ The following is a demo where the three main operations are shown:
 
 The wiki explains in detail [how to use it](https://github.com/reuseman/flashcards-obsidian/wiki).
 
----
-
 ## How to install
 
 1. Install this plugin on Obsidian
