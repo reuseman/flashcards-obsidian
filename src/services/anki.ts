@@ -1,6 +1,52 @@
 import { Card } from 'src/entities/card';
 
 export class Anki {
+    public async createModels() {
+        let css = ".card {\r\n font-family: arial;\r\n font-size: 20px;\r\n text-align: center;\r\n color: black;\r\n background-color: white;\r\n}\r\n\r\n.tag::before {\r\n\tcontent: \"#\";\r\n}\r\n\r\n.tag {\r\n  color: white;\r\n  background-color: #9F2BFF;\r\n  border: none;\r\n  font-size: 11px;\r\n  font-weight: bold;\r\n  padding: 1px 8px;\r\n  margin: 0px 3px;\r\n  text-align: center;\r\n  text-decoration: none;\r\n  cursor: pointer;\r\n  border-radius: 14px;\r\n  display: inline;\r\n  vertical-align: middle;\r\n}\r\n"
+        let front = "{{Front}}\r\n<p class=\"tags\">{{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>"
+        let frontReversed = "{{Back}}\r\n<p class=\"tags\">{{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>"
+
+
+        let obsidianBasic = {
+            "action": "createModel",
+            "params": {
+                "modelName": "Obsidian-basic",
+                "inOrderFields": ["Front", "Back"],
+                "css": css,
+                "cardTemplates": [
+                    {
+                        "Name": "Front / Back",
+                        "Front": front,
+                        "Back": "{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}",
+                    }
+                ]
+            }
+        }
+
+        let obsidianBasicReversed = {
+            "action": "createModel",
+            "params": {
+                "modelName": "Obsidian-basic-reversed",
+                "inOrderFields": ["Front", "Back"],
+                "css": css,
+                "cardTemplates": [
+                    {
+                        "Name": "Front / Back",
+                        "Front": front,
+                        "Back": "{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}",
+                    },
+                    {
+                        "Name": "Back / Front",
+                        "Front": frontReversed,
+                        "Back": "{{FrontSide}}\n\n<hr id=answer>\n\n{{Front}}",
+                    },
+                ]
+            }
+        }
+
+        return this.invoke("multi", 6, { "actions": [obsidianBasic, obsidianBasicReversed] })
+    }
+
     public async createDeck(deckName: string): Promise<any> {
         return this.invoke("createDeck", 6, { "deck": deckName })
     }
@@ -67,13 +113,6 @@ export class Anki {
 
     public async deleteCards(ids: number[]) {
         return this.invoke("deleteNotes", 6, { "notes": ids })
-    }
-
-    public async getDeck() {
-        await this.invoke('createDeck', 6, { deck: 'test1' });
-        const result = await this.invoke('deckNames', 6);
-        console.log(`got list of decks: ${result}`);
-        return result
     }
 
     public async ping(): Promise<boolean> {

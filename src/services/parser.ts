@@ -1,6 +1,4 @@
 import { Flashcard } from '../entities/flashcard';
-import { Spaced } from "../entities/spaced"
-import { Cloze } from '../entities/cloze';
 import { Settings } from 'src/settings';
 import * as showdown from 'showdown';
 import { Regex } from 'src/regex';
@@ -32,7 +30,7 @@ export class Parser {
         let goalLevel: number = 6
 
         let i = headings.length - 1
-        // Get the level of the first heading upon the line
+        // Get the level of the first heading before the index (i.e. above the current line)
         if (headingLevel !== -1) {
             // This is the case of a #flashcard in a heading
             goalLevel = headingLevel - 1
@@ -72,7 +70,6 @@ export class Parser {
     }
 
     public generateFlashcards(file: string, globalTags: string[] = [], deckName: string): Flashcard[] {
-        console.log(this.regex.flashscardsWithTag)
         let contextAware = this.settings.contextAwareMode
         let flashcards: Flashcard[] = []
 
@@ -87,7 +84,7 @@ export class Parser {
         }
 
         for (let match of matches) {
-            let reversed: boolean = match[3].trim().toLowerCase() === "#flashcard-reverse"
+            let reversed: boolean = match[3].trim().toLowerCase() === `#${this.settings.flashcardsTag}-reverse`
             let headingLevel = match[1].trim().length !== 0 ? match[1].length : -1
             // Match.index - 1 because otherwise in the context there will be even match[1], i.e. the question itself
             let context = contextAware ? this.getContext(headings, match.index - 1, headingLevel) : ""
@@ -138,26 +135,6 @@ export class Parser {
         return str
     }
 
-    private generateSpacedCards(file: string): Spaced[] {
-        let spaced: Spaced[] = []
-
-        let regex: RegExp = new RegExp("[# ]*((?:[^\n]\n?)+) *(#spaced) ?", "gim")
-        let matches = file.matchAll(regex)
-
-        for (let match of matches) {
-            let spacedCard = new Spaced(match[1].trim(), match.index + match.length)
-            spaced.push(spacedCard)
-        }
-
-        return spaced
-    }
-
-    private generateClozeCards(): Cloze[] {
-        let clozeCards: Cloze[]
-        return clozeCards
-    }
-
-    // TODO maybe move it in anki
     private mathToAnki(str: string) {
         let mathBlockRegex = /(\$\$)(.*)(\$\$)/gi
         str = str.replace(mathBlockRegex, '\\($2\\)')
@@ -185,9 +162,5 @@ export class Parser {
 
     public getAnkiIDsBlocks(file: string): RegExpMatchArray[] {
         return Array.from(file.matchAll(/\^(\d{13})\s*/gm))
-    }
-
-    private convertImagesToHtml(str: string) {
-
     }
 }
