@@ -15,6 +15,7 @@ Anki integration for [Obsidian](https://obsidian.md/).
 🎴 Reversed flashcards with **#card-reverse**  
 🧠 **Context-aware** mode  
 🏷️ Global and local **tags**  
+🔢 Support for **LaTeX**  
 🖼️ Support for **images**
 
 ## How it works?
