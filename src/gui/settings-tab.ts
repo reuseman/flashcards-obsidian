@@ -56,7 +56,7 @@ export class SettingsTab extends PluginSettingTab {
                     .setPlaceholder("Card")
                     .onChange((value) => {
                         if (value) {
-                            plugin.settings.flashcardsTag = value
+                            plugin.settings.flashcardsTag = value.toLowerCase()
                             plugin.saveData(plugin.settings)
                         } else {
                             new Notice("The tag must be at least 1 character long")

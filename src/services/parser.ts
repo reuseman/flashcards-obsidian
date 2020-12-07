@@ -1,14 +1,14 @@
 import { Flashcard } from '../entities/flashcard';
-import { Settings } from 'src/settings';
+import { ISettings } from 'src/settings';
 import * as showdown from 'showdown';
 import { Regex } from 'src/regex';
 
 export class Parser {
     private regex: Regex
-    private settings: Settings
+    private settings: ISettings
     private htmlConverter
 
-    constructor(regex: Regex, settings: Settings) {
+    constructor(regex: Regex, settings: ISettings) {
         this.regex = regex
         this.settings = settings
         this.htmlConverter = new showdown.Converter()
@@ -84,6 +84,8 @@ export class Parser {
         }
 
         for (let match of matches) {
+            console.log("ma sto tag?")
+            console.log(this.settings.flashcardsTag)
             let reversed: boolean = match[3].trim().toLowerCase() === `#${this.settings.flashcardsTag}-reverse`
             let headingLevel = match[1].trim().length !== 0 ? match[1].length : -1
             // Match.index - 1 because otherwise in the context there will be even match[1], i.e. the question itself

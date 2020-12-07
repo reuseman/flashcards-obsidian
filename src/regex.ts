@@ -1,4 +1,4 @@
-import { Settings } from 'src/settings';
+import { ISettings } from 'src/settings';
 
 export class Regex {
     headingsRegex: RegExp
@@ -7,11 +7,11 @@ export class Regex {
     flashscardsWithTag: RegExp
     cardsDeckLine: RegExp
 
-    constructor(settings: Settings) {
+    constructor(settings: ISettings) {
         this.update(settings)
     }
 
-    public update(settings: Settings) {
+    public update(settings: ISettings) {
         // https://regex101.com/r/BOieWh/1
         this.headingsRegex = /^ {0,3}(#{1,6}) +([^\n]+?) ?((?: *#\S+)*) *$/gim
 
@@ -24,9 +24,6 @@ export class Regex {
         // Cards
         // https://regex101.com/r/p3yQwY/2
         let str = "( {0,3}[#]*)((?:[^\\n]\\n?)+?)(#" + settings.flashcardsTag + "(?:-reverse)?)((?: *#[\\w-]+)*) *?\\n+((?:[^\\n]\\n?)*?(?=\\^\\d{13}|$))(?:\\^(\\d{13}))?"
-        // this.flashscardsWithTag = new RegExp(this.escape(`( {0,3}[#]*)((?:[^\n]\n?)+?)(#${settings.flashcardsTag}(?:-reverse)?)((?: *#\w+)*) *?\n+((?:[^\n]\n?)*?(?=\^\d{13}|$))(?:\^(\d{13}))?`), "gim")
-        // this.flashscardsWithTag = new RegExp(this.escape(str), "gim")
-        // let myReg = /( {0,3}[#]*)((?:[^\n]\n?)+?)(#flashcard(?:-reverse)?)((?: *#\w+)*) *?\n+((?:[^\n]\n?)*?(?=\^\d{13}|$))(?:\^(\d{13}))?/gim
         this.flashscardsWithTag = new RegExp(str, "gim")
     }
 }

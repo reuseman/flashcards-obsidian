@@ -1,7 +1,7 @@
 import { Anki } from 'src/services/anki'
 import { App, FileSystemAdapter, FrontMatterCache, Notice, parseFrontMatterEntry, parseFrontMatterTags, TFile } from 'obsidian'
 import { Parser } from 'src/services/parser'
-import { Settings } from 'src/settings'
+import { ISettings } from 'src/settings'
 import { Card } from 'src/entities/card'
 import { Flashcard } from 'src/entities/flashcard'
 import { arrayBufferToBase64 } from "src/utils"
@@ -11,7 +11,7 @@ import { noticeTimeout } from 'src/constants'
 
 export class CardsService {
     private app: App
-    private settings: Settings
+    private settings: ISettings
     private regex: Regex
     private parser: Parser
     private anki: Anki
@@ -21,7 +21,7 @@ export class CardsService {
     private file: string
     private notifications: string[]
 
-    constructor(app: App, settings: Settings) {
+    constructor(app: App, settings: ISettings) {
         this.app = app
         this.settings = settings
         this.regex = new Regex(this.settings)
