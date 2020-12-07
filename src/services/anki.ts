@@ -115,13 +115,6 @@ export class Anki {
         return this.invoke("deleteNotes", 6, { "notes": ids })
     }
 
-    public async getDeck() {
-        await this.invoke('createDeck', 6, { deck: 'test1' });
-        const result = await this.invoke('deckNames', 6);
-        console.log(`got list of decks: ${result}`);
-        return result
-    }
-
     public async ping(): Promise<boolean> {
         return await this.invoke('version', 6) === 6
     }

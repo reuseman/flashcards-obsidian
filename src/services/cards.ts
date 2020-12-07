@@ -66,6 +66,13 @@ export class CardsService {
             let [cardsToCreate, cardsToUpdate] = this.filterByUpdate(ankiCards, cards)
             let cardsToDelete: number[] = this.parser.getCardsToDelete(this.file)
 
+            console.info("Flashcards: Cards to create")
+            console.info(cardsToCreate)
+            console.info("Flashcards: Cards to update")
+            console.info(cardsToUpdate)
+            console.info("Flashcards: Cards to delete")
+            console.info(cardsToDelete)
+
             this.insertMedias(cards)
             await this.deleteCardsOnAnki(cardsToDelete, ankiBlocks)
             await this.updateCardsOnAnki(cardsToUpdate)
@@ -132,18 +139,20 @@ export class CardsService {
                     cardsToCreate[index].id = id
                 })
 
+                let total = 0
                 cardsToCreate.forEach(card => {
                     if (card.id === null) {
                         new Notice(`Error, could not add: '${card.initialContent}'`, noticeTimeout)
                     } else {
-                        insertedCards++
+                        card.reversed ? insertedCards += 2 : insertedCards++
                     }
+                    card.reversed ? total += 2 : total++
                 });
 
                 this.updateFrontmatter(frontmatter, deckName)
                 this.writeAnkiBlocks(cardsToCreate)
 
-                this.notifications.push(`Inserted successfully ${insertedCards}/${cardsToCreate.length} cards.`)
+                this.notifications.push(`Inserted successfully ${insertedCards}/${total} cards.`)
                 return insertedCards
             } catch (err) {
                 console.error(err)
@@ -188,6 +197,7 @@ export class CardsService {
     private async updateCardsOnAnki(cards: Card[]): Promise<number> {
         if (cards.length) {
             try {
+                this.anki.updateCards(cards)
                 this.notifications.push(`Updated successfully ${cards.length}/${cards.length} cards.`)
             } catch (err) {
                 console.error(err)

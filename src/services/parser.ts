@@ -70,7 +70,6 @@ export class Parser {
     }
 
     public generateFlashcards(file: string, globalTags: string[] = [], deckName: string): Flashcard[] {
-        console.log(this.regex.flashscardsWithTag)
         let contextAware = this.settings.contextAwareMode
         let flashcards: Flashcard[] = []
 
