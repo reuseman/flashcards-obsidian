@@ -7,3 +7,17 @@ export function arrayBufferToBase64(buffer: ArrayBuffer): string {
     }
     return window.btoa(binary);
 }
+
+export function arraysEqual(a: string[], b: string[]) {
+    if (a === b) return true;
+    if (a == null || b == null) return false;
+    if (a.length !== b.length) return false;
+
+    a.sort()
+    b.sort()
+
+    for (var i = 0; i < a.length; ++i) {
+        if (a[i] !== b[i]) return false;
+    }
+    return true;
+}

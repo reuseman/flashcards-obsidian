@@ -1,3 +1,5 @@
+import { arraysEqual } from 'src/utils'
+
 export abstract class Card {
     id: number
     deckName: string
@@ -9,6 +11,7 @@ export abstract class Card {
     inserted: boolean
     mediaNames: string[]
     mediaBase64Encoded: string[]
+    oldTags: string[]
 
     // TODO set "obsidian as optional in the settings", this means that the tag should be outside
     constructor(id: number, deckName: string, initialContent: string, fields: Record<string, string>, reversed: boolean, endOffset: number, tags: string[], inserted: boolean, mediaNames: string[]) {
@@ -23,6 +26,7 @@ export abstract class Card {
         this.inserted = inserted
         this.mediaNames = mediaNames
         this.mediaBase64Encoded = []
+        this.oldTags = []
     }
 
     abstract toString(): string
@@ -38,6 +42,6 @@ export abstract class Card {
             }
         }
 
-        return true
+        return arraysEqual(card.tags, this.tags)
     }
 }

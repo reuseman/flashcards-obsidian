@@ -91,9 +91,12 @@ export class Anki {
     public async updateCards(cards: Card[]): Promise<any> {
         let updateActions: any[] = []
 
-        // TODO add possibility to edit even tags
+
+
         // Unfortunately https://github.com/FooSoft/anki-connect/issues/183
         // This means that the delta from the current tags on Anki and the generated one should be added/removed
+        // That's what the current approach does, but in the future if the API it is made more consistent
+        //  then mergeTags(...) is not needed anymore 
 
         for (let card of cards) {
             updateActions.push({
@@ -102,6 +105,8 @@ export class Anki {
                     "note": card.getCard(true)
                 }
             })
+
+            updateActions = updateActions.concat(this.mergeTags(card.oldTags, card.tags, card.id))
         }
 
         return this.invoke("multi", 6, { "actions": updateActions })
@@ -117,6 +122,39 @@ export class Anki {
 
     public async ping(): Promise<boolean> {
         return await this.invoke('version', 6) === 6
+    }
+
+    private mergeTags(oldTags: string[], newTags: string[], cardId: number) {
+        let actions = []
+
+        // Find tags to Add
+        for (let tag of newTags) {
+            let index = oldTags.indexOf(tag)
+            if (index > -1) {
+                oldTags.splice(index, 1)
+            } else {
+                actions.push({
+                    "action": "addTags",
+                    "params": {
+                        "notes": [cardId],
+                        "tags": tag,
+                    }
+                })
+            }
+        }
+
+        // All Tags to delete
+        for (let tag of oldTags) {
+            actions.push({
+                "action": "removeTags",
+                "params": {
+                    "notes": [cardId],
+                    "tags": tag,
+                }
+            })
+        }
+
+        return actions
     }
 
     private invoke(action: string, version: number, params = {}): any {
