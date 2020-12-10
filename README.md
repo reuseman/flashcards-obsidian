@@ -5,8 +5,6 @@
 
 Anki integration for [Obsidian](https://obsidian.md/).
 
-**NOTE**: This is still a work in progress and new features are planned in the [Roadmap](https://github.com/reuseman/flashcards-obsidian/projects/1). If you want more customization I suggest you this great script: [Obsidian to Anki](https://github.com/Pseudonium/Obsidian_to_Anki).
-
 ---
 
 ## Features
@@ -16,7 +14,8 @@ Anki integration for [Obsidian](https://obsidian.md/).
 🧠 **Context-aware** mode  
 🏷️ Global and local **tags**  
 🔢 Support for **LaTeX**  
-🖼️ Support for **images**
+🖼️ Support for **images**  
+🔗 **Obsidian URI** support
 
 ## How it works?
 
