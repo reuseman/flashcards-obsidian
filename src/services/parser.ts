@@ -69,7 +69,7 @@ export class Parser {
         return [...file.matchAll(regex)].map((match) => { return Number(match[1]) })
     }
 
-    public generateFlashcards(file: string, globalTags: string[] = [], deckName: string): Flashcard[] {
+    public generateFlashcards(file: string, globalTags: string[] = [], deckName: string, vaultName: string): Flashcard[] {
         let contextAware = this.settings.contextAwareMode
         let flashcards: Flashcard[] = []
 
@@ -84,8 +84,6 @@ export class Parser {
         }
 
         for (let match of matches) {
-            console.log("ma sto tag?")
-            console.log(this.settings.flashcardsTag)
             let reversed: boolean = match[3].trim().toLowerCase() === `#${this.settings.flashcardsTag}-reverse`
             let headingLevel = match[1].trim().length !== 0 ? match[1].length : -1
             // Match.index - 1 because otherwise in the context there will be even match[1], i.e. the question itself
@@ -98,6 +96,8 @@ export class Parser {
             imagesMedia = imagesMedia.concat(this.getImageLinks(answer))
             question = this.substituteImageLinks(question)
             answer = this.substituteImageLinks(answer)
+            question = this.substituteObsidianLinks(question, vaultName)
+            answer = this.substituteObsidianLinks(answer, vaultName)
             question = this.mathToAnki(this.htmlConverter.makeHtml(question))
             answer = this.mathToAnki(this.htmlConverter.makeHtml(answer))
 
@@ -128,6 +128,19 @@ export class Parser {
         }
 
         return links
+    }
+
+    private substituteObsidianLinks(str: string, vaultName: string) {
+        let linkRegex = /\[\[(.+?)\]\]/gmi
+        let matches = [...str.matchAll(linkRegex)]
+        vaultName = encodeURIComponent(vaultName)
+        for (let match of matches) {
+            let href = `obsidian://open?vault=${vaultName}&file=${encodeURIComponent(match[1])}.md`
+            let link = `<a href="${href}">${match[0]}</a>`
+            str = str.substring(0, match.index) + link + str.substring(match.index + match[0].length)
+        }
+
+        return str
     }
 
     private substituteImageLinks(str: string): string {

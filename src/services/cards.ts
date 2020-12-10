@@ -44,6 +44,7 @@ export class CardsService {
         this.totalOffset = 0
         this.notifications = []
         let fileCachedMetadata = this.app.metadataCache.getFileCache(activeFile)
+        let vaultName = this.app.vault.getName()
         let globalTags: string[] = undefined
 
         // Parse frontmatter 
@@ -62,7 +63,7 @@ export class CardsService {
             let ankiBlocks = this.parser.getAnkiIDsBlocks(this.file)
             let ankiCards = ankiBlocks ? await this.anki.getCards(this.getAnkiIDs(ankiBlocks)) : undefined
 
-            let cards: Flashcard[] = this.parser.generateFlashcards(this.file, globalTags, deckName)
+            let cards: Flashcard[] = this.parser.generateFlashcards(this.file, globalTags, deckName, vaultName)
             let [cardsToCreate, cardsToUpdate] = this.filterByUpdate(ankiCards, cards)
             let cardsToDelete: number[] = this.parser.getCardsToDelete(this.file)
 
@@ -257,6 +258,7 @@ export class CardsService {
                 if (flashcard.inserted) {
                     ankiCard = ankiCards.filter((card: any) => Number(card.noteId) === flashcard.id)[0]
                     if (!flashcard.match(ankiCard)) {
+                        flashcard.oldTags = ankiCard.tags
                         cardsToUpdate.push(flashcard)
                     }
 
