@@ -1,7 +1,7 @@
 {
   "id": "flashcards-obsidian",
   "name": "Flashcards",
-  "version": "0.2.3",
+  "version": "0.3.1",
   "minAppVersion": "0.9.17",
   "description": "Anki integration",
   "author": "Alex Colucci",
