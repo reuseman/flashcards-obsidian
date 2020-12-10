@@ -1,15 +1,18 @@
-import { Notice, Plugin } from 'obsidian';
+import { addIcon, Notice, Plugin, TFile } from 'obsidian';
 import { ISettings } from 'src/settings';
 import { SettingsTab } from 'src/gui/settings-tab';
 import { CardsService } from 'src/services/cards';
 import { Anki } from 'src/services/anki';
 import { noticeTimeout } from 'src/constants'
+import { flashcardsIcon } from 'src/constants'
 
 export default class ObsidianFlashcard extends Plugin {
 	private settings: ISettings
 	private cardsService: CardsService
 
 	async onload() {
+		addIcon("flashcards", flashcardsIcon)
+
 		// TODO test when file did not insert flashcards, but one of them is in Anki already
 		let anki = new Anki()
 		this.settings = await this.loadData() || this.getDefaultSettings()
@@ -24,15 +27,20 @@ export default class ObsidianFlashcard extends Plugin {
 				let activeFile = this.app.workspace.getActiveFile()
 				if (activeFile) {
 					if (!checking) {
-						this.cardsService.execute(activeFile).then(res => {
-							new Notice(res.join(" "), noticeTimeout)
-						}).catch(err => {
-							Error(err)
-						})
+						this.generateCards(activeFile)
 					}
 					return true;
 				}
 				return false;
+			}
+		});
+
+		this.addRibbonIcon('flashcards', 'Generate flashcards', () => {
+			let activeFile = this.app.workspace.getActiveFile()
+			if (activeFile) {
+				this.generateCards(activeFile)
+			} else {
+				new Notice("Open a file before")
 			}
 		});
 
@@ -49,5 +57,13 @@ export default class ObsidianFlashcard extends Plugin {
 
 	private getDefaultSettings(): ISettings {
 		return { contextAwareMode: true, contextSeparator: " > ", deck: "Default", flashcardsTag: "card" }
+	}
+
+	private generateCards(activeFile: TFile) {
+		this.cardsService.execute(activeFile).then(res => {
+			new Notice(res.join(" "), noticeTimeout)
+		}).catch(err => {
+			Error(err)
+		})
 	}
 }
