@@ -107,7 +107,7 @@ export class Parser {
             let endingLine = match.index + match[0].length
             let tags: string[] = this.parseTags(match[4], globalTags)
             let id: number = match[5] ? Number(match[5]) : -1
-            let inserted: boolean = match[4] ? true : false
+            let inserted: boolean = match[5] ? true : false
             let fields = { "Front": question, "Back": answer }
 
             let card = new Inlinecard(id, deck, originalQuestion, fields, reversed, endingLine, tags, inserted, imagesMedia)
