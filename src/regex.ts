@@ -4,8 +4,10 @@ export class Regex {
     headingsRegex: RegExp
     wikiImageLinks: RegExp
     markdownImageLinks: RegExp
-    flashscardsWithTag: RegExp
     cardsDeckLine: RegExp
+    cardsToDelete: RegExp
+    flashscardsWithTag: RegExp
+    cardsInlineStyle: RegExp
 
     constructor(settings: ISettings) {
         this.update(settings)
@@ -20,10 +22,15 @@ export class Regex {
         this.markdownImageLinks = /!\[\]\((.*\.(?:png|jpg|jpeg|gif|bmp|svg|tiff))\)/gim
 
         this.cardsDeckLine = /cards-deck: [\w\d]+/gi
+        this.cardsToDelete = /^\s*(?:\n)(?:\^(\d{13}))(?:\n\s*?)?/gm
 
         // Cards
         // https://regex101.com/r/p3yQwY/2
         let str = "( {0,3}[#]*)((?:[^\\n]\\n?)+?)(#" + settings.flashcardsTag + "(?:-reverse)?)((?: *#[\\w-]+)*) *?\\n+((?:[^\\n]\\n?)*?(?=\\^\\d{13}|$))(?:\\^(\\d{13}))?"
         this.flashscardsWithTag = new RegExp(str, "gim")
+
+        // https://regex101.com/r/DEVfyh/2
+        str = "( {0,3}[#]{0,6})?(?:(?:[\\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.+) ?:{2} ?(.+?)((?: *#[\\w-]+)+|$)(?:\\n\^(\\d{13}))?"
+        this.cardsInlineStyle = new RegExp(str, "gim")
     }
 }

@@ -32,6 +32,7 @@ export abstract class Card {
     abstract toString(): string
     abstract getCard(update: boolean): object
     abstract getMedias(): object[]
+    abstract getIdFormat(): string
 
     match(card: any): boolean {
         let fields = Object.entries(card.fields)
