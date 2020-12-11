@@ -2,6 +2,7 @@ import { Flashcard } from '../entities/flashcard';
 import { ISettings } from 'src/settings';
 import * as showdown from 'showdown';
 import { Regex } from 'src/regex';
+import { Inlinecard } from 'src/entities/inlinecard';
 
 export class Parser {
     private regex: Regex
@@ -15,6 +16,23 @@ export class Parser {
         this.htmlConverter.setOption("simplifiedAutoLink", true)
         this.htmlConverter.setOption("tables", true)
         this.htmlConverter.setOption("tasks", true)
+    }
+
+    public generateFlashcards(file: string, deck: string, vault: string, globalTags: string[] = []): Flashcard[] {
+        let contextAware = this.settings.contextAwareMode
+        let cards: Flashcard[] = []
+        let headings: any = []
+
+        if (contextAware) {
+            // https://regex101.com/r/agSp9X/4
+            headings = [...file.matchAll(this.regex.headingsRegex)]
+        }
+
+        cards = cards.concat(this.generateCardsWithTag(file, headings, deck, vault, globalTags))
+        cards = cards.concat(this.generateInlineCards(file, headings, deck, vault, globalTags))
+        cards.sort((a, b) => a.endOffset - b.endOffset)
+
+        return cards
     }
 
 
@@ -62,26 +80,49 @@ export class Parser {
         return context
     }
 
+    private generateInlineCards(file: string, headings: any, deck: string, vault: string, globalTags: string[] = []) {
+        let contextAware = this.settings.contextAwareMode
+        let cards: Inlinecard[] = []
 
-    public getCardsToDelete(file: string): number[] {
-        // Find block IDs with no content above it
-        const regex: RegExp = /^\s*(?:\n)(?:\^(\d{13}))(?:\n\s*?)?/gm // TODO move to regex
-        return [...file.matchAll(regex)].map((match) => { return Number(match[1]) })
+        let regex = this.regex.cardsInlineStyle
+        let matches = [...file.matchAll(regex)]
+
+        for (let match of matches) {
+            let reversed: boolean = false
+            let headingLevel = -1
+            if (match[1]) {
+                headingLevel = match[1].trim().length !== 0 ? match[1].trim().length : -1
+            }
+            // Match.index - 1 because otherwise in the context there will be even match[1], i.e. the question itself
+            let context = contextAware ? this.getContext(headings, match.index - 1, headingLevel) : ""
+
+            let originalQuestion = match[2].trim()
+            let question = contextAware ? [...context, match[2].trim()].join(`${this.settings.contextSeparator}`) : match[2].trim()
+            let answer = match[3].trim()
+            let imagesMedia: string[] = this.getImageLinks(question)
+            imagesMedia = imagesMedia.concat(this.getImageLinks(answer))
+            question = this.parseLine(question, vault)
+            answer = this.parseLine(answer, vault)
+
+            let endingLine = match.index + match[0].length
+            let tags: string[] = this.parseTags(match[4], globalTags)
+            let id: number = match[5] ? Number(match[5]) : -1
+            let inserted: boolean = match[4] ? true : false
+            let fields = { "Front": question, "Back": answer }
+
+            let card = new Inlinecard(id, deck, originalQuestion, fields, reversed, endingLine, tags, inserted, imagesMedia)
+            cards.push(card)
+        }
+
+        return cards
     }
 
-    public generateFlashcards(file: string, globalTags: string[] = [], deckName: string, vaultName: string): Flashcard[] {
+    private generateCardsWithTag(file: string, headings: any, deck: string, vault: string, globalTags: string[] = []) {
         let contextAware = this.settings.contextAwareMode
-        let flashcards: Flashcard[] = []
+        let cards: Flashcard[] = []
 
-        // let regex: RegExp = /( {0,3}[#]*)((?:[^\n]\n?)+?)(#flashcard(?:-reverse)?)((?: *#\w+)*) *?\n+((?:[^\n]\n?)*?(?=\^\d{13}|$))(?:\^(\d{13}))?/gim
         let regex = this.regex.flashscardsWithTag
         let matches = [...file.matchAll(regex)]
-        let headings: any = []
-
-        if (contextAware) {
-            // https://regex101.com/r/agSp9X/4
-            headings = [...file.matchAll(this.regex.headingsRegex)]
-        }
 
         for (let match of matches) {
             let reversed: boolean = match[3].trim().toLowerCase() === `#${this.settings.flashcardsTag}-reverse`
@@ -94,12 +135,8 @@ export class Parser {
             let answer = match[5].trim()
             let imagesMedia: string[] = this.getImageLinks(question)
             imagesMedia = imagesMedia.concat(this.getImageLinks(answer))
-            question = this.substituteImageLinks(question)
-            answer = this.substituteImageLinks(answer)
-            question = this.substituteObsidianLinks(question, vaultName)
-            answer = this.substituteObsidianLinks(answer, vaultName)
-            question = this.mathToAnki(this.htmlConverter.makeHtml(question))
-            answer = this.mathToAnki(this.htmlConverter.makeHtml(answer))
+            question = this.parseLine(question, vault)
+            answer = this.parseLine(answer, vault)
 
             let endingLine = match.index + match[0].length
             let tags: string[] = this.parseTags(match[4], globalTags)
@@ -107,11 +144,20 @@ export class Parser {
             let inserted: boolean = match[6] ? true : false
             let fields = { "Front": question, "Back": answer }
 
-            let flashcard = new Flashcard(id, deckName, originalQuestion, fields, reversed, endingLine, tags, inserted, imagesMedia)
-            flashcards.push(flashcard)
+            let card = new Flashcard(id, deck, originalQuestion, fields, reversed, endingLine, tags, inserted, imagesMedia)
+            cards.push(card)
         }
 
-        return flashcards
+        return cards
+    }
+
+    public getCardsToDelete(file: string): number[] {
+        // Find block IDs with no content above it
+        return [...file.matchAll(this.regex.cardsToDelete)].map((match) => { return Number(match[1]) })
+    }
+
+    private parseLine(str: string, vaultName: string) {
+        return this.mathToAnki(this.substituteObsidianLinks(this.substituteImageLinks(str), vaultName))
     }
 
     private getImageLinks(str: string) {
