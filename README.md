@@ -5,8 +5,6 @@
 
 Anki integration for [Obsidian](https://obsidian.md/).
 
----
-
 ## Features
 
 🗃️ Simple flashcards with **#card**  
