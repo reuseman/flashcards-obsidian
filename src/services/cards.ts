@@ -52,7 +52,8 @@ export class CardsService {
         let deckName = this.settings.deck
         if (frontmatter) {
             deckName = parseFrontMatterEntry(frontmatter, "cards-deck") || this.settings.deck
-            globalTags = parseFrontMatterTags(frontmatter).map(tag => tag.substr(1))
+            let temp = parseFrontMatterTags(frontmatter)
+            globalTags = temp ? temp.map(tag => tag.substr(1)) : []
         }
 
         try {
@@ -63,7 +64,7 @@ export class CardsService {
             let ankiBlocks = this.parser.getAnkiIDsBlocks(this.file)
             let ankiCards = ankiBlocks ? await this.anki.getCards(this.getAnkiIDs(ankiBlocks)) : undefined
 
-            let cards: Flashcard[] = this.parser.generateFlashcards(this.file, globalTags, deckName, vaultName)
+            let cards: Card[] = this.parser.generateFlashcards(this.file, deckName, vaultName, globalTags)
             let [cardsToCreate, cardsToUpdate] = this.filterByUpdate(ankiCards, cards)
             let cardsToDelete: number[] = this.parser.getCardsToDelete(this.file)
 
@@ -184,7 +185,7 @@ export class CardsService {
             // Card.id cannot be null, because if written already previously it has an ID,
             //   if it has been inserted it has an ID too
             if (card.id !== null && !card.inserted) {
-                let id = "^" + card.id.toString() + "\n"
+                let id = card.getIdFormat()
                 card.endOffset += this.totalOffset
                 let offset = card.endOffset
 
