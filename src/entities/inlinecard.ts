@@ -1,15 +1,16 @@
 import { Card } from "src/entities/card";
 
 export class Inlinecard extends Card {
-    constructor(id: number = -1, deckName: string, initialContent: string, fields: Record<string, string>, reversed: boolean, endOffset: number, tags: string[] = [], inserted: boolean = false, mediaNames: string[]) {
-        super(id, deckName, initialContent, fields, reversed, endOffset, tags, inserted, mediaNames)
+    constructor(id: number = -1, deckName: string, initialContent: string, fields: Record<string, string>, reversed: boolean, endOffset: number, tags: string[] = [], inserted: boolean = false, mediaNames: string[], containsCode: boolean) {
+        super(id, deckName, initialContent, fields, reversed, endOffset, tags, inserted, mediaNames, containsCode)
+        let codeExtension = this.getCodeDeckNameExtension()
+        this.modelName = `Obsidian-basic${codeExtension}`
     }
 
     public getCard(update: boolean = false): object {
-        let modelName = "Obsidian-basic"
         let card: any = {
             "deckName": this.deckName,
-            "modelName": modelName,
+            "modelName": this.modelName,
             "fields": {
                 "Front": this.fields["Front"],
                 "Back": this.fields["Back"]
@@ -37,7 +38,7 @@ export class Inlinecard extends Card {
     }
 
     public toString = (): string => {
-        return `Q: ${this.fields[0]}\nA: ${this.fields[1]}`
+        return `Q: ${this.fields[0]} \nA: ${this.fields[1]} `
     }
 
     public getIdFormat(): string {

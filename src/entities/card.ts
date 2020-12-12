@@ -1,3 +1,4 @@
+import { codeDeckExtension } from 'src/constants'
 import { arraysEqual } from 'src/utils'
 
 export abstract class Card {
@@ -12,9 +13,11 @@ export abstract class Card {
     mediaNames: string[]
     mediaBase64Encoded: string[]
     oldTags: string[]
+    containsCode: boolean
+    modelName: string
 
     // TODO set "obsidian as optional in the settings", this means that the tag should be outside
-    constructor(id: number, deckName: string, initialContent: string, fields: Record<string, string>, reversed: boolean, endOffset: number, tags: string[], inserted: boolean, mediaNames: string[]) {
+    constructor(id: number, deckName: string, initialContent: string, fields: Record<string, string>, reversed: boolean, endOffset: number, tags: string[], inserted: boolean, mediaNames: string[], containsCode: boolean = false) {
         this.id = id
         this.deckName = deckName
         this.initialContent = initialContent
@@ -27,6 +30,8 @@ export abstract class Card {
         this.mediaNames = mediaNames
         this.mediaBase64Encoded = []
         this.oldTags = []
+        this.containsCode = containsCode
+        this.modelName = ""
     }
 
     abstract toString(): string
@@ -35,6 +40,11 @@ export abstract class Card {
     abstract getIdFormat(): string
 
     match(card: any): boolean {
+        // TODO not supported currently
+        // if (this.modelName !== card.modelName) {
+        //     return false
+        // }
+
         let fields = Object.entries(card.fields)
         for (let field of fields) {
             let fieldName = field[0]
@@ -44,5 +54,9 @@ export abstract class Card {
         }
 
         return arraysEqual(card.tags, this.tags)
+    }
+
+    getCodeDeckNameExtension() {
+        return this.containsCode ? codeDeckExtension : ""
     }
 }

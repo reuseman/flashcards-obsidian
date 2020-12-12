@@ -17,6 +17,7 @@ export class Parser {
         this.htmlConverter.setOption("simplifiedAutoLink", true)
         this.htmlConverter.setOption("tables", true)
         this.htmlConverter.setOption("tasks", true)
+        this.htmlConverter.setOption("ghCodeBlocks", true)
     }
 
     public generateFlashcards(file: string, deck: string, vault: string, globalTags: string[] = []): Flashcard[] {
@@ -106,8 +107,9 @@ export class Parser {
             let id: number = match[5] ? Number(match[5]) : -1
             let inserted: boolean = match[5] ? true : false
             let fields = { "Prompt": prompt }
+            let containsCode = this.containsCode([prompt])
 
-            let card = new Spacedcard(id, deck, originalPrompt, fields, reversed, endingLine, tags, inserted, imagesMedia)
+            let card = new Spacedcard(id, deck, originalPrompt, fields, reversed, endingLine, tags, inserted, imagesMedia, containsCode)
             cards.push(card)
         }
 
@@ -141,8 +143,9 @@ export class Parser {
             let id: number = match[5] ? Number(match[5]) : -1
             let inserted: boolean = match[5] ? true : false
             let fields = { "Front": question, "Back": answer }
+            let containsCode = this.containsCode([question, answer])
 
-            let card = new Inlinecard(id, deck, originalQuestion, fields, reversed, endingLine, tags, inserted, imagesMedia)
+            let card = new Inlinecard(id, deck, originalQuestion, fields, reversed, endingLine, tags, inserted, imagesMedia, containsCode)
             cards.push(card)
         }
 
@@ -173,12 +176,22 @@ export class Parser {
             let id: number = match[6] ? Number(match[6]) : -1
             let inserted: boolean = match[6] ? true : false
             let fields = { "Front": question, "Back": answer }
+            let containsCode = this.containsCode([question, answer])
 
-            let card = new Flashcard(id, deck, originalQuestion, fields, reversed, endingLine, tags, inserted, imagesMedia)
+            let card = new Flashcard(id, deck, originalQuestion, fields, reversed, endingLine, tags, inserted, imagesMedia, containsCode)
             cards.push(card)
         }
 
         return cards
+    }
+
+    public containsCode(str: string[]): boolean {
+        for (let s of str) {
+            if (s.match(this.regex.codeBlock)) {
+                return true
+            }
+        }
+        return false
     }
 
     public getCardsToDelete(file: string): number[] {
@@ -187,7 +200,7 @@ export class Parser {
     }
 
     private parseLine(str: string, vaultName: string) {
-        return this.mathToAnki(this.substituteObsidianLinks(this.substituteImageLinks(str), vaultName))
+        return this.mathToAnki(this.htmlConverter.makeHtml(this.substituteObsidianLinks(this.substituteImageLinks(str), vaultName)))
     }
 
     private getImageLinks(str: string) {

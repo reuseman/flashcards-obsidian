@@ -1,15 +1,17 @@
 import { Card } from "src/entities/card";
 
 export class Spacedcard extends Card {
-    constructor(id: number = -1, deckName: string, initialContent: string, fields: Record<string, string>, reversed: boolean, endOffset: number, tags: string[] = [], inserted: boolean = false, mediaNames: string[]) {
-        super(id, deckName, initialContent, fields, reversed, endOffset, tags, inserted, mediaNames)
+    constructor(id: number = -1, deckName: string, initialContent: string, fields: Record<string, string>, reversed: boolean, endOffset: number, tags: string[] = [], inserted: boolean = false, mediaNames: string[], containsCode: boolean) {
+        super(id, deckName, initialContent, fields, reversed, endOffset, tags, inserted, mediaNames, containsCode)
+        let codeExtension = this.getCodeDeckNameExtension()
+        this.modelName = `Obsidian-spaced${codeExtension}`
     }
 
     public getCard(update: boolean = false): object {
-        let modelName = "Obsidian-spaced"
+
         let card: any = {
             "deckName": this.deckName,
-            "modelName": modelName,
+            "modelName": this.modelName,
             "fields": {
                 "Prompt": this.fields["Prompt"],
             },

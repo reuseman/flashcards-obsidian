@@ -3,7 +3,6 @@ import { App, FileSystemAdapter, FrontMatterCache, Notice, parseFrontMatterEntry
 import { Parser } from 'src/services/parser'
 import { ISettings } from 'src/settings'
 import { Card } from 'src/entities/card'
-import { Flashcard } from 'src/entities/flashcard'
 import { arrayBufferToBase64 } from "src/utils"
 import { Regex } from 'src/regex'
 import { noticeTimeout } from 'src/constants'
@@ -57,7 +56,8 @@ export class CardsService {
         }
 
         try {
-            await this.anki.createModels()
+            await this.anki.storeCodeHighlightMedias()
+            await this.anki.createModels(this.settings.codeHighlightSupport)
             await this.anki.createDeck(deckName)
             this.file = await this.app.vault.read(activeFile)
             // TODO with empty check that does not call ankiCards line

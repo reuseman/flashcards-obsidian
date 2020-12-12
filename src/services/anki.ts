@@ -1,13 +1,24 @@
 import { Card } from 'src/entities/card';
+import { codeScript, highlightjsBase64, hihglightjsInitBase64, highlightCssBase64, codeDeckExtension } from 'src/constants'
 
 export class Anki {
-    public async createModels() {
+
+    public async createModels(codeHighlightSupport: boolean) {
         let css = ".card {\r\n font-family: arial;\r\n font-size: 20px;\r\n text-align: center;\r\n color: black;\r\n background-color: white;\r\n}\r\n\r\n.tag::before {\r\n\tcontent: \"#\";\r\n}\r\n\r\n.tag {\r\n  color: white;\r\n  background-color: #9F2BFF;\r\n  border: none;\r\n  font-size: 11px;\r\n  font-weight: bold;\r\n  padding: 1px 8px;\r\n  margin: 0px 3px;\r\n  text-align: center;\r\n  text-decoration: none;\r\n  cursor: pointer;\r\n  border-radius: 14px;\r\n  display: inline;\r\n  vertical-align: middle;\r\n}\r\n"
-        let front = "{{Front}}\r\n<p class=\"tags\">{{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>"
-        let frontReversed = "{{Back}}\r\n<p class=\"tags\">{{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>"
-        let prompt = "{{Prompt}}\r\n<p class=\"tags\">🧠spaced {{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>"
+        let front = `{{Front}}\r\n<p class=\"tags\">{{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>`
+        let frontReversed = `{{Back}}\r\n<p class=\"tags\">{{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>`
+        let prompt = `{{Prompt}}\r\n<p class=\"tags\">🧠spaced {{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>`
 
         let models = this.getModels(front, frontReversed, prompt, css)
+        if (codeHighlightSupport) {
+            css = ".card {\r\n font-family: arial;\r\n font-size: 20px;\r\n text-align: center;\r\n color: black;\r\n background-color: white;\r\n}\r\n\r\n.tag::before {\r\n\tcontent: \"#\";\r\n}\r\n\r\n.tag {\r\n  color: white;\r\n  background-color: #9F2BFF;\r\n  border: none;\r\n  font-size: 11px;\r\n  font-weight: bold;\r\n  padding: 1px 8px;\r\n  margin: 0px 3px;\r\n  text-align: center;\r\n  text-decoration: none;\r\n  cursor: pointer;\r\n  border-radius: 14px;\r\n  display: inline;\r\n  vertical-align: middle;\r\n}\r\n"
+            front = `{{Front}}\r\n<p class=\"tags\">{{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>\r\n${codeScript}\r\n`
+            frontReversed = `{{Back}}\r\n<p class=\"tags\">{{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>\r\n${codeScript}\r\n`
+            prompt = `{{Prompt}}\r\n<p class=\"tags\">🧠spaced {{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>\r\n${codeScript}\r\n`
+
+            models = models.concat(this.getModels(front, frontReversed, prompt, css, codeDeckExtension))
+        }
+
         return this.invoke("multi", 6, { "actions": models })
     }
 
@@ -31,6 +42,37 @@ export class Anki {
             return this.invoke("multi", 6, { "actions": actions })
         } else {
             return {}
+        }
+    }
+
+    public async storeCodeHighlightMedias() {
+        let fileExists = await this.invoke(
+            "retrieveMediaFile",
+            6,
+            {
+                "filename": "_highlightInit.js"
+            })
+
+        if (!fileExists) {
+            let highlightjs = {
+                "action": "storeMediaFile", "params": {
+                    "filename": "_highlight.js",
+                    "data": highlightjsBase64
+                }
+            }
+            let highlightjsInit = {
+                "action": "storeMediaFile", "params": {
+                    "filename": "_highlightInit.js",
+                    "data": hihglightjsInitBase64
+                }
+            }
+            let highlightjcss = {
+                "action": "storeMediaFile", "params": {
+                    "filename": "_highlight.css",
+                    "data": highlightCssBase64
+                }
+            }
+            return this.invoke("multi", 6, { "actions": [highlightjs, highlightjsInit, highlightjcss] })
         }
     }
 
@@ -121,7 +163,7 @@ export class Anki {
         return actions
     }
 
-    private invoke(action: string, version: number, params = {}): any {
+    private invoke(action: string, version: number = 6, params = {}): any {
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             xhr.addEventListener('error', () => reject('failed to issue request'));
@@ -151,11 +193,11 @@ export class Anki {
         });
     }
 
-    private getModels(front: string, frontReversed: string, prompt: string, css: string): object[] {
+    private getModels(front: string, frontReversed: string, prompt: string, css: string, extension: string = ""): object[] {
         let obsidianBasic = {
             "action": "createModel",
             "params": {
-                "modelName": "Obsidian-basic",
+                "modelName": `Obsidian-basic${extension}`,
                 "inOrderFields": ["Front", "Back"],
                 "css": css,
                 "cardTemplates": [
@@ -171,7 +213,7 @@ export class Anki {
         let obsidianBasicReversed = {
             "action": "createModel",
             "params": {
-                "modelName": "Obsidian-basic-reversed",
+                "modelName": `Obsidian-basic-reversed${extension}`,
                 "inOrderFields": ["Front", "Back"],
                 "css": css,
                 "cardTemplates": [
@@ -192,7 +234,7 @@ export class Anki {
         let obsidianSpaced = {
             "action": "createModel",
             "params": {
-                "modelName": "Obsidian-spaced",
+                "modelName": `Obsidian-spaced${extension}`,
                 "inOrderFields": ["Prompt"],
                 "css": css,
                 "cardTemplates": [

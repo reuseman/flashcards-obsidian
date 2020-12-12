@@ -4,6 +4,7 @@ export class Regex {
     headingsRegex: RegExp
     wikiImageLinks: RegExp
     markdownImageLinks: RegExp
+    codeBlock: RegExp
     cardsDeckLine: RegExp
     cardsToDelete: RegExp
     flashscardsWithTag: RegExp
@@ -21,6 +22,7 @@ export class Regex {
         // Supported images https://publish.obsidian.md/help/How+to/Embed+files
         this.wikiImageLinks = /!\[\[(.*\.(?:png|jpg|jpeg|gif|bmp|svg|tiff))\]\]/gim
         this.markdownImageLinks = /!\[\]\((.*\.(?:png|jpg|jpeg|gif|bmp|svg|tiff))\)/gim
+        this.codeBlock = /<code\b[^>]*>(.*?)<\/code>/gims
 
         this.cardsDeckLine = /cards-deck: [\w\d]+/gi
         this.cardsToDelete = /^\s*(?:\n)(?:\^(\d{13}))(?:\n\s*?)?/gm

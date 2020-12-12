@@ -32,6 +32,18 @@ export class SettingsTab extends PluginSettingTab {
                     })
             )
 
+
+        new Setting(containerEl)
+            .setName("Code highlight support")
+            .setDesc("Add highlight of the code in Anki.")
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(plugin.settings.codeHighlightSupport)
+                    .onChange((value) => {
+                        plugin.settings.codeHighlightSupport = value
+                        plugin.saveData(plugin.settings)
+                    })
+            )
         new Setting(containerEl)
             .setName("Default deck")
             .setDesc("The name of the default deck where the cards will be added when not specified.")
@@ -63,6 +75,7 @@ export class SettingsTab extends PluginSettingTab {
                         }
                     })
             })
+
 
     }
 }
