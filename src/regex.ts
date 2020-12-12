@@ -8,6 +8,7 @@ export class Regex {
     cardsToDelete: RegExp
     flashscardsWithTag: RegExp
     cardsInlineStyle: RegExp
+    cardsSpacedStyle: RegExp
 
     constructor(settings: ISettings) {
         this.update(settings)
@@ -32,5 +33,9 @@ export class Regex {
         // https://regex101.com/r/DEVfyh/2
         str = "( {0,3}[#]{0,6})?(?:(?:[\\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.+) ?:{2} ?(.+?)((?: *#[\\w-]+)+|$)(?:\\n\\^(\\d{13}))?"
         this.cardsInlineStyle = new RegExp(str, "gim")
+
+        // https://regex101.com/r/HOXF5E/1
+        str = "( {0,3}[#]*)((?:[^\\n]\\n?)+?)(#card-spaced)((?: *#[\\w-]+)*) *\\n?(?:\\^(\\d{13}))?"
+        this.cardsSpacedStyle = new RegExp(str, "gim")
     }
 }

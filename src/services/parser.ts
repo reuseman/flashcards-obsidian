@@ -3,6 +3,7 @@ import { ISettings } from 'src/settings';
 import * as showdown from 'showdown';
 import { Regex } from 'src/regex';
 import { Inlinecard } from 'src/entities/inlinecard';
+import { Spacedcard } from 'src/entities/spacedcard';
 
 export class Parser {
     private regex: Regex
@@ -30,6 +31,7 @@ export class Parser {
 
         cards = cards.concat(this.generateCardsWithTag(file, headings, deck, vault, globalTags))
         cards = cards.concat(this.generateInlineCards(file, headings, deck, vault, globalTags))
+        cards = cards.concat(this.generateSpacedCards(file, headings, deck, vault, globalTags))
         cards.sort((a, b) => a.endOffset - b.endOffset)
 
         return cards
@@ -80,12 +82,42 @@ export class Parser {
         return context
     }
 
+    private generateSpacedCards(file: string, headings: any, deck: string, vault: string, globalTags: string[] = []) {
+        let contextAware = this.settings.contextAwareMode
+        let cards: Spacedcard[] = []
+        let matches = [...file.matchAll(this.regex.cardsSpacedStyle)]
+
+        for (let match of matches) {
+            let reversed: boolean = false
+            let headingLevel = -1
+            if (match[1]) {
+                headingLevel = match[1].trim().length !== 0 ? match[1].trim().length : -1
+            }
+            // Match.index - 1 because otherwise in the context there will be even match[1], i.e. the question itself
+            let context = contextAware ? this.getContext(headings, match.index - 1, headingLevel) : ""
+
+            let originalPrompt = match[2].trim()
+            let prompt = contextAware ? [...context, match[2].trim()].join(`${this.settings.contextSeparator}`) : match[2].trim()
+            let imagesMedia: string[] = this.getImageLinks(prompt)
+            prompt = this.parseLine(prompt, vault)
+
+            let endingLine = match.index + match[0].length
+            let tags: string[] = this.parseTags(match[4], globalTags)
+            let id: number = match[5] ? Number(match[5]) : -1
+            let inserted: boolean = match[5] ? true : false
+            let fields = { "Prompt": prompt }
+
+            let card = new Spacedcard(id, deck, originalPrompt, fields, reversed, endingLine, tags, inserted, imagesMedia)
+            cards.push(card)
+        }
+
+        return cards
+    }
+
     private generateInlineCards(file: string, headings: any, deck: string, vault: string, globalTags: string[] = []) {
         let contextAware = this.settings.contextAwareMode
         let cards: Inlinecard[] = []
-
-        let regex = this.regex.cardsInlineStyle
-        let matches = [...file.matchAll(regex)]
+        let matches = [...file.matchAll(this.regex.cardsInlineStyle)]
 
         for (let match of matches) {
             let reversed: boolean = false
@@ -120,9 +152,7 @@ export class Parser {
     private generateCardsWithTag(file: string, headings: any, deck: string, vault: string, globalTags: string[] = []) {
         let contextAware = this.settings.contextAwareMode
         let cards: Flashcard[] = []
-
-        let regex = this.regex.flashscardsWithTag
-        let matches = [...file.matchAll(regex)]
+        let matches = [...file.matchAll(this.regex.flashscardsWithTag)]
 
         for (let match of matches) {
             let reversed: boolean = match[3].trim().toLowerCase() === `#${this.settings.flashcardsTag}-reverse`
