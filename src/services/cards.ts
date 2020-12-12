@@ -42,6 +42,7 @@ export class CardsService {
         this.updateFile = false
         this.totalOffset = 0
         this.notifications = []
+        let filePath = activeFile.basename
         let fileCachedMetadata = this.app.metadataCache.getFileCache(activeFile)
         let vaultName = this.app.vault.getName()
         let globalTags: string[] = undefined
@@ -56,15 +57,16 @@ export class CardsService {
         }
 
         try {
-            await this.anki.storeCodeHighlightMedias()
-            await this.anki.createModels(this.settings.codeHighlightSupport)
+            this.anki.storeCodeHighlightMedias()
+            await this.anki.createModels(this.settings.sourceSupport, this.settings.codeHighlightSupport)
             await this.anki.createDeck(deckName)
             this.file = await this.app.vault.read(activeFile)
             // TODO with empty check that does not call ankiCards line
             let ankiBlocks = this.parser.getAnkiIDsBlocks(this.file)
             let ankiCards = ankiBlocks ? await this.anki.getCards(this.getAnkiIDs(ankiBlocks)) : undefined
 
-            let cards: Card[] = this.parser.generateFlashcards(this.file, deckName, vaultName, globalTags)
+
+            let cards: Card[] = this.parser.generateFlashcards(this.file, deckName, vaultName, filePath, globalTags)
             let [cardsToCreate, cardsToUpdate] = this.filterByUpdate(ankiCards, cards)
             let cardsToDelete: number[] = this.parser.getCardsToDelete(this.file)
 

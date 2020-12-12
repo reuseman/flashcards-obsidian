@@ -1,7 +1,7 @@
-import { Flashcard } from '../entities/flashcard';
 import { ISettings } from 'src/settings';
 import * as showdown from 'showdown';
 import { Regex } from 'src/regex';
+import { Flashcard } from '../entities/flashcard';
 import { Inlinecard } from 'src/entities/inlinecard';
 import { Spacedcard } from 'src/entities/spacedcard';
 
@@ -20,7 +20,7 @@ export class Parser {
         this.htmlConverter.setOption("ghCodeBlocks", true)
     }
 
-    public generateFlashcards(file: string, deck: string, vault: string, globalTags: string[] = []): Flashcard[] {
+    public generateFlashcards(file: string, deck: string, vault: string, note: string, globalTags: string[] = []): Flashcard[] {
         let contextAware = this.settings.contextAwareMode
         let cards: Flashcard[] = []
         let headings: any = []
@@ -30,9 +30,10 @@ export class Parser {
             headings = [...file.matchAll(this.regex.headingsRegex)]
         }
 
-        cards = cards.concat(this.generateCardsWithTag(file, headings, deck, vault, globalTags))
-        cards = cards.concat(this.generateInlineCards(file, headings, deck, vault, globalTags))
-        cards = cards.concat(this.generateSpacedCards(file, headings, deck, vault, globalTags))
+        note = this.substituteObsidianLinks(`[[${note}]]`, vault)
+        cards = cards.concat(this.generateCardsWithTag(file, headings, deck, vault, note, globalTags))
+        cards = cards.concat(this.generateInlineCards(file, headings, deck, vault, note, globalTags))
+        cards = cards.concat(this.generateSpacedCards(file, headings, deck, vault, note, globalTags))
         cards.sort((a, b) => a.endOffset - b.endOffset)
 
         return cards
@@ -83,7 +84,7 @@ export class Parser {
         return context
     }
 
-    private generateSpacedCards(file: string, headings: any, deck: string, vault: string, globalTags: string[] = []) {
+    private generateSpacedCards(file: string, headings: any, deck: string, vault: string, note: string, globalTags: string[] = []) {
         let contextAware = this.settings.contextAwareMode
         let cards: Spacedcard[] = []
         let matches = [...file.matchAll(this.regex.cardsSpacedStyle)]
@@ -106,7 +107,10 @@ export class Parser {
             let tags: string[] = this.parseTags(match[4], globalTags)
             let id: number = match[5] ? Number(match[5]) : -1
             let inserted: boolean = match[5] ? true : false
-            let fields = { "Prompt": prompt }
+            let fields: any = { "Prompt": prompt }
+            if (this.settings.sourceSupport) {
+                fields["Source"] = note
+            }
             let containsCode = this.containsCode([prompt])
 
             let card = new Spacedcard(id, deck, originalPrompt, fields, reversed, endingLine, tags, inserted, imagesMedia, containsCode)
@@ -116,7 +120,7 @@ export class Parser {
         return cards
     }
 
-    private generateInlineCards(file: string, headings: any, deck: string, vault: string, globalTags: string[] = []) {
+    private generateInlineCards(file: string, headings: any, deck: string, vault: string, note: string, globalTags: string[] = []) {
         let contextAware = this.settings.contextAwareMode
         let cards: Inlinecard[] = []
         let matches = [...file.matchAll(this.regex.cardsInlineStyle)]
@@ -142,7 +146,10 @@ export class Parser {
             let tags: string[] = this.parseTags(match[4], globalTags)
             let id: number = match[5] ? Number(match[5]) : -1
             let inserted: boolean = match[5] ? true : false
-            let fields = { "Front": question, "Back": answer }
+            let fields: any = { "Front": question, "Back": answer }
+            if (this.settings.sourceSupport) {
+                fields["Source"] = note
+            }
             let containsCode = this.containsCode([question, answer])
 
             let card = new Inlinecard(id, deck, originalQuestion, fields, reversed, endingLine, tags, inserted, imagesMedia, containsCode)
@@ -152,7 +159,7 @@ export class Parser {
         return cards
     }
 
-    private generateCardsWithTag(file: string, headings: any, deck: string, vault: string, globalTags: string[] = []) {
+    private generateCardsWithTag(file: string, headings: any, deck: string, vault: string, note: string, globalTags: string[] = []) {
         let contextAware = this.settings.contextAwareMode
         let cards: Flashcard[] = []
         let matches = [...file.matchAll(this.regex.flashscardsWithTag)]
@@ -175,7 +182,10 @@ export class Parser {
             let tags: string[] = this.parseTags(match[4], globalTags)
             let id: number = match[6] ? Number(match[6]) : -1
             let inserted: boolean = match[6] ? true : false
-            let fields = { "Front": question, "Back": answer }
+            let fields: any = { "Front": question, "Back": answer }
+            if (this.settings.sourceSupport) {
+                fields["Source"] = note
+            }
             let containsCode = this.containsCode([question, answer])
 
             let card = new Flashcard(id, deck, originalQuestion, fields, reversed, endingLine, tags, inserted, imagesMedia, containsCode)
@@ -222,6 +232,7 @@ export class Parser {
     private substituteObsidianLinks(str: string, vaultName: string) {
         let linkRegex = /\[\[(.+?)\]\]/gmi
         let matches = [...str.matchAll(linkRegex)]
+        console.log(matches)
         vaultName = encodeURIComponent(vaultName)
         for (let match of matches) {
             let href = `obsidian://open?vault=${vaultName}&file=${encodeURIComponent(match[1])}.md`

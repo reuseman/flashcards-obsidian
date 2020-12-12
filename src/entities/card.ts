@@ -46,6 +46,11 @@ export abstract class Card {
         // }
 
         let fields = Object.entries(card.fields)
+        // This is the case of a switch from a model to another one. It cannot be handeled
+        if (fields.length !== Object.entries(this.fields).length) {
+            return true
+        }
+
         for (let field of fields) {
             let fieldName = field[0]
             if (field[1].value !== this.fields[fieldName]) {

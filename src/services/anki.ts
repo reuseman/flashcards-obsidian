@@ -1,22 +1,11 @@
 import { Card } from 'src/entities/card';
-import { codeScript, highlightjsBase64, hihglightjsInitBase64, highlightCssBase64, codeDeckExtension } from 'src/constants'
+import { sourceField, codeScript, highlightjsBase64, hihglightjsInitBase64, highlightCssBase64, codeDeckExtension, sourceDeckExtension } from 'src/constants'
 
 export class Anki {
-
-    public async createModels(codeHighlightSupport: boolean) {
-        let css = ".card {\r\n font-family: arial;\r\n font-size: 20px;\r\n text-align: center;\r\n color: black;\r\n background-color: white;\r\n}\r\n\r\n.tag::before {\r\n\tcontent: \"#\";\r\n}\r\n\r\n.tag {\r\n  color: white;\r\n  background-color: #9F2BFF;\r\n  border: none;\r\n  font-size: 11px;\r\n  font-weight: bold;\r\n  padding: 1px 8px;\r\n  margin: 0px 3px;\r\n  text-align: center;\r\n  text-decoration: none;\r\n  cursor: pointer;\r\n  border-radius: 14px;\r\n  display: inline;\r\n  vertical-align: middle;\r\n}\r\n"
-        let front = `{{Front}}\r\n<p class=\"tags\">{{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>`
-        let frontReversed = `{{Back}}\r\n<p class=\"tags\">{{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>`
-        let prompt = `{{Prompt}}\r\n<p class=\"tags\">🧠spaced {{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>`
-
-        let models = this.getModels(front, frontReversed, prompt, css)
+    public async createModels(sourceSupport: boolean, codeHighlightSupport: boolean,) {
+        let models = this.getModels(sourceSupport, false)
         if (codeHighlightSupport) {
-            css = ".card {\r\n font-family: arial;\r\n font-size: 20px;\r\n text-align: center;\r\n color: black;\r\n background-color: white;\r\n}\r\n\r\n.tag::before {\r\n\tcontent: \"#\";\r\n}\r\n\r\n.tag {\r\n  color: white;\r\n  background-color: #9F2BFF;\r\n  border: none;\r\n  font-size: 11px;\r\n  font-weight: bold;\r\n  padding: 1px 8px;\r\n  margin: 0px 3px;\r\n  text-align: center;\r\n  text-decoration: none;\r\n  cursor: pointer;\r\n  border-radius: 14px;\r\n  display: inline;\r\n  vertical-align: middle;\r\n}\r\n"
-            front = `{{Front}}\r\n<p class=\"tags\">{{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>\r\n${codeScript}\r\n`
-            frontReversed = `{{Back}}\r\n<p class=\"tags\">{{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>\r\n${codeScript}\r\n`
-            prompt = `{{Prompt}}\r\n<p class=\"tags\">🧠spaced {{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>\r\n${codeScript}\r\n`
-
-            models = models.concat(this.getModels(front, frontReversed, prompt, css, codeDeckExtension))
+            models = models.concat(this.getModels(sourceSupport, true))
         }
 
         return this.invoke("multi", 6, { "actions": models })
@@ -193,18 +182,47 @@ export class Anki {
         });
     }
 
-    private getModels(front: string, frontReversed: string, prompt: string, css: string, extension: string = ""): object[] {
+    private getModels(sourceSupport: boolean, codeHighlightSupport: boolean): object[] {
+        let sourceFieldContent = ""
+        let codeScriptContent = ""
+        let sourceExtension = ""
+        let codeExtension = ""
+        if (sourceSupport) {
+            sourceFieldContent = "\r\n" + sourceField
+            sourceExtension = sourceDeckExtension
+        }
+
+        if (codeHighlightSupport) {
+            codeScriptContent = "\r\n" + codeScript + "\r\n"
+            codeExtension = codeDeckExtension
+        }
+
+        let css = ".card {\r\n font-family: arial;\r\n font-size: 20px;\r\n text-align: center;\r\n color: black;\r\n background-color: white;\r\n}\r\n\r\n.tag::before {\r\n\tcontent: \"#\";\r\n}\r\n\r\n.tag {\r\n  color: white;\r\n  background-color: #9F2BFF;\r\n  border: none;\r\n  font-size: 11px;\r\n  font-weight: bold;\r\n  padding: 1px 8px;\r\n  margin: 0px 3px;\r\n  text-align: center;\r\n  text-decoration: none;\r\n  cursor: pointer;\r\n  border-radius: 14px;\r\n  display: inline;\r\n  vertical-align: middle;\r\n}\r\n"
+        let front = `{{Front}}\r\n<p class=\"tags\">{{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>${codeScriptContent}`
+        let back = `{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}${sourceFieldContent}`
+        let frontReversed = `{{Back}}\r\n<p class=\"tags\">{{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>${codeScriptContent}`
+        let backReversed = `{{FrontSide}}\n\n<hr id=answer>\n\n{{Front}}${sourceFieldContent}`
+        let prompt = `{{Prompt}}\r\n<p class=\"tags\">🧠spaced {{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>${codeScriptContent}`
+        let promptBack = `{{FrontSide}}\n\n<hr id=answer>🧠 Review done.${sourceField}`
+
+        let classicFields = ["Front", "Back"]
+        let promptFields = ["Prompt"]
+        if (sourceSupport) {
+            classicFields = classicFields.concat("Source")
+            promptFields = promptFields.concat("Source")
+        }
+
         let obsidianBasic = {
             "action": "createModel",
             "params": {
-                "modelName": `Obsidian-basic${extension}`,
-                "inOrderFields": ["Front", "Back"],
+                "modelName": `Obsidian-basic${sourceExtension}${codeExtension}`,
+                "inOrderFields": classicFields,
                 "css": css,
                 "cardTemplates": [
                     {
                         "Name": "Front / Back",
                         "Front": front,
-                        "Back": "{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}",
+                        "Back": back,
                     }
                 ]
             }
@@ -213,19 +231,19 @@ export class Anki {
         let obsidianBasicReversed = {
             "action": "createModel",
             "params": {
-                "modelName": `Obsidian-basic-reversed${extension}`,
-                "inOrderFields": ["Front", "Back"],
+                "modelName": `Obsidian-basic-reversed${sourceExtension}${codeExtension}`,
+                "inOrderFields": classicFields,
                 "css": css,
                 "cardTemplates": [
                     {
                         "Name": "Front / Back",
                         "Front": front,
-                        "Back": "{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}",
+                        "Back": back,
                     },
                     {
                         "Name": "Back / Front",
                         "Front": frontReversed,
-                        "Back": "{{FrontSide}}\n\n<hr id=answer>\n\n{{Front}}",
+                        "Back": backReversed,
                     },
                 ]
             }
@@ -234,14 +252,14 @@ export class Anki {
         let obsidianSpaced = {
             "action": "createModel",
             "params": {
-                "modelName": `Obsidian-spaced${extension}`,
-                "inOrderFields": ["Prompt"],
+                "modelName": `Obsidian-spaced${sourceExtension}${codeExtension}`,
+                "inOrderFields": promptFields,
                 "css": css,
                 "cardTemplates": [
                     {
                         "Name": "Spaced",
                         "Front": prompt,
-                        "Back": "{{FrontSide}}\n\n<hr id=answer>🧠 Review done.",
+                        "Back": promptBack
                     }
                 ]
             }
