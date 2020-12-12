@@ -9,12 +9,13 @@ Anki integration for [Obsidian](https://obsidian.md/).
 
 🗃️ Simple flashcards with **#card**  
 🎴 Reversed flashcards with **#card-reverse**  
+📅 Spaced-only cards with **#card-spaced**  
 ✍️ Inline style with **Question::Answer**  
 🧠 **Context-aware** mode  
 🏷️ Global and local **tags**  
 🔢 Support for **LaTeX**  
 🖼️ Support for **images**  
-🔗 Support for **Obsidian URI**
+🔗 Support for **Obsidian URI**  
 📟 Support for **Code syntax highlight**
 
 ## How it works?
