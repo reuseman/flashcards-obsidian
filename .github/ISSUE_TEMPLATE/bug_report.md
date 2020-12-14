@@ -7,6 +7,8 @@ assignees: ''
 
 ---
 
+**NOTE: Do you have the last version of the plugin? If not that's probably the problem**
+
 **Describe the bug**
 A clear and concise description of what the bug is.
 
