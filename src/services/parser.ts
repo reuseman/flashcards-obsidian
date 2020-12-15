@@ -251,10 +251,10 @@ export class Parser {
     }
 
     private mathToAnki(str: string) {
-        let mathBlockRegex = /(\$\$)(.*)(\$\$)/gi
+        let mathBlockRegex = /(\$\$)(.*?)(\$\$)/gi
         str = str.replace(mathBlockRegex, '\\($2\\)')
 
-        let mathInlineRegex = /(\$)(.*)(\$)/gi
+        let mathInlineRegex = /(\$)(.*?)(\$)/gi
         str = str.replace(mathInlineRegex, '\\($2\\)')
 
         return str
