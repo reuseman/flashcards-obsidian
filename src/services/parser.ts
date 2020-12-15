@@ -4,6 +4,7 @@ import { Regex } from 'src/regex';
 import { Flashcard } from '../entities/flashcard';
 import { Inlinecard } from 'src/entities/inlinecard';
 import { Spacedcard } from 'src/entities/spacedcard';
+import { escapeMarkdown } from 'src/utils';
 
 export class Parser {
     private regex: Regex
@@ -18,6 +19,7 @@ export class Parser {
         this.htmlConverter.setOption("tables", true)
         this.htmlConverter.setOption("tasks", true)
         this.htmlConverter.setOption("ghCodeBlocks", true)
+        this.htmlConverter.setOption("requireSpaceBeforeHeadingText", true)
     }
 
     public generateFlashcards(file: string, deck: string, vault: string, note: string, globalTags: string[] = []): Flashcard[] {
@@ -232,7 +234,6 @@ export class Parser {
     private substituteObsidianLinks(str: string, vaultName: string) {
         let linkRegex = /\[\[(.+?)\]\]/gmi
         let matches = [...str.matchAll(linkRegex)]
-        console.log(matches)
         vaultName = encodeURIComponent(vaultName)
         for (let match of matches) {
             let href = `obsidian://open?vault=${vaultName}&file=${encodeURIComponent(match[1])}.md`
@@ -252,10 +253,14 @@ export class Parser {
 
     private mathToAnki(str: string) {
         let mathBlockRegex = /(\$\$)(.*?)(\$\$)/gi
-        str = str.replace(mathBlockRegex, '\\\\($2\\\\)')
+        str = str.replace(mathBlockRegex, function(match, p1, p2) {
+            return  '\\\\(' + escapeMarkdown(p2) + ' \\\\)'
+        })
 
         let mathInlineRegex = /(\$)(.*?)(\$)/gi
-        str = str.replace(mathInlineRegex, '\\\\($2\\\\)')
+        str = str.replace(mathInlineRegex, function(match, p1, p2) {
+            return '\\\\('+ escapeMarkdown(p2) + '\\\\)'
+        })
 
         return str
     }
