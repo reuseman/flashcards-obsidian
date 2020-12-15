@@ -210,7 +210,7 @@ export class Parser {
     }
 
     private parseLine(str: string, vaultName: string) {
-        return this.mathToAnki(this.htmlConverter.makeHtml(this.substituteObsidianLinks(this.substituteImageLinks(str), vaultName)))
+        return this.htmlConverter.makeHtml(this.mathToAnki(this.substituteObsidianLinks(this.substituteImageLinks(str), vaultName)))
     }
 
     private getImageLinks(str: string) {
@@ -252,10 +252,10 @@ export class Parser {
 
     private mathToAnki(str: string) {
         let mathBlockRegex = /(\$\$)(.*?)(\$\$)/gi
-        str = str.replace(mathBlockRegex, '\\($2\\)')
+        str = str.replace(mathBlockRegex, '\\\\($2\\\\)')
 
         let mathInlineRegex = /(\$)(.*?)(\$)/gi
-        str = str.replace(mathInlineRegex, '\\($2\\)')
+        str = str.replace(mathInlineRegex, '\\\\($2\\\\)')
 
         return str
     }
