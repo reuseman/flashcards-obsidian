@@ -128,6 +128,10 @@ export class Parser {
         let matches = [...file.matchAll(this.regex.cardsInlineStyle)]
 
         for (let match of matches) {
+            if (match[2].startsWith("cards-deck")) {
+                continue
+            }
+
             let reversed: boolean = false
             let headingLevel = -1
             if (match[1]) {
