@@ -20,6 +20,7 @@ export class Parser {
         this.htmlConverter.setOption("tasks", true)
         this.htmlConverter.setOption("ghCodeBlocks", true)
         this.htmlConverter.setOption("requireSpaceBeforeHeadingText", true)
+        this.htmlConverter.setOption("simpleLineBreaks", true)
     }
 
     public generateFlashcards(file: string, deck: string, vault: string, note: string, globalTags: string[] = []): Flashcard[] {
@@ -237,15 +238,15 @@ export class Parser {
 
     private substituteObsidianLinks(str: string, vaultName: string) {
         let linkRegex = /\[\[(.+?)\]\]/gmi
-        let matches = [...str.matchAll(linkRegex)]
         vaultName = encodeURIComponent(vaultName)
-        for (let match of matches) {
-            let href = `obsidian://open?vault=${vaultName}&file=${encodeURIComponent(match[1])}.md`
-            let link = `<a href="${href}">${match[0]}</a>`
-            str = str.substring(0, match.index) + link + str.substring(match.index + match[0].length)
-        }
 
-        return str
+        return str.replace(linkRegex, (match, group, group2) => {
+            let href = `obsidian://open?vault=${vaultName}&file=${encodeURIComponent(group)}.md`
+            let fileRename = match.match(/\|(.+)\]\]/i)
+            let name = fileRename ? fileRename[1] : group
+            let link = `<a href="${href}">[[${name}]]</a>`
+            return link
+        })
     }
 
     private substituteImageLinks(str: string): string {
@@ -257,13 +258,13 @@ export class Parser {
 
     private mathToAnki(str: string) {
         let mathBlockRegex = /(\$\$)(.*?)(\$\$)/gi
-        str = str.replace(mathBlockRegex, function(match, p1, p2) {
-            return  '\\\\(' + escapeMarkdown(p2) + ' \\\\)'
+        str = str.replace(mathBlockRegex, function (match, p1, p2) {
+            return '\\\\(' + escapeMarkdown(p2) + ' \\\\)'
         })
 
         let mathInlineRegex = /(\$)(.*?)(\$)/gi
-        str = str.replace(mathInlineRegex, function(match, p1, p2) {
-            return '\\\\('+ escapeMarkdown(p2) + '\\\\)'
+        str = str.replace(mathInlineRegex, function (match, p1, p2) {
+            return '\\\\(' + escapeMarkdown(p2) + '\\\\)'
         })
 
         return str
