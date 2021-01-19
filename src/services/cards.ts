@@ -52,8 +52,8 @@ export class CardsService {
         let deckName = this.settings.deck
         if (frontmatter) {
             deckName = parseFrontMatterEntry(frontmatter, "cards-deck") || this.settings.deck
-            let temp = parseFrontMatterTags(frontmatter)
-            globalTags = temp ? temp.map(tag => tag.substr(1)) : []
+            // let temp = parseFrontMatterTags(frontmatter)
+            // globalTags = temp ? temp.map(tag => tag.substr(1)) : []
         }
 
         try {
@@ -61,6 +61,7 @@ export class CardsService {
             await this.anki.createModels(this.settings.sourceSupport, this.settings.codeHighlightSupport)
             await this.anki.createDeck(deckName)
             this.file = await this.app.vault.read(activeFile)
+            globalTags = this.parseGlobalTags(this.file)
             // TODO with empty check that does not call ankiCards line
             let ankiBlocks = this.parser.getAnkiIDsBlocks(this.file)
             let ankiCards = ankiBlocks ? await this.anki.getCards(this.getAnkiIDs(ankiBlocks)) : undefined
@@ -274,6 +275,24 @@ export class CardsService {
         }
 
         return [cardsToCreate, cardsToUpdate]
+    }
+
+    public parseGlobalTags(file: String) : string[] {
+        let globalTags: string[] = []
+
+        let tags = file.match(/(?:cards-)?tags: ?(.*)/im)
+        if (tags) {
+            globalTags = tags ? tags[1].split(/,|-| /) : []
+            globalTags = globalTags.filter(item => item)
+            
+            for (let i = 0; i < globalTags.length; i++) {
+                globalTags[i] = globalTags[i].replace("#", "")
+                globalTags[i] = globalTags[i].replace(/\[\[(.*)\]\]/, '$1')
+                globalTags[i] = globalTags[i].trim()
+            }
+        }
+
+        return globalTags
     }
 
 }
