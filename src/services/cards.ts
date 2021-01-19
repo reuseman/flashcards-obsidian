@@ -64,9 +64,9 @@ export class CardsService {
             let ankiBlocks = this.parser.getAnkiIDsBlocks(this.file)
             let ankiCards = ankiBlocks ? await this.anki.getCards(this.getAnkiIDs(ankiBlocks)) : undefined
 
-
             let cards: Card[] = this.parser.generateFlashcards(this.file, deckName, vaultName, filePath, globalTags)
             let [cardsToCreate, cardsToUpdate] = this.filterByUpdate(ankiCards, cards)
+            let cardIds : number[] = this.getCardsIds(ankiCards, cards)
             let cardsToDelete: number[] = this.parser.getCardsToDelete(this.file)
 
             console.info("Flashcards: Cards to create")
@@ -80,6 +80,18 @@ export class CardsService {
             await this.deleteCardsOnAnki(cardsToDelete, ankiBlocks)
             await this.updateCardsOnAnki(cardsToUpdate)
             await this.insertCardsOnAnki(cardsToCreate, frontmatter, deckName)
+
+            // Update decks if needed
+            let deckNeedToBeChanged = await this.deckNeedToBeChanged(cardIds, deckName)
+            if (deckNeedToBeChanged) {
+                try {
+                    this.anki.changeDeck(cardIds, deckName)
+                    this.notifications.push("Cards moved in new deck")
+                }
+                catch {
+                    return ["Error: Could not update deck the file."]
+                }
+            }
 
             // Update file
             if (this.updateFile) {
@@ -273,6 +285,33 @@ export class CardsService {
         }
 
         return [cardsToCreate, cardsToUpdate]
+    }
+
+    public async deckNeedToBeChanged(cardsIds : number[], deckName: string) {
+        let cardsInfo = await this.anki.cardsInfo(cardsIds)
+        console.log("cards infoooooo")
+        console.log(cardsInfo)
+        if (cardsInfo.length !== 0) {
+            return cardsInfo[0].deckName !== deckName
+        }
+
+        return false
+    }
+
+    public getCardsIds(ankiCards: any, generatedCards: Card[]) : number[] {
+        let ids : number[] = []
+
+         if (ankiCards) {
+            for (let flashcard of generatedCards) {
+                let ankiCard = undefined
+                if (flashcard.inserted) {
+                    ankiCard = ankiCards.filter((card: any) => Number(card.noteId) === flashcard.id)[0]
+                    ids = ids.concat(ankiCard.cards)
+                }
+            }
+        }
+
+        return ids
     }
 
     public parseGlobalTags(file: String) : string[] {

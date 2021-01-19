@@ -92,6 +92,7 @@ export class Anki {
         // This means that the delta from the current tags on Anki and the generated one should be added/removed
         // That's what the current approach does, but in the future if the API it is made more consistent
         //  then mergeTags(...) is not needed anymore 
+        let ids: number[] = []
 
         for (let card of cards) {
             updateActions.push({
@@ -102,9 +103,27 @@ export class Anki {
             })
 
             updateActions = updateActions.concat(this.mergeTags(card.oldTags, card.tags, card.id))
+            ids.push(card.id)
         }
 
+        // Update deck
+        updateActions.push({
+            "action": "changeDeck",
+            "params": {
+                "cards": ids,
+                "deck": cards[0].deckName
+            }
+        })
+
         return this.invoke("multi", 6, { "actions": updateActions })
+    }
+
+    public async changeDeck(ids: number[], deckName: string) {
+        return await this.invoke("changeDeck" , 6, {"cards" : ids, "deck": deckName})
+    }
+
+    public async cardsInfo(ids: number[]) {
+        return await this.invoke("cardsInfo" , 6, {"cards" : ids})
     }
 
     public async getCards(ids: number[]) {
