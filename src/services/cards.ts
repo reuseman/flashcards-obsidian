@@ -52,8 +52,6 @@ export class CardsService {
         let deckName = this.settings.deck
         if (frontmatter) {
             deckName = parseFrontMatterEntry(frontmatter, "cards-deck") || this.settings.deck
-            // let temp = parseFrontMatterTags(frontmatter)
-            // globalTags = temp ? temp.map(tag => tag.substr(1)) : []
         }
 
         try {
