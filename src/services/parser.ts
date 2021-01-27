@@ -129,7 +129,7 @@ export class Parser {
         let matches = [...file.matchAll(this.regex.cardsInlineStyle)]
 
         for (let match of matches) {
-            if (match[2].startsWith("cards-deck")) {
+            if (match[2].toLowerCase().startsWith("cards-deck") || match[2].toLowerCase().startsWith("tags")) {
                 continue
             }
 
