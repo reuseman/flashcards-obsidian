@@ -289,7 +289,7 @@ export class CardsService {
 
     public async deckNeedToBeChanged(cardsIds : number[], deckName: string) {
         let cardsInfo = await this.anki.cardsInfo(cardsIds)
-        console.log("cards infoooooo")
+        console.log("Flashcards: Cards info")
         console.log(cardsInfo)
         if (cardsInfo.length !== 0) {
             return cardsInfo[0].deckName !== deckName
@@ -319,13 +319,13 @@ export class CardsService {
 
         let tags = file.match(/(?:cards-)?tags: ?(.*)/im)
         if (tags) {
-            globalTags = tags ? tags[1].split(/,|-| /) : []
-            globalTags = globalTags.filter(item => item)
-            
+            globalTags = tags ? tags[1].match(/\[\[(.*?)\]\]|#(\w+)|(\w+)/gmi) : []
+
             for (let i = 0; i < globalTags.length; i++) {
                 globalTags[i] = globalTags[i].replace("#", "")
                 globalTags[i] = globalTags[i].replace(/\[\[(.*)\]\]/, '$1')
                 globalTags[i] = globalTags[i].trim()
+                globalTags[i] = globalTags[i].replace(/ /g, "-")
             }
         }
 
