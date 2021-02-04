@@ -237,14 +237,13 @@ export class Parser {
     }
 
     private substituteObsidianLinks(str: string, vaultName: string) {
-        let linkRegex = /\[\[(.+?)\]\]/gmi
+        let linkRegex = /\[\[(.+?)(?:\|(.+))?\]\]/gmi
         vaultName = encodeURIComponent(vaultName)
 
-        return str.replace(linkRegex, (match, group, group2) => {
-            let href = `obsidian://open?vault=${vaultName}&file=${encodeURIComponent(group)}.md`
-            let fileRename = match.match(/\|(.+)\]\]/i)
-            let name = fileRename ? fileRename[1] : group
-            let link = `<a href="${href}">[[${name}]]</a>`
+        return str.replace(linkRegex, (match, filename, rename) => {
+            let href = `obsidian://open?vault=${vaultName}&file=${encodeURIComponent(filename)}.md`
+            let fileRename = rename ? rename : filename
+            let link = `<a href="${href}">[[${fileRename}]]</a>`
             return link
         })
     }
