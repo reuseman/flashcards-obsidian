@@ -1,5 +1,5 @@
 import { Anki } from 'src/services/anki'
-import { App, FileSystemAdapter, FrontMatterCache, Notice, parseFrontMatterEntry, parseFrontMatterTags, TFile } from 'obsidian'
+import { App, FileSystemAdapter, FrontMatterCache, Notice, parseFrontMatterEntry, TFile } from 'obsidian'
 import { Parser } from 'src/services/parser'
 import { ISettings } from 'src/settings'
 import { Card } from 'src/entities/card'
@@ -319,10 +319,11 @@ export class CardsService {
 
         let tags = file.match(/(?:cards-)?tags: ?(.*)/im)
         if (tags) {
-            globalTags = tags ? tags[1].match(/\[\[(.*?)\]\]|#(\w+)|(\w+)/gmi) : []
+            globalTags = tags ? tags[1].match(/\[\[(.*?)\]\]|#([\w:\/-]+)|([\w:]+)/gmi) : []
 
             for (let i = 0; i < globalTags.length; i++) {
                 globalTags[i] = globalTags[i].replace("#", "")
+                globalTags[i] = globalTags[i].replace("/", "::")
                 globalTags[i] = globalTags[i].replace(/\[\[(.*)\]\]/, '$1')
                 globalTags[i] = globalTags[i].trim()
                 globalTags[i] = globalTags[i].replace(/ /g, "-")
