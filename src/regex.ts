@@ -20,8 +20,8 @@ export class Regex {
         this.headingsRegex = /^ {0,3}(#{1,6}) +([^\n]+?) ?((?: *#\S+)*) *$/gim
 
         // Supported images https://publish.obsidian.md/help/How+to/Embed+files
-        this.wikiImageLinks = /!\[\[(.*\.(?:png|jpg|jpeg|gif|bmp|svg|tiff))\]\]/gim
-        this.markdownImageLinks = /!\[\]\((.*\.(?:png|jpg|jpeg|gif|bmp|svg|tiff))\)/gim
+        this.wikiImageLinks = /!\[\[(.*\.(?:png|jpg|jpeg|gif|bmp|svg|tiff)).*?\]\]/gim
+        this.markdownImageLinks = /!\[\]\((.*\.(?:png|jpg|jpeg|gif|bmp|svg|tiff)).*?\)/gim
         this.codeBlock = /<code\b[^>]*>(.*?)<\/code>/gims
 
         this.cardsDeckLine = /cards-deck: [\w\d]+/gi
