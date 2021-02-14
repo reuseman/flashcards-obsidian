@@ -318,9 +318,9 @@ export class CardsService {
         let globalTags: string[] = []
 
         let tags = file.match(/(?:cards-)?tags: ?(.*)/im)
-        if (tags) {
-            globalTags = tags ? tags[1].match(/\[\[(.*?)\]\]|#([\w:\/-]+)|([\w:]+)/gmi) : []
+        globalTags = tags ? tags[1].match(/\[\[(.*?)\]\]|#([\w:\/-]+)|([\w:]+)/gmi) : []
 
+        if (globalTags) {
             for (let i = 0; i < globalTags.length; i++) {
                 globalTags[i] = globalTags[i].replace("#", "")
                 globalTags[i] = globalTags[i].replace("/", "::")
@@ -328,9 +328,11 @@ export class CardsService {
                 globalTags[i] = globalTags[i].trim()
                 globalTags[i] = globalTags[i].replace(/ /g, "-")
             }
+
+            return globalTags
         }
 
-        return globalTags
+        return []
     }
 
 }
