@@ -27,6 +27,7 @@ export function escapeMarkdown(string: string, skips: string[] = []) {
     [/\*/g, "\\*", "asterisks"],
     [/#/g, "\\#", "number signs"],
     [/\//g, "\\/", "slashes"],
+    [/\\/g, "\\\\", "backslash"],
     [/\(/g, "\\(", "parentheses"],
     [/\)/g, "\\)", "parentheses"],
     [/\[/g, "\\[", "square brackets"],
