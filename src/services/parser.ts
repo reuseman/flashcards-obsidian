@@ -256,7 +256,7 @@ export class Parser {
     }
 
     private mathToAnki(str: string) {
-        let mathBlockRegex = /(\$\$)(.*?)(\$\$)/gi
+        let mathBlockRegex = /(\$\$)(.*?)(\$\$)/gis
         str = str.replace(mathBlockRegex, function (match, p1, p2) {
             return '\\\\(' + escapeMarkdown(p2) + ' \\\\)'
         })
