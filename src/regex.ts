@@ -32,7 +32,7 @@ export class Regex {
         let str = "( {0,3}[#]*)((?:[^\\n]\\n?)+?)(#" + settings.flashcardsTag + "(?:-reverse)?)((?: *#[\\w-]+)*) *?\\n+((?:[^\\n]\\n?)*?(?=\\^\\d{13}|$))(?:\\^(\\d{13}))?"
         this.flashscardsWithTag = new RegExp(str, "gim")
 
-        // https://regex101.com/r/DEVfyh/2
+        // https://regex101.com/r/Ixtzlv/1
         str = "( {0,3}[#]{0,6})?(?:(?:[\\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.+?) ?(:{2,3}) ?(.+?)((?: *#[\\w-]+)+|$)(?:\\n\\^(\\d{13}))?"
         this.cardsInlineStyle = new RegExp(str, "gim")
 
