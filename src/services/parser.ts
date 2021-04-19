@@ -133,7 +133,7 @@ export class Parser {
                 continue
             }
 
-            let reversed: boolean = false
+            let reversed: boolean = match[3].trim().toLowerCase() === ':::'
             let headingLevel = -1
             if (match[1]) {
                 headingLevel = match[1].trim().length !== 0 ? match[1].trim().length : -1
@@ -143,16 +143,16 @@ export class Parser {
 
             let originalQuestion = match[2].trim()
             let question = contextAware ? [...context, match[2].trim()].join(`${this.settings.contextSeparator}`) : match[2].trim()
-            let answer = match[3].trim()
+            let answer = match[4].trim()
             let imagesMedia: string[] = this.getImageLinks(question)
             imagesMedia = imagesMedia.concat(this.getImageLinks(answer))
             question = this.parseLine(question, vault)
             answer = this.parseLine(answer, vault)
 
             let endingLine = match.index + match[0].length
-            let tags: string[] = this.parseTags(match[4], globalTags)
-            let id: number = match[5] ? Number(match[5]) : -1
-            let inserted: boolean = match[5] ? true : false
+            let tags: string[] = this.parseTags(match[5], globalTags)
+            let id: number = match[6] ? Number(match[6]) : -1
+            let inserted: boolean = match[6] ? true : false
             let fields: any = { "Front": question, "Back": answer }
             if (this.settings.sourceSupport) {
                 fields["Source"] = note
