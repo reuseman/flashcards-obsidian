@@ -7,6 +7,7 @@ export class Regex {
     codeBlock: RegExp
     cardsDeckLine: RegExp
     cardsToDelete: RegExp
+    globalTagsSplitter: RegExp
     flashscardsWithTag: RegExp
     cardsInlineStyle: RegExp
     cardsSpacedStyle: RegExp
@@ -24,8 +25,11 @@ export class Regex {
         this.markdownImageLinks = /!\[\]\((.*\.(?:png|jpg|jpeg|gif|bmp|svg|tiff)).*?\)/gim
         this.codeBlock = /<code\b[^>]*>(.*?)<\/code>/gims
 
-        this.cardsDeckLine = /cards-deck: [\w\d]+/gi
+        this.cardsDeckLine = /cards-deck: [\p{L}]+/giu
         this.cardsToDelete = /^\s*(?:\n)(?:\^(\d{13}))(?:\n\s*?)?/gm
+
+        // https://regex101.com/r/IS2gjL/1
+        this.globalTagsSplitter = /\[\[(.*?)\]\]|#([\p{L}:\/-]+)|([\p{L}:]+)/gmiu
 
         // Cards
         // https://regex101.com/r/p3yQwY/2

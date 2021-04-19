@@ -318,7 +318,7 @@ export class CardsService {
         let globalTags: string[] = []
 
         let tags = file.match(/(?:cards-)?tags: ?(.*)/im)
-        globalTags = tags ? tags[1].match(/\[\[(.*?)\]\]|#([\w:\/-]+)|([\w:]+)/gmi) : []
+        globalTags = tags ? tags[1].match(this.regex.globalTagsSplitter) : []
 
         if (globalTags) {
             for (let i = 0; i < globalTags.length; i++) {
