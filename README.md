@@ -11,6 +11,7 @@ Anki integration for [Obsidian](https://obsidian.md/).
 🎴 Reversed flashcards with **#card-reverse**  
 📅 Spaced-only cards with **#card-spaced**  
 ✍️ Inline style with **Question::Answer**  
+✍️ Inline style reversed with **Question:::Answer**  
 🧠 **Context-aware** mode  
 🏷️ Global and local **tags**  
 🔢 Support for **LaTeX**  
