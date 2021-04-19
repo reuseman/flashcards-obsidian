@@ -14,12 +14,12 @@
     "@rollup/plugin-commonjs": "^15.1.0",
     "@rollup/plugin-node-resolve": "^9.0.0",
     "@rollup/plugin-typescript": "^6.0.0",
-    "@types/node": "^14.14.21",
+    "@types/node": "^14.14.41",
     "obsidian": "https://github.com/obsidianmd/obsidian-api/tarball/master",
-    "rollup": "^2.37.0",
+    "rollup": "^2.45.2",
     "ts-node": "^9.1.0",
-    "tslib": "^2.1.0",
-    "typescript": "^4.0.3"
+    "tslib": "^2.2.0",
+    "typescript": "^4.2.4"
   },
   "dependencies": {
     "@types/showdown": "^1.9.3",
