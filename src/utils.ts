@@ -46,15 +46,3 @@ export function escapeMarkdown(string: string, skips: string[] = []) {
       : string.replace(replacement[0], replacement[1]);
   }, string);
 }
-
-export const getPathOfVault = (vault: Vault): string => {
-  var path = vault.adapter.basePath;
-  if(path.startsWith('/')) return 'app://local' + path
-  return 'app://local/' + path
-}
-
-// Temporary Solution until getResourcePath improved 
-export const getPathOfImage = (vault: Vault, image: TFile) => {
-  // vault.getResourcePath(image) 
-  return getPathOfVault(vault) + '/' + image.path
-}

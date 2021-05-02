@@ -3,7 +3,7 @@ import { App, FileSystemAdapter, FrontMatterCache, Notice, parseFrontMatterEntry
 import { Parser } from 'src/services/parser'
 import { ISettings } from 'src/settings'
 import { Card } from 'src/entities/card'
-import { arrayBufferToBase64, getPathOfImage } from "src/utils"
+import { arrayBufferToBase64} from "src/utils"
 import { Regex } from 'src/regex'
 import { noticeTimeout } from 'src/constants'
 import { Inlinecard } from 'src/entities/inlinecard'
