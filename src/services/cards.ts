@@ -6,6 +6,7 @@ import { Card } from 'src/entities/card'
 import { arrayBufferToBase64 } from "src/utils"
 import { Regex } from 'src/regex'
 import { noticeTimeout } from 'src/constants'
+import { Inlinecard } from 'src/entities/inlinecard'
 
 
 export class CardsService {
@@ -199,6 +200,13 @@ export class CardsService {
             //   if it has been inserted it has an ID too
             if (card.id !== null && !card.inserted) {
                 let id = card.getIdFormat()
+                if (card instanceof Inlinecard) {
+                    if (this.settings.inlineID) {
+                        id = " " + id
+                    } else {
+                        id = "\n" + id
+                    }
+                }
                 card.endOffset += this.totalOffset
                 let offset = card.endOffset
 

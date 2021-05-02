@@ -55,6 +55,17 @@ export class SettingsTab extends PluginSettingTab {
                         plugin.saveData(plugin.settings)
                     })
             )
+        new Setting(containerEl)
+            .setName("Inline ID support")
+            .setDesc("Add ID to end of line for inline cards.")
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(plugin.settings.inlineID)
+                    .onChange((value) => {
+                        plugin.settings.inlineID = value
+                        plugin.saveData(plugin.settings)
+                    })
+            )
 
         new Setting(containerEl)
             .setName("Default deck")

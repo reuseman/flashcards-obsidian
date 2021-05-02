@@ -3,7 +3,7 @@ import { Card } from "src/entities/card";
 
 export class Inlinecard extends Card {
     constructor(id: number = -1, deckName: string, initialContent: string, fields: Record<string, string>, reversed: boolean, endOffset: number, tags: string[] = [], inserted: boolean = false, mediaNames: string[], containsCode: boolean) {
-        super(id, deckName, initialContent, fields, reversed, endOffset, tags, inserted, mediaNames, [], containsCode) // ! CHANGE []
+        super(id, deckName, initialContent, fields, reversed, endOffset, tags, inserted, mediaNames, containsCode) // ! CHANGE []
         this.modelName = this.reversed ? `Obsidian-basic-reversed` : `Obsidian-basic`
         if (fields["Source"]) {
             this.modelName += sourceDeckExtension
@@ -45,6 +45,6 @@ export class Inlinecard extends Card {
     }
 
     public getIdFormat(): string {
-        return "\n^" + this.id.toString()
+        return "^" + this.id.toString()
     }
 }
