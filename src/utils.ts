@@ -1,3 +1,5 @@
+import { Vault, TFile} from 'obsidian';
+
 export function arrayBufferToBase64(buffer: ArrayBuffer): string {
   var binary = "";
   var bytes = new Uint8Array(buffer);
@@ -43,4 +45,16 @@ export function escapeMarkdown(string: string, skips: string[] = []) {
       ? string
       : string.replace(replacement[0], replacement[1]);
   }, string);
+}
+
+export const getPathOfVault = (vault: Vault): string => {
+  var path = vault.adapter.basePath;
+  if(path.startsWith('/')) return 'app://local' + path
+  return 'app://local/' + path
+}
+
+// Temporary Solution until getResourcePath improved 
+export const getPathOfImage = (vault: Vault, image: TFile) => {
+  // vault.getResourcePath(image) 
+  return getPathOfVault(vault) + '/' + image.path
 }

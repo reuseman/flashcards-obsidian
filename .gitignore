@@ -23,3 +23,6 @@ move.sh
 
 # Local History for Visual Studio Code
 .history/
+
+# Gtihub
+.DS_Store

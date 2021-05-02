@@ -3,7 +3,7 @@ import { App, FileSystemAdapter, FrontMatterCache, Notice, parseFrontMatterEntry
 import { Parser } from 'src/services/parser'
 import { ISettings } from 'src/settings'
 import { Card } from 'src/entities/card'
-import { arrayBufferToBase64 } from "src/utils"
+import { arrayBufferToBase64, getPathOfImage } from "src/utils"
 import { Regex } from 'src/regex'
 import { noticeTimeout } from 'src/constants'
 import { Inlinecard } from 'src/entities/inlinecard'
@@ -44,6 +44,7 @@ export class CardsService {
         this.totalOffset = 0
         this.notifications = []
         let filePath = activeFile.basename
+        let sourcePath = activeFile.path
         let fileCachedMetadata = this.app.metadataCache.getFileCache(activeFile)
         let vaultName = this.app.vault.getName()
         let globalTags: string[] = undefined
@@ -67,7 +68,7 @@ export class CardsService {
 
             let cards: Card[] = this.parser.generateFlashcards(this.file, deckName, vaultName, filePath, globalTags)
             let [cardsToCreate, cardsToUpdate] = this.filterByUpdate(ankiCards, cards)
-            let cardIds : number[] = this.getCardsIds(ankiCards, cards)
+            let cardIds: number[] = this.getCardsIds(ankiCards, cards)
             let cardsToDelete: number[] = this.parser.getCardsToDelete(this.file)
 
             console.info("Flashcards: Cards to create")
@@ -77,7 +78,7 @@ export class CardsService {
             console.info("Flashcards: Cards to delete")
             console.info(cardsToDelete)
 
-            this.insertMedias(cards)
+            this.insertMedias(cards, sourcePath)
             await this.deleteCardsOnAnki(cardsToDelete, ankiBlocks)
             await this.updateCardsOnAnki(cardsToUpdate)
             await this.insertCardsOnAnki(cardsToCreate, frontmatter, deckName)
@@ -114,11 +115,11 @@ export class CardsService {
         }
     }
 
-    private async insertMedias(cards: Card[]) {
+    private async insertMedias(cards: Card[], sourcePath: string) {
         try {
             // Currently the media are created for every run, this is not a problem since Anki APIs overwrite the file
             // A more efficient way would be to keep track of the medias saved
-            await this.generateMediaLinks(cards)
+            await this.generateMediaLinks(cards, sourcePath)
             await this.anki.storeMediaFiles(cards)
         } catch (err) {
             console.error(err)
@@ -126,16 +127,15 @@ export class CardsService {
         }
     }
 
-    private async generateMediaLinks(cards: Card[]) {
+    private async generateMediaLinks(cards: Card[], sourcePath: string) {
         if (this.app.vault.adapter instanceof FileSystemAdapter) {
             // @ts-ignore: Unreachable code error
-            let attachmentsPath = this.app.vault.config.attachmentFolderPath
 
             for (let card of cards) {
                 for (let media of card.mediaNames) {
-                    let file: TFile = this.app.vault.getAbstractFileByPath(attachmentsPath + "/" + media) as TFile
+                    let image = this.app.metadataCache.getFirstLinkpathDest(decodeURIComponent(media), sourcePath);
                     try {
-                        let binaryMedia = await this.app.vault.readBinary(file)
+                        let binaryMedia = await this.app.vault.readBinary(image)
                         card.mediaBase64Encoded.push(arrayBufferToBase64(binaryMedia))
                     } catch (err) {
                         Error("Error: Could not read media")
@@ -295,7 +295,7 @@ export class CardsService {
         return [cardsToCreate, cardsToUpdate]
     }
 
-    public async deckNeedToBeChanged(cardsIds : number[], deckName: string) {
+    public async deckNeedToBeChanged(cardsIds: number[], deckName: string) {
         let cardsInfo = await this.anki.cardsInfo(cardsIds)
         console.log("Flashcards: Cards info")
         console.log(cardsInfo)
@@ -306,10 +306,10 @@ export class CardsService {
         return false
     }
 
-    public getCardsIds(ankiCards: any, generatedCards: Card[]) : number[] {
-        let ids : number[] = []
+    public getCardsIds(ankiCards: any, generatedCards: Card[]): number[] {
+        let ids: number[] = []
 
-         if (ankiCards) {
+        if (ankiCards) {
             for (let flashcard of generatedCards) {
                 let ankiCard = undefined
                 if (flashcard.inserted) {
@@ -322,7 +322,7 @@ export class CardsService {
         return ids
     }
 
-    public parseGlobalTags(file: String) : string[] {
+    public parseGlobalTags(file: String): string[] {
         let globalTags: string[] = []
 
         let tags = file.match(/(?:cards-)?tags: ?(.*)/im)
