@@ -16,7 +16,6 @@ export abstract class Card {
     containsCode: boolean
     modelName: string
 
-    // TODO set "obsidian as optional in the settings", this means that the tag should be outside
     constructor(id: number, deckName: string, initialContent: string, fields: Record<string, string>, reversed: boolean, endOffset: number, tags: string[], inserted: boolean, mediaNames: string[], containsCode: boolean = false) {
         this.id = id
         this.deckName = deckName
@@ -25,7 +24,6 @@ export abstract class Card {
         this.reversed = reversed
         this.endOffset = endOffset
         this.tags = tags
-        this.tags.unshift("obsidian")
         this.inserted = inserted
         this.mediaNames = mediaNames
         this.mediaBase64Encoded = []
