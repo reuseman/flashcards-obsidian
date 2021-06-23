@@ -61,6 +61,9 @@ export class CardsService {
             await this.anki.createModels(this.settings.sourceSupport, this.settings.codeHighlightSupport)
             await this.anki.createDeck(deckName)
             this.file = await this.app.vault.read(activeFile)
+            if (!this.file.endsWith("\n")) {
+                this.file += "\n"
+            }
             globalTags = this.parseGlobalTags(this.file)
             // TODO with empty check that does not call ankiCards line
             let ankiBlocks = this.parser.getAnkiIDsBlocks(this.file)
@@ -149,6 +152,12 @@ export class CardsService {
         if (cardsToCreate.length) {
             let insertedCards = 0
             try {
+                let defaultAnkiTag = this.settings.defaultAnkiTag
+                if (defaultAnkiTag) {
+                    for (const card of cardsToCreate) {
+                        card.tags.push(defaultAnkiTag)
+                    }
+                }
                 let ids = await this.anki.addCards(cardsToCreate)
                 // Add IDs from response to Flashcard[]
                 ids.map((id: number, index: number) => {

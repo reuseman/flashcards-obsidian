@@ -6,4 +6,5 @@ export interface ISettings {
     contextSeparator: string
     deck: string
     flashcardsTag: string
+    defaultAnkiTag: string
 }

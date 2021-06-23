@@ -32,20 +32,21 @@ export class Regex {
         this.globalTagsSplitter = /\[\[(.*?)\]\]|#([\p{L}:\/-]+)|([\p{L}:]+)/gmiu
 
         // Cards
+        let flags = "gimu"
         // https://regex101.com/r/p3yQwY/2
-        let str = "( {0,3}[#]*)((?:[^\\n]\\n?)+?)(#" + settings.flashcardsTag + "(?:-reverse)?)((?: *#[\\w-]+)*) *?\\n+((?:[^\\n]\\n?)*?(?=\\^\\d{13}|$))(?:\\^(\\d{13}))?"
-        this.flashscardsWithTag = new RegExp(str, "gim")
+        let str = "( {0,3}[#]*)((?:[^\\n]\\n?)+?)(#" + settings.flashcardsTag + "(?:-reverse)?)((?: *#[\\p{Letter}-]+)*) *?\\n+((?:[^\\n]\\n?)*?(?=\\^\\d{13}|$))(?:\\^(\\d{13}))?"
+        this.flashscardsWithTag = new RegExp(str, flags)
 
         // https://regex101.com/r/Ixtzlv/1
         if (settings.inlineID){
-            str = "( {0,3}[#]{0,6})?(?:(?:[\\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.+?) ?(:{2,3}) ?(.+?)((?: *#[\\w-]+)+)?(?:\\s+\\^(\\d{13})|$)"
+            str = "( {0,3}[#]{0,6})?(?:(?:[\\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.+?) ?(:{2,3}) ?(.+?)((?: *#[\\p{Letter}-]+)+)?(?:\\s+\\^(\\d{13})|$)"
         } else {
-        str = "( {0,3}[#]{0,6})?(?:(?:[\\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.+?) ?(:{2,3}) ?(.+?)((?: *#[\\w-]+)+|$)(?:\\n\\^(\\d{13}))?"
+            str = "( {0,3}[#]{0,6})?(?:(?:[\\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.+?) ?(:{2,3}) ?(.+?)((?: *#[\\p{Letter}-]+)+|$)(?:\\n\\^(\\d{13}))?"
         }
-        this.cardsInlineStyle = new RegExp(str, "gim")
+        this.cardsInlineStyle = new RegExp(str, flags)
 
         // https://regex101.com/r/HOXF5E/1
-        str = "( {0,3}[#]*)((?:[^\\n]\\n?)+?)(#card-spaced)((?: *#[\\w-]+)*) *\\n?(?:\\^(\\d{13}))?"
-        this.cardsSpacedStyle = new RegExp(str, "gim")
+        str = "( {0,3}[#]*)((?:[^\\n]\\n?)+?)(#card-spaced)((?: *#[\\p{Letter}-]+)*) *\\n?(?:\\^(\\d{13}))?"
+        this.cardsSpacedStyle = new RegExp(str, flags)
     }
 }
