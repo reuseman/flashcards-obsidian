@@ -56,7 +56,7 @@ export default class ObsidianFlashcard extends Plugin {
 	}
 
 	private getDefaultSettings(): ISettings {
-		return { contextAwareMode: true, sourceSupport: false, codeHighlightSupport: false, contextSeparator: " > ", deck: "Default", flashcardsTag: "card" }
+		return { contextAwareMode: true, sourceSupport: false, codeHighlightSupport: false, contextSeparator: " > ", deck: "Default", flashcardsTag: "card", defaultAnkiTag: "obsidian" }
 	}
 
 	private generateCards(activeFile: TFile) {

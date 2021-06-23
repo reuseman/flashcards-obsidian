@@ -148,6 +148,12 @@ export class CardsService {
         if (cardsToCreate.length) {
             let insertedCards = 0
             try {
+                let defaultAnkiTag = this.settings.defaultAnkiTag
+                if (defaultAnkiTag) {
+                    for (const card of cardsToCreate) {
+                        card.tags.push(defaultAnkiTag)
+                    }
+                }
                 let ids = await this.anki.addCards(cardsToCreate)
                 // Add IDs from response to Flashcard[]
                 ids.map((id: number, index: number) => {
