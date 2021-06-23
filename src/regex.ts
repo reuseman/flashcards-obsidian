@@ -44,6 +44,5 @@ export class Regex {
         // https://regex101.com/r/HOXF5E/1
         str = "( {0,3}[#]*)((?:[^\\n]\\n?)+?)(#card-spaced)((?: *#[\\p{Letter}-]+)*) *\\n?(?:\\^(\\d{13}))?"
         this.cardsSpacedStyle = new RegExp(str, flags)
-    )
     }
 }
