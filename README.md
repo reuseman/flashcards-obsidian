@@ -16,7 +16,7 @@ Anki integration for [Obsidian](https://obsidian.md/).
 🏷️ Global and local **tags**  
 🔢 Support for **LaTeX**  
 🖼️ Support for **images**  
-🎤 Support for **audios**
+🎤 Support for **audios**   
 🔗 Support for **Obsidian URI**  
 ⚓ Support for **reference to note**  
 📟 Support for **code syntax highlight**
