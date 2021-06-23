@@ -103,7 +103,8 @@ export class Parser {
 
             let originalPrompt = match[2].trim()
             let prompt = contextAware ? [...context, match[2].trim()].join(`${this.settings.contextSeparator}`) : match[2].trim()
-            let imagesMedia: string[] = this.getImageLinks(prompt)
+            let medias: string[] = this.getImageLinks(prompt)
+            medias = medias.concat(this.getAudioLinks(prompt))
             prompt = this.parseLine(prompt, vault)
 
             let endingLine = match.index + match[0].length
@@ -116,7 +117,7 @@ export class Parser {
             }
             let containsCode = this.containsCode([prompt])
 
-            let card = new Spacedcard(id, deck, originalPrompt, fields, reversed, endingLine, tags, inserted, imagesMedia, containsCode)
+            let card = new Spacedcard(id, deck, originalPrompt, fields, reversed, endingLine, tags, inserted, medias, containsCode)
             cards.push(card)
         }
 
@@ -144,8 +145,9 @@ export class Parser {
             let originalQuestion = match[2].trim()
             let question = contextAware ? [...context, match[2].trim()].join(`${this.settings.contextSeparator}`) : match[2].trim()
             let answer = match[4].trim()
-            let imagesMedia: string[] = this.getImageLinks(question)
-            imagesMedia = imagesMedia.concat(this.getImageLinks(answer))
+            let medias: string[] = this.getImageLinks(question)
+            medias = medias.concat(this.getImageLinks(answer))
+            medias = medias.concat(this.getAudioLinks(answer))
             question = this.parseLine(question, vault)
             answer = this.parseLine(answer, vault)
 
@@ -159,7 +161,7 @@ export class Parser {
             }
             let containsCode = this.containsCode([question, answer])
 
-            let card = new Inlinecard(id, deck, originalQuestion, fields, reversed, endingLine, tags, inserted, imagesMedia, containsCode)
+            let card = new Inlinecard(id, deck, originalQuestion, fields, reversed, endingLine, tags, inserted, medias, containsCode)
             cards.push(card)
         }
 
@@ -180,8 +182,9 @@ export class Parser {
             let originalQuestion = match[2].trim()
             let question = contextAware ? [...context, match[2].trim()].join(`${this.settings.contextSeparator}`) : match[2].trim()
             let answer = match[5].trim()
-            let imagesMedia: string[] = this.getImageLinks(question)
-            imagesMedia = imagesMedia.concat(this.getImageLinks(answer))
+            let medias: string[] = this.getImageLinks(question)
+            medias = medias.concat(this.getImageLinks(answer))
+            medias = medias.concat(this.getAudioLinks(answer))
             question = this.parseLine(question, vault)
             answer = this.parseLine(answer, vault)
 
@@ -195,7 +198,7 @@ export class Parser {
             }
             let containsCode = this.containsCode([question, answer])
 
-            let card = new Flashcard(id, deck, originalQuestion, fields, reversed, endingLine, tags, inserted, imagesMedia, containsCode)
+            let card = new Flashcard(id, deck, originalQuestion, fields, reversed, endingLine, tags, inserted, medias, containsCode)
             cards.push(card)
         }
 
@@ -217,7 +220,7 @@ export class Parser {
     }
 
     private parseLine(str: string, vaultName: string) {
-        return this.htmlConverter.makeHtml(this.mathToAnki(this.substituteObsidianLinks(this.substituteImageLinks(str), vaultName)))
+        return this.htmlConverter.makeHtml(this.mathToAnki(this.substituteObsidianLinks(this.substituteImageLinks(this.substituteAudioLinks(str)), vaultName)))
     }
 
     private getImageLinks(str: string) {
@@ -231,6 +234,17 @@ export class Parser {
 
         for (let markdownMatch of markdownMatches) {
             links.push(decodeURIComponent(markdownMatch[1]))
+        }
+
+        return links
+    }
+
+    private getAudioLinks(str: string) {
+        let wikiMatches = str.matchAll(this.regex.wikiAudioLinks)
+        let links: string[] = []
+
+        for (let wikiMatch of wikiMatches) {
+            links.push(wikiMatch[1])
         }
 
         return links
@@ -253,6 +267,10 @@ export class Parser {
         str = str.replace(this.regex.markdownImageLinks, "<img src='$1'>")
 
         return str
+    }
+
+    private substituteAudioLinks(str: string): string {
+        return str.replace(this.regex.wikiAudioLinks, "[sound:$1]")
     }
 
     private mathToAnki(str: string) {
