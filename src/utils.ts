@@ -1,3 +1,5 @@
+import { Vault, TFile} from 'obsidian';
+
 export function arrayBufferToBase64(buffer: ArrayBuffer): string {
   var binary = "";
   var bytes = new Uint8Array(buffer);

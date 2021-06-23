@@ -38,7 +38,11 @@ export class Regex {
         this.flashscardsWithTag = new RegExp(str, flags)
 
         // https://regex101.com/r/Ixtzlv/1
-        str = "( {0,3}[#]{0,6})?(?:(?:[\\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.+?) ?(:{2,3}) ?(.+?)((?: *#[\\p{Letter}-]+)+|$)(?:\\n\\^(\\d{13}))?"
+        if (settings.inlineID){
+            str = "( {0,3}[#]{0,6})?(?:(?:[\\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.+?) ?(:{2,3}) ?(.+?)((?: *#[\\p{Letter}-]+)+)?(?:\\s+\\^(\\d{13})|$)"
+        } else {
+            str = "( {0,3}[#]{0,6})?(?:(?:[\\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.+?) ?(:{2,3}) ?(.+?)((?: *#[\\p{Letter}-]+)+|$)(?:\\n\\^(\\d{13}))?"
+        }
         this.cardsInlineStyle = new RegExp(str, flags)
 
         // https://regex101.com/r/HOXF5E/1

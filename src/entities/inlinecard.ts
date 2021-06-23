@@ -46,6 +46,6 @@ export class Inlinecard extends Card {
     }
 
     public getIdFormat(): string {
-        return "\n^" + this.id.toString()
+        return "^" + this.id.toString()
     }
 }
