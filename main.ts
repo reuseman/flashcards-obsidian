@@ -61,7 +61,10 @@ export default class ObsidianFlashcard extends Plugin {
 
 	private generateCards(activeFile: TFile) {
 		this.cardsService.execute(activeFile).then(res => {
-			new Notice(res.join(" "), noticeTimeout)
+			for (let r of res) {
+				new Notice(r, noticeTimeout)
+			}
+			console.log(res)
 		}).catch(err => {
 			Error(err)
 		})
