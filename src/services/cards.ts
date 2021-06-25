@@ -70,7 +70,7 @@ export class CardsService {
             let ankiCards = ankiBlocks ? await this.anki.getCards(this.getAnkiIDs(ankiBlocks)) : undefined
 
             let cards: Card[] = this.parser.generateFlashcards(this.file, deckName, vaultName, filePath, globalTags)
-            let [cardsToCreate, cardsToUpdate] = this.filterByUpdate(ankiCards, cards)
+            let [cardsToCreate, cardsToUpdate, cardsNotInAnki] = this.filterByUpdate(ankiCards, cards)
             let cardIds: number[] = this.getCardsIds(ankiCards, cards)
             let cardsToDelete: number[] = this.parser.getCardsToDelete(this.file)
 
@@ -80,6 +80,13 @@ export class CardsService {
             console.info(cardsToUpdate)
             console.info("Flashcards: Cards to delete")
             console.info(cardsToDelete)
+            if (cardsNotInAnki) {
+                console.info("Flashcards: Cards not in Anki (maybe deleted)")
+                for (let card of cardsNotInAnki) {
+                    this.notifications.push(`Error: Card with ID ${card.id} is not in Anki!`)
+                }
+            }
+            console.info(cardsNotInAnki)
 
             this.insertMedias(cards, sourcePath)
             await this.deleteCardsOnAnki(cardsToDelete, ankiBlocks)
@@ -280,6 +287,7 @@ export class CardsService {
     public filterByUpdate(ankiCards: any, generatedCards: Card[]) {
         let cardsToCreate: Card[] = []
         let cardsToUpdate: Card[] = []
+        let cardsNotInAnki: Card[] = []
 
         if (ankiCards) {
             for (let flashcard of generatedCards) {
@@ -288,11 +296,12 @@ export class CardsService {
                 let ankiCard = undefined
                 if (flashcard.inserted) {
                     ankiCard = ankiCards.filter((card: any) => Number(card.noteId) === flashcard.id)[0]
-                    if (!flashcard.match(ankiCard)) {
+                    if (!ankiCard) {
+                        cardsNotInAnki.push(flashcard)
+                    } else if (!flashcard.match(ankiCard)) {
                         flashcard.oldTags = ankiCard.tags
                         cardsToUpdate.push(flashcard)
                     }
-
                 } else {
                     cardsToCreate.push(flashcard)
                 }
@@ -301,7 +310,7 @@ export class CardsService {
             cardsToCreate = [...generatedCards]
         }
 
-        return [cardsToCreate, cardsToUpdate]
+        return [cardsToCreate, cardsToUpdate, cardsNotInAnki]
     }
 
     public async deckNeedToBeChanged(cardsIds: number[], deckName: string) {
@@ -323,7 +332,9 @@ export class CardsService {
                 let ankiCard = undefined
                 if (flashcard.inserted) {
                     ankiCard = ankiCards.filter((card: any) => Number(card.noteId) === flashcard.id)[0]
-                    ids = ids.concat(ankiCard.cards)
+                    if (ankiCard) {
+                        ids = ids.concat(ankiCard.cards)
+                    }
                 }
             }
         }
