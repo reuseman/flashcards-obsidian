@@ -292,9 +292,11 @@ export class Parser {
 
         if (str) {
             for (let tag of str.split("#")) {
-                tag = tag.trim()
-                if (tag) {
-                    tags.push(tag)
+                let newTag = tag.trim()
+                if (newTag) {
+                    // Replace obsidian hierarchy tags delimeter \ with anki delimeter ::
+                    newTag = newTag.replace(this.regex.tagHierarchy, "::");
+                    tags.push(newTag)
                 }
             }
         }
