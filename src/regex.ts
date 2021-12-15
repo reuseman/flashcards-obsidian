@@ -40,7 +40,7 @@ export class Regex {
         // Cards
         let flags = "gimu"
         // https://regex101.com/r/p3yQwY/2
-        let str = "( {0,3}[#]*)((?:[^\\n]\\n?)+?)(#" + settings.flashcardsTag + "(?:-reverse)?)((?: *#[\\p{Letter}\\-\\/]+)*) *?\\n+((?:[^\\n]\\n?)*?(?=\\^\\d{13}|$))(?:\\^(\\d{13}))?"
+        let str = "( {0,3}[#]*)((?:[^\\n]\\n?)+?)(#" + settings.flashcardsTag + "(?:[\/-]reverse)?)((?: *#[\\p{Letter}\\-\\/]+)*) *?\\n+((?:[^\\n]\\n?)*?(?=\\^\\d{13}|$))(?:\\^(\\d{13}))?"
         this.flashscardsWithTag = new RegExp(str, flags)
 
         // https://regex101.com/r/Ixtzlv/1
@@ -52,7 +52,7 @@ export class Regex {
         this.cardsInlineStyle = new RegExp(str, flags)
 
         // https://regex101.com/r/HOXF5E/1
-        str = "( {0,3}[#]*)((?:[^\\n]\\n?)+?)(#card-spaced)((?: *#[\\p{Letter}-]+)*) *\\n?(?:\\^(\\d{13}))?"
+        str = "( {0,3}[#]*)((?:[^\\n]\\n?)+?)(#" + settings.flashcardsTag + "[\/-]spaced)((?: *#[\\p{Letter}-]+)*) *\\n?(?:\\^(\\d{13}))?"
         this.cardsSpacedStyle = new RegExp(str, flags)
     }
 }
