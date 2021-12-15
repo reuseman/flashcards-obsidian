@@ -39,6 +39,13 @@ export class Parser {
         cards = cards.concat(this.generateSpacedCards(file, headings, deck, vault, note, globalTags))
         cards.sort((a, b) => a.endOffset - b.endOffset)
 
+        let defaultAnkiTag = this.settings.defaultAnkiTag
+        if (defaultAnkiTag) {
+            for (const card of cards) {
+                card.tags.push(defaultAnkiTag)
+            }
+        }
+
         return cards
     }
 
@@ -174,7 +181,7 @@ export class Parser {
         let matches = [...file.matchAll(this.regex.flashscardsWithTag)]
 
         for (let match of matches) {
-            let reversed: boolean = match[3].trim().toLowerCase() === `#${this.settings.flashcardsTag}-reverse`
+            let reversed: boolean = match[3].trim().toLowerCase() === `#${this.settings.flashcardsTag}-reverse` || match[3].trim().toLowerCase() === `#${this.settings.flashcardsTag}/reverse`
             let headingLevel = match[1].trim().length !== 0 ? match[1].length : -1
             // Match.index - 1 because otherwise in the context there will be even match[1], i.e. the question itself
             let context = contextAware ? this.getContext(headings, match.index - 1, headingLevel) : ""
