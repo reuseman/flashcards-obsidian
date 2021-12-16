@@ -8,8 +8,8 @@ Anki integration for [Obsidian](https://obsidian.md/).
 ## Features
 
 🗃️ Simple flashcards with **#card**  
-🎴 Reversed flashcards with **#card-reverse**  
-📅 Spaced-only cards with **#card-spaced**  
+🎴 Reversed flashcards with **#card-reverse** or **#card/reverse**  
+📅 Spaced-only cards with **#card-spaced** or **#card/spaced**  
 ✍️ Inline style with **Question::Answer**  
 ✍️ Inline style reversed with **Question:::Answer**  
 🧠 **Context-aware** mode  
