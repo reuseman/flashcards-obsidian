@@ -33,21 +33,21 @@ export class Regex {
         this.cardsDeckLine = /cards-deck: [\p{L}]+/giu
         this.cardsToDelete = /^\s*(?:\n)(?:\^(\d{13}))(?:\n\s*?)?/gm
 
-        // https://regex101.com/r/IS2gjL/1
-        this.globalTagsSplitter = /\[\[(.*?)\]\]|#([\p{L}:\/-]+)|([\p{L}:]+)/gmiu
+        // https://regex101.com/r/WxuFI2/1
+        this.globalTagsSplitter = /\[\[(.*?)\]\]|#([\p{L}:\-_\/]+)|([\p{L}:\-_\/]+)/gmiu
         this.tagHierarchy = /\//gm
 
         // Cards
         let flags = "gimu"
         // https://regex101.com/r/p3yQwY/2
-        let str = "( {0,3}[#]*)((?:[^\\n]\\n?)+?)(#" + settings.flashcardsTag + "(?:[\/-]reverse)?)((?: *#[\\p{Letter}\\-\\/]+)*) *?\\n+((?:[^\\n]\\n?)*?(?=\\^\\d{13}|$))(?:\\^(\\d{13}))?"
+        let str = "( {0,3}[#]*)((?:[^\\n]\\n?)+?)(#" + settings.flashcardsTag + "(?:[\/-]reverse)?)((?: *#[\\p{Letter}\\-\\/_]+)*) *?\\n+((?:[^\\n]\\n?)*?(?=\\^\\d{13}|$))(?:\\^(\\d{13}))?"
         this.flashscardsWithTag = new RegExp(str, flags)
 
         // https://regex101.com/r/Ixtzlv/1
         if (settings.inlineID){
-            str = "( {0,3}[#]{0,6})?(?:(?:[\\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.+?) ?(:{2,3}) ?(.+?)((?: *#[\\p{Letter}\\-\\/]+)+)?(?:\\s+\\^(\\d{13})|$)"
+            str = "( {0,3}[#]{0,6})?(?:(?:[\\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.+?) ?(:{2,3}) ?(.+?)((?: *#[\\p{Letter}\\-\\/_]+)+)?(?:\\s+\\^(\\d{13})|$)"
         } else {
-            str = "( {0,3}[#]{0,6})?(?:(?:[\\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.+?) ?(:{2,3}) ?(.+?)((?: *#[\\p{Letter}\\-\\/]+)+|$)(?:\\n\\^(\\d{13}))?"
+            str = "( {0,3}[#]{0,6})?(?:(?:[\\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.+?) ?(:{2,3}) ?(.+?)((?: *#[\\p{Letter}\\-\\/_]+)+|$)(?:\\n\\^(\\d{13}))?"
         }
         this.cardsInlineStyle = new RegExp(str, flags)
 
