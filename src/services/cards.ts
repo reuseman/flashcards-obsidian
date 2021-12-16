@@ -43,14 +43,14 @@ export class CardsService {
         this.updateFile = false
         this.totalOffset = 0
         this.notifications = []
-        let filePath = activeFile.basename
-        let sourcePath = activeFile.path
-        let fileCachedMetadata = this.app.metadataCache.getFileCache(activeFile)
-        let vaultName = this.app.vault.getName()
+        const filePath = activeFile.basename
+        const sourcePath = activeFile.path
+        const fileCachedMetadata = this.app.metadataCache.getFileCache(activeFile)
+        const vaultName = this.app.vault.getName()
         let globalTags: string[] = undefined
 
         // Parse frontmatter 
-        let frontmatter = fileCachedMetadata.frontmatter
+        const frontmatter = fileCachedMetadata.frontmatter
         let deckName = this.settings.deck
         if (frontmatter) {
             deckName = parseFrontMatterEntry(frontmatter, "cards-deck") || this.settings.deck
@@ -66,13 +66,13 @@ export class CardsService {
             }
             globalTags = this.parseGlobalTags(this.file)
             // TODO with empty check that does not call ankiCards line
-            let ankiBlocks = this.parser.getAnkiIDsBlocks(this.file)
-            let ankiCards = ankiBlocks ? await this.anki.getCards(this.getAnkiIDs(ankiBlocks)) : undefined
+            const ankiBlocks = this.parser.getAnkiIDsBlocks(this.file)
+            const ankiCards = ankiBlocks ? await this.anki.getCards(this.getAnkiIDs(ankiBlocks)) : undefined
 
-            let cards: Card[] = this.parser.generateFlashcards(this.file, deckName, vaultName, filePath, globalTags)
-            let [cardsToCreate, cardsToUpdate, cardsNotInAnki] = this.filterByUpdate(ankiCards, cards)
-            let cardIds: number[] = this.getCardsIds(ankiCards, cards)
-            let cardsToDelete: number[] = this.parser.getCardsToDelete(this.file)
+            const cards: Card[] = this.parser.generateFlashcards(this.file, deckName, vaultName, filePath, globalTags)
+            const [cardsToCreate, cardsToUpdate, cardsNotInAnki] = this.filterByUpdate(ankiCards, cards)
+            const cardIds: number[] = this.getCardsIds(ankiCards, cards)
+            const cardsToDelete: number[] = this.parser.getCardsToDelete(this.file)
 
             console.info("Flashcards: Cards to create")
             console.info(cardsToCreate)
@@ -82,7 +82,7 @@ export class CardsService {
             console.info(cardsToDelete)
             if (cardsNotInAnki) {
                 console.info("Flashcards: Cards not in Anki (maybe deleted)")
-                for (let card of cardsNotInAnki) {
+                for (const card of cardsNotInAnki) {
                     this.notifications.push(`Error: Card with ID ${card.id} is not in Anki!`)
                 }
             }
@@ -94,7 +94,7 @@ export class CardsService {
             await this.insertCardsOnAnki(cardsToCreate, frontmatter, deckName)
 
             // Update decks if needed
-            let deckNeedToBeChanged = await this.deckNeedToBeChanged(cardIds, deckName)
+            const deckNeedToBeChanged = await this.deckNeedToBeChanged(cardIds, deckName)
             if (deckNeedToBeChanged) {
                 try {
                     this.anki.changeDeck(cardIds, deckName)
@@ -141,17 +141,17 @@ export class CardsService {
         if (this.app.vault.adapter instanceof FileSystemAdapter) {
             // @ts-ignore: Unreachable code error
 
-            for (let card of cards) {
-                for (let media of card.mediaNames) {
-                    let image = this.app.metadataCache.getFirstLinkpathDest(decodeURIComponent(media), sourcePath);
+            for (const card of cards) {
+                for (const media of card.mediaNames) {
+                    const image = this.app.metadataCache.getFirstLinkpathDest(decodeURIComponent(media), sourcePath);
                     try {
-                        let binaryMedia = await this.app.vault.readBinary(image)
+                        const binaryMedia = await this.app.vault.readBinary(image)
                         card.mediaBase64Encoded.push(arrayBufferToBase64(binaryMedia))
                     } catch (err) {
                         Error("Error: Could not read media")
                     }
                 }
-            };
+            }
         }
     }
 
@@ -159,7 +159,7 @@ export class CardsService {
         if (cardsToCreate.length) {
             let insertedCards = 0
             try {
-                let ids = await this.anki.addCards(cardsToCreate)
+                const ids = await this.anki.addCards(cardsToCreate)
                 // Add IDs from response to Flashcard[]
                 ids.map((id: number, index: number) => {
                     cardsToCreate[index].id = id
@@ -188,10 +188,10 @@ export class CardsService {
     }
 
     private updateFrontmatter(frontmatter: FrontMatterCache, deckName: string) {
-        let newFrontmatter: string = ""
-        let cardsDeckLine: string = `cards-deck: ${deckName}\n`
+        let newFrontmatter = ""
+        const cardsDeckLine = `cards-deck: ${deckName}\n`
         if (frontmatter) {
-            let oldFrontmatter: string = this.file.substring(frontmatter.position.start.offset, frontmatter.position.end.offset)
+            const oldFrontmatter: string = this.file.substring(frontmatter.position.start.offset, frontmatter.position.end.offset)
             if (!oldFrontmatter.match(this.regex.cardsDeckLine)) {
                 newFrontmatter = oldFrontmatter.substring(0, oldFrontmatter.length - 3) + cardsDeckLine + "---"
                 this.totalOffset += cardsDeckLine.length
@@ -205,7 +205,7 @@ export class CardsService {
     }
 
     private writeAnkiBlocks(cardsToCreate: Card[]) {
-        for (let card of cardsToCreate) {
+        for (const card of cardsToCreate) {
             // Card.id cannot be null, because if written already previously it has an ID,
             //   if it has been inserted it has an ID too
             if (card.id !== null && !card.inserted) {
@@ -218,7 +218,7 @@ export class CardsService {
                     }
                 }
                 card.endOffset += this.totalOffset
-                let offset = card.endOffset
+                const offset = card.endOffset
 
                 this.updateFile = true
                 this.file = this.file.substring(0, offset) + id + this.file.substring(offset, this.file.length + 1)
@@ -245,7 +245,7 @@ export class CardsService {
         if (cards.length) {
             let deletedCards = 0
             for (const block of ankiBlocks) {
-                let id = Number(block[1])
+                const id = Number(block[1])
 
                 // Deletion of cards that need to be deleted (i.e. blocks ID that don't have content)
                 if (cards.includes(id)) {
@@ -269,8 +269,8 @@ export class CardsService {
     }
 
     private getAnkiIDs(blocks: RegExpMatchArray[]): number[] {
-        let IDs: number[] = []
-        for (let b of blocks) {
+        const IDs: number[] = []
+        for (const b of blocks) {
             IDs.push(Number(b[1]))
         }
 
@@ -280,11 +280,11 @@ export class CardsService {
 
     public filterByUpdate(ankiCards: any, generatedCards: Card[]) {
         let cardsToCreate: Card[] = []
-        let cardsToUpdate: Card[] = []
-        let cardsNotInAnki: Card[] = []
+        const cardsToUpdate: Card[] = []
+        const cardsNotInAnki: Card[] = []
 
         if (ankiCards) {
-            for (let flashcard of generatedCards) {
+            for (const flashcard of generatedCards) {
                 // Inserted means that anki blocks are available, that means that the card should 
                 // 	(the user can always delete it) be in Anki
                 let ankiCard = undefined
@@ -308,7 +308,7 @@ export class CardsService {
     }
 
     public async deckNeedToBeChanged(cardsIds: number[], deckName: string) {
-        let cardsInfo = await this.anki.cardsInfo(cardsIds)
+        const cardsInfo = await this.anki.cardsInfo(cardsIds)
         console.log("Flashcards: Cards info")
         console.log(cardsInfo)
         if (cardsInfo.length !== 0) {
@@ -322,7 +322,7 @@ export class CardsService {
         let ids: number[] = []
 
         if (ankiCards) {
-            for (let flashcard of generatedCards) {
+            for (const flashcard of generatedCards) {
                 let ankiCard = undefined
                 if (flashcard.inserted) {
                     ankiCard = ankiCards.filter((card: any) => Number(card.noteId) === flashcard.id)[0]
@@ -336,10 +336,10 @@ export class CardsService {
         return ids
     }
 
-    public parseGlobalTags(file: String): string[] {
+    public parseGlobalTags(file: string): string[] {
         let globalTags: string[] = []
 
-        let tags = file.match(/(?:cards-)?tags: ?(.*)/im)
+        const tags = file.match(/(?:cards-)?tags: ?(.*)/im)
         globalTags = tags ? tags[1].match(this.regex.globalTagsSplitter) : []
 
         if (globalTags) {

@@ -3,7 +3,7 @@ import { Anki } from 'src/services/anki'
 
 export class SettingsTab extends PluginSettingTab {
     display(): void {
-        let { containerEl } = this
+        const { containerEl } = this
         const plugin = (this as any).plugin
 
         containerEl.empty()

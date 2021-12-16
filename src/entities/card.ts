@@ -16,7 +16,7 @@ export abstract class Card {
     containsCode: boolean
     modelName: string
 
-    constructor(id: number, deckName: string, initialContent: string, fields: Record<string, string>, reversed: boolean, endOffset: number, tags: string[], inserted: boolean, mediaNames: string[], containsCode: boolean = false) {
+    constructor(id: number, deckName: string, initialContent: string, fields: Record<string, string>, reversed: boolean, endOffset: number, tags: string[], inserted: boolean, mediaNames: string[], containsCode = false) {
         this.id = id
         this.deckName = deckName
         this.initialContent = initialContent
@@ -43,14 +43,14 @@ export abstract class Card {
         //     return false
         // }
 
-        let fields = Object.entries(card.fields)
+        const fields = Object.entries(card.fields)
         // This is the case of a switch from a model to another one. It cannot be handeled
         if (fields.length !== Object.entries(this.fields).length) {
             return true
         }
 
-        for (let field of fields) {
-            let fieldName = field[0]
+        for (const field of fields) {
+            const fieldName = field[0]
             if (field[1].value !== this.fields[fieldName]) {
                 return false
             }

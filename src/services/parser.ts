@@ -24,7 +24,7 @@ export class Parser {
     }
 
     public generateFlashcards(file: string, deck: string, vault: string, note: string, globalTags: string[] = []): Flashcard[] {
-        let contextAware = this.settings.contextAwareMode
+        const contextAware = this.settings.contextAwareMode
         let cards: Flashcard[] = []
         let headings: any = []
 
@@ -39,7 +39,7 @@ export class Parser {
         cards = cards.concat(this.generateSpacedCards(file, headings, deck, vault, note, globalTags))
         cards.sort((a, b) => a.endOffset - b.endOffset)
 
-        let defaultAnkiTag = this.settings.defaultAnkiTag
+        const defaultAnkiTag = this.settings.defaultAnkiTag
         if (defaultAnkiTag) {
             for (const card of cards) {
                 card.tags.push(defaultAnkiTag)
@@ -57,9 +57,9 @@ export class Parser {
      * @param headingLevel The level of the first ancestor heading, i.e. the number of #.
      */
     private getContext(headings: any, index: number, headingLevel: number): string[] {
-        let context: string[] = []
+        const context: string[] = []
         let currentIndex: number = index
-        let goalLevel: number = 6
+        let goalLevel = 6
 
         let i = headings.length - 1
         // Get the level of the first heading before the index (i.e. above the current line)
@@ -82,7 +82,7 @@ export class Parser {
 
         // Search for the other headings
         for (i; i >= 0; i--) {
-            let currentLevel = headings[i][1].length
+            const currentLevel = headings[i][1].length
             if (currentLevel == goalLevel && headings[i].index < currentIndex) {
                 currentIndex = headings[i].index
                 goalLevel = currentLevel - 1
@@ -95,36 +95,36 @@ export class Parser {
     }
 
     private generateSpacedCards(file: string, headings: any, deck: string, vault: string, note: string, globalTags: string[] = []) {
-        let contextAware = this.settings.contextAwareMode
-        let cards: Spacedcard[] = []
-        let matches = [...file.matchAll(this.regex.cardsSpacedStyle)]
+        const contextAware = this.settings.contextAwareMode
+        const cards: Spacedcard[] = []
+        const matches = [...file.matchAll(this.regex.cardsSpacedStyle)]
 
-        for (let match of matches) {
-            let reversed: boolean = false
+        for (const match of matches) {
+            const reversed = false
             let headingLevel = -1
             if (match[1]) {
                 headingLevel = match[1].trim().length !== 0 ? match[1].trim().length : -1
             }
             // Match.index - 1 because otherwise in the context there will be even match[1], i.e. the question itself
-            let context = contextAware ? this.getContext(headings, match.index - 1, headingLevel) : ""
+            const context = contextAware ? this.getContext(headings, match.index - 1, headingLevel) : ""
 
-            let originalPrompt = match[2].trim()
+            const originalPrompt = match[2].trim()
             let prompt = contextAware ? [...context, match[2].trim()].join(`${this.settings.contextSeparator}`) : match[2].trim()
             let medias: string[] = this.getImageLinks(prompt)
             medias = medias.concat(this.getAudioLinks(prompt))
             prompt = this.parseLine(prompt, vault)
 
-            let endingLine = match.index + match[0].length
-            let tags: string[] = this.parseTags(match[4], globalTags)
-            let id: number = match[5] ? Number(match[5]) : -1
-            let inserted: boolean = match[5] ? true : false
-            let fields: any = { "Prompt": prompt }
+            const endingLine = match.index + match[0].length
+            const tags: string[] = this.parseTags(match[4], globalTags)
+            const id: number = match[5] ? Number(match[5]) : -1
+            const inserted: boolean = match[5] ? true : false
+            const fields: any = { "Prompt": prompt }
             if (this.settings.sourceSupport) {
                 fields["Source"] = note
             }
-            let containsCode = this.containsCode([prompt])
+            const containsCode = this.containsCode([prompt])
 
-            let card = new Spacedcard(id, deck, originalPrompt, fields, reversed, endingLine, tags, inserted, medias, containsCode)
+            const card = new Spacedcard(id, deck, originalPrompt, fields, reversed, endingLine, tags, inserted, medias, containsCode)
             cards.push(card)
         }
 
@@ -132,24 +132,24 @@ export class Parser {
     }
 
     private generateInlineCards(file: string, headings: any, deck: string, vault: string, note: string, globalTags: string[] = []) {
-        let contextAware = this.settings.contextAwareMode
-        let cards: Inlinecard[] = []
-        let matches = [...file.matchAll(this.regex.cardsInlineStyle)]
+        const contextAware = this.settings.contextAwareMode
+        const cards: Inlinecard[] = []
+        const matches = [...file.matchAll(this.regex.cardsInlineStyle)]
 
-        for (let match of matches) {
+        for (const match of matches) {
             if (match[2].toLowerCase().startsWith("cards-deck") || match[2].toLowerCase().startsWith("tags")) {
                 continue
             }
 
-            let reversed: boolean = match[3].trim().toLowerCase() === ':::'
+            const reversed: boolean = match[3].trim().toLowerCase() === ':::'
             let headingLevel = -1
             if (match[1]) {
                 headingLevel = match[1].trim().length !== 0 ? match[1].trim().length : -1
             }
             // Match.index - 1 because otherwise in the context there will be even match[1], i.e. the question itself
-            let context = contextAware ? this.getContext(headings, match.index - 1, headingLevel) : ""
+            const context = contextAware ? this.getContext(headings, match.index - 1, headingLevel) : ""
 
-            let originalQuestion = match[2].trim()
+            const originalQuestion = match[2].trim()
             let question = contextAware ? [...context, match[2].trim()].join(`${this.settings.contextSeparator}`) : match[2].trim()
             let answer = match[4].trim()
             let medias: string[] = this.getImageLinks(question)
@@ -158,17 +158,17 @@ export class Parser {
             question = this.parseLine(question, vault)
             answer = this.parseLine(answer, vault)
 
-            let endingLine = match.index + match[0].length
-            let tags: string[] = this.parseTags(match[5], globalTags)
-            let id: number = match[6] ? Number(match[6]) : -1
-            let inserted: boolean = match[6] ? true : false
-            let fields: any = { "Front": question, "Back": answer }
+            const endingLine = match.index + match[0].length
+            const tags: string[] = this.parseTags(match[5], globalTags)
+            const id: number = match[6] ? Number(match[6]) : -1
+            const inserted: boolean = match[6] ? true : false
+            const fields: any = { "Front": question, "Back": answer }
             if (this.settings.sourceSupport) {
                 fields["Source"] = note
             }
-            let containsCode = this.containsCode([question, answer])
+            const containsCode = this.containsCode([question, answer])
 
-            let card = new Inlinecard(id, deck, originalQuestion, fields, reversed, endingLine, tags, inserted, medias, containsCode)
+            const card = new Inlinecard(id, deck, originalQuestion, fields, reversed, endingLine, tags, inserted, medias, containsCode)
             cards.push(card)
         }
 
@@ -176,17 +176,17 @@ export class Parser {
     }
 
     private generateCardsWithTag(file: string, headings: any, deck: string, vault: string, note: string, globalTags: string[] = []) {
-        let contextAware = this.settings.contextAwareMode
-        let cards: Flashcard[] = []
-        let matches = [...file.matchAll(this.regex.flashscardsWithTag)]
+        const contextAware = this.settings.contextAwareMode
+        const cards: Flashcard[] = []
+        const matches = [...file.matchAll(this.regex.flashscardsWithTag)]
 
-        for (let match of matches) {
-            let reversed: boolean = match[3].trim().toLowerCase() === `#${this.settings.flashcardsTag}-reverse` || match[3].trim().toLowerCase() === `#${this.settings.flashcardsTag}/reverse`
-            let headingLevel = match[1].trim().length !== 0 ? match[1].length : -1
+        for (const match of matches) {
+            const reversed: boolean = match[3].trim().toLowerCase() === `#${this.settings.flashcardsTag}-reverse` || match[3].trim().toLowerCase() === `#${this.settings.flashcardsTag}/reverse`
+            const headingLevel = match[1].trim().length !== 0 ? match[1].length : -1
             // Match.index - 1 because otherwise in the context there will be even match[1], i.e. the question itself
-            let context = contextAware ? this.getContext(headings, match.index - 1, headingLevel) : ""
+            const context = contextAware ? this.getContext(headings, match.index - 1, headingLevel) : ""
 
-            let originalQuestion = match[2].trim()
+            const originalQuestion = match[2].trim()
             let question = contextAware ? [...context, match[2].trim()].join(`${this.settings.contextSeparator}`) : match[2].trim()
             let answer = match[5].trim()
             let medias: string[] = this.getImageLinks(question)
@@ -195,17 +195,17 @@ export class Parser {
             question = this.parseLine(question, vault)
             answer = this.parseLine(answer, vault)
 
-            let endingLine = match.index + match[0].length
-            let tags: string[] = this.parseTags(match[4], globalTags)
-            let id: number = match[6] ? Number(match[6]) : -1
-            let inserted: boolean = match[6] ? true : false
-            let fields: any = { "Front": question, "Back": answer }
+            const endingLine = match.index + match[0].length
+            const tags: string[] = this.parseTags(match[4], globalTags)
+            const id: number = match[6] ? Number(match[6]) : -1
+            const inserted: boolean = match[6] ? true : false
+            const fields: any = { "Front": question, "Back": answer }
             if (this.settings.sourceSupport) {
                 fields["Source"] = note
             }
-            let containsCode = this.containsCode([question, answer])
+            const containsCode = this.containsCode([question, answer])
 
-            let card = new Flashcard(id, deck, originalQuestion, fields, reversed, endingLine, tags, inserted, medias, containsCode)
+            const card = new Flashcard(id, deck, originalQuestion, fields, reversed, endingLine, tags, inserted, medias, containsCode)
             cards.push(card)
         }
 
@@ -213,7 +213,7 @@ export class Parser {
     }
 
     public containsCode(str: string[]): boolean {
-        for (let s of str) {
+        for (const s of str) {
             if (s.match(this.regex.codeBlock)) {
                 return true
             }
@@ -231,15 +231,15 @@ export class Parser {
     }
 
     private getImageLinks(str: string) {
-        let wikiMatches = str.matchAll(this.regex.wikiImageLinks)
-        let markdownMatches = str.matchAll(this.regex.markdownImageLinks)
-        let links: string[] = []
+        const wikiMatches = str.matchAll(this.regex.wikiImageLinks)
+        const markdownMatches = str.matchAll(this.regex.markdownImageLinks)
+        const links: string[] = []
 
-        for (let wikiMatch of wikiMatches) {
+        for (const wikiMatch of wikiMatches) {
             links.push(wikiMatch[1])
         }
 
-        for (let markdownMatch of markdownMatches) {
+        for (const markdownMatch of markdownMatches) {
             links.push(decodeURIComponent(markdownMatch[1]))
         }
 
@@ -247,10 +247,10 @@ export class Parser {
     }
 
     private getAudioLinks(str: string) {
-        let wikiMatches = str.matchAll(this.regex.wikiAudioLinks)
-        let links: string[] = []
+        const wikiMatches = str.matchAll(this.regex.wikiAudioLinks)
+        const links: string[] = []
 
-        for (let wikiMatch of wikiMatches) {
+        for (const wikiMatch of wikiMatches) {
             links.push(wikiMatch[1])
         }
 
@@ -258,13 +258,13 @@ export class Parser {
     }
 
     private substituteObsidianLinks(str: string, vaultName: string) {
-        let linkRegex = /\[\[(.+?)(?:\|(.+))?\]\]/gmi
+        const linkRegex = /\[\[(.+?)(?:\|(.+))?\]\]/gmi
         vaultName = encodeURIComponent(vaultName)
 
         return str.replace(linkRegex, (match, filename, rename) => {
-            let href = `obsidian://open?vault=${vaultName}&file=${encodeURIComponent(filename)}.md`
-            let fileRename = rename ? rename : filename
-            let link = `<a href="${href}">[[${fileRename}]]</a>`
+            const href = `obsidian://open?vault=${vaultName}&file=${encodeURIComponent(filename)}.md`
+            const fileRename = rename ? rename : filename
+            const link = `<a href="${href}">[[${fileRename}]]</a>`
             return link
         })
     }
@@ -281,12 +281,12 @@ export class Parser {
     }
 
     private mathToAnki(str: string) {
-        let mathBlockRegex = /(\$\$)(.*?)(\$\$)/gis
+        const mathBlockRegex = /(\$\$)(.*?)(\$\$)/gis
         str = str.replace(mathBlockRegex, function (match, p1, p2) {
             return '\\\\[' + escapeMarkdown(p2) + ' \\\\]'
         })
 
-        let mathInlineRegex = /(\$)(.*?)(\$)/gi
+        const mathInlineRegex = /(\$)(.*?)(\$)/gi
         str = str.replace(mathInlineRegex, function (match, p1, p2) {
             return '\\\\(' + escapeMarkdown(p2) + '\\\\)'
         })
@@ -295,10 +295,10 @@ export class Parser {
     }
 
     private parseTags(str: string, globalTags: string[]): string[] {
-        let tags: string[] = [...globalTags]
+        const tags: string[] = [...globalTags]
 
         if (str) {
-            for (let tag of str.split("#")) {
+            for (const tag of str.split("#")) {
                 let newTag = tag.trim()
                 if (newTag) {
                     // Replace obsidian hierarchy tags delimeter \ with anki delimeter ::

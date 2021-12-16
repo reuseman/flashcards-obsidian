@@ -2,7 +2,7 @@ import { codeDeckExtension, sourceDeckExtension } from 'src/constants';
 import { Card } from "src/entities/card";
 
 export class Inlinecard extends Card {
-    constructor(id: number = -1, deckName: string, initialContent: string, fields: Record<string, string>, reversed: boolean, endOffset: number, tags: string[] = [], inserted: boolean = false, mediaNames: string[], containsCode: boolean) {
+    constructor(id = -1, deckName: string, initialContent: string, fields: Record<string, string>, reversed: boolean, endOffset: number, tags: string[] = [], inserted = false, mediaNames: string[], containsCode: boolean) {
         super(id, deckName, initialContent, fields, reversed, endOffset, tags, inserted, mediaNames, containsCode) // ! CHANGE []
 
         this.modelName = this.reversed ? `Obsidian-basic-reversed` : `Obsidian-basic`
@@ -14,8 +14,8 @@ export class Inlinecard extends Card {
         }
     }
 
-    public getCard(update: boolean = false): object {
-        let card: any = {
+    public getCard(update = false): object {
+        const card: any = {
             "deckName": this.deckName,
             "modelName": this.modelName,
             "fields": this.fields,
@@ -30,7 +30,7 @@ export class Inlinecard extends Card {
     }
 
     public getMedias(): object[] {
-        let medias: object[] = []
+        const medias: object[] = []
         this.mediaBase64Encoded.forEach((data, index) => {
             medias.push({
                 "filename": this.mediaNames[index],

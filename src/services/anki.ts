@@ -16,10 +16,10 @@ export class Anki {
     }
 
     public async storeMediaFiles(cards: Card[]) {
-        let actions: any[] = []
+        const actions: any[] = []
 
-        for (let card of cards) {
-            for (let media of card.getMedias()) {
+        for (const card of cards) {
+            for (const media of card.getMedias()) {
                 actions.push({
                     "action": "storeMediaFile",
                     "params": media
@@ -35,7 +35,7 @@ export class Anki {
     }
 
     public async storeCodeHighlightMedias() {
-        let fileExists = await this.invoke(
+        const fileExists = await this.invoke(
             "retrieveMediaFile",
             6,
             {
@@ -43,19 +43,19 @@ export class Anki {
             })
 
         if (!fileExists) {
-            let highlightjs = {
+            const highlightjs = {
                 "action": "storeMediaFile", "params": {
                     "filename": "_highlight.js",
                     "data": highlightjsBase64
                 }
             }
-            let highlightjsInit = {
+            const highlightjsInit = {
                 "action": "storeMediaFile", "params": {
                     "filename": "_highlightInit.js",
                     "data": hihglightjsInitBase64
                 }
             }
-            let highlightjcss = {
+            const highlightjcss = {
                 "action": "storeMediaFile", "params": {
                     "filename": "_highlight.css",
                     "data": highlightCssBase64
@@ -66,7 +66,7 @@ export class Anki {
     }
 
     public async addCards(cards: Card[]): Promise<number[]> {
-        let notes: any = []
+        const notes: any = []
 
         cards.forEach(card => notes.push(card.getCard(false)))
 
@@ -92,9 +92,9 @@ export class Anki {
         // This means that the delta from the current tags on Anki and the generated one should be added/removed
         // That's what the current approach does, but in the future if the API it is made more consistent
         //  then mergeTags(...) is not needed anymore 
-        let ids: number[] = []
+        const ids: number[] = []
 
-        for (let card of cards) {
+        for (const card of cards) {
             updateActions.push({
                 "action": "updateNoteFields",
                 "params": {
@@ -139,11 +139,11 @@ export class Anki {
     }
 
     private mergeTags(oldTags: string[], newTags: string[], cardId: number) {
-        let actions = []
+        const actions = []
 
         // Find tags to Add
-        for (let tag of newTags) {
-            let index = oldTags.indexOf(tag)
+        for (const tag of newTags) {
+            const index = oldTags.indexOf(tag)
             if (index > -1) {
                 oldTags.splice(index, 1)
             } else {
@@ -158,7 +158,7 @@ export class Anki {
         }
 
         // All Tags to delete
-        for (let tag of oldTags) {
+        for (const tag of oldTags) {
             actions.push({
                 "action": "removeTags",
                 "params": {
@@ -171,7 +171,7 @@ export class Anki {
         return actions
     }
 
-    private invoke(action: string, version: number = 6, params = {}): any {
+    private invoke(action: string, version = 6, params = {}): any {
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             xhr.addEventListener('error', () => reject('failed to issue request'));
@@ -181,10 +181,10 @@ export class Anki {
                     if (Object.getOwnPropertyNames(response).length != 2) {
                         throw 'response has an unexpected number of fields';
                     }
-                    if (!response.hasOwnProperty('error')) {
+                    if (!Object.prototype.hasOwnProperty.call(response, "error")) {
                         throw 'response is missing required error field';
                     }
-                    if (!response.hasOwnProperty('result')) {
+                    if (!Object.prototype.hasOwnProperty.call(response, "result")) {
                         throw 'response is missing required result field';
                     }
                     if (response.error) {
@@ -216,13 +216,13 @@ export class Anki {
             codeExtension = codeDeckExtension
         }
 
-        let css = ".card {\r\n font-family: arial;\r\n font-size: 20px;\r\n text-align: center;\r\n color: black;\r\n background-color: white;\r\n}\r\n\r\n.tag::before {\r\n\tcontent: \"#\";\r\n}\r\n\r\n.tag {\r\n  color: white;\r\n  background-color: #9F2BFF;\r\n  border: none;\r\n  font-size: 11px;\r\n  font-weight: bold;\r\n  padding: 1px 8px;\r\n  margin: 0px 3px;\r\n  text-align: center;\r\n  text-decoration: none;\r\n  cursor: pointer;\r\n  border-radius: 14px;\r\n  display: inline;\r\n  vertical-align: middle;\r\n}\r\n"
-        let front = `{{Front}}\r\n<p class=\"tags\">{{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>${codeScriptContent}`
-        let back = `{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}${sourceFieldContent}`
-        let frontReversed = `{{Back}}\r\n<p class=\"tags\">{{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>${codeScriptContent}`
-        let backReversed = `{{FrontSide}}\n\n<hr id=answer>\n\n{{Front}}${sourceFieldContent}`
-        let prompt = `{{Prompt}}\r\n<p class=\"tags\">🧠spaced {{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>${codeScriptContent}`
-        let promptBack = `{{FrontSide}}\n\n<hr id=answer>🧠 Review done.${sourceFieldContent}`
+        const css = ".card {\r\n font-family: arial;\r\n font-size: 20px;\r\n text-align: center;\r\n color: black;\r\n background-color: white;\r\n}\r\n\r\n.tag::before {\r\n\tcontent: \"#\";\r\n}\r\n\r\n.tag {\r\n  color: white;\r\n  background-color: #9F2BFF;\r\n  border: none;\r\n  font-size: 11px;\r\n  font-weight: bold;\r\n  padding: 1px 8px;\r\n  margin: 0px 3px;\r\n  text-align: center;\r\n  text-decoration: none;\r\n  cursor: pointer;\r\n  border-radius: 14px;\r\n  display: inline;\r\n  vertical-align: middle;\r\n}\r\n"
+        const front = `{{Front}}\r\n<p class=\"tags\">{{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>${codeScriptContent}`
+        const back = `{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}${sourceFieldContent}`
+        const frontReversed = `{{Back}}\r\n<p class=\"tags\">{{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>${codeScriptContent}`
+        const backReversed = `{{FrontSide}}\n\n<hr id=answer>\n\n{{Front}}${sourceFieldContent}`
+        const prompt = `{{Prompt}}\r\n<p class=\"tags\">🧠spaced {{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>${codeScriptContent}`
+        const promptBack = `{{FrontSide}}\n\n<hr id=answer>🧠 Review done.${sourceFieldContent}`
 
         let classicFields = ["Front", "Back"]
         let promptFields = ["Prompt"]
@@ -231,7 +231,7 @@ export class Anki {
             promptFields = promptFields.concat("Source")
         }
 
-        let obsidianBasic = {
+        const obsidianBasic = {
             "action": "createModel",
             "params": {
                 "modelName": `Obsidian-basic${sourceExtension}${codeExtension}`,
@@ -247,7 +247,7 @@ export class Anki {
             }
         }
 
-        let obsidianBasicReversed = {
+        const obsidianBasicReversed = {
             "action": "createModel",
             "params": {
                 "modelName": `Obsidian-basic-reversed${sourceExtension}${codeExtension}`,
@@ -268,7 +268,7 @@ export class Anki {
             }
         }
 
-        let obsidianSpaced = {
+        const obsidianSpaced = {
             "action": "createModel",
             "params": {
                 "modelName": `Obsidian-spaced${sourceExtension}${codeExtension}`,
