@@ -1,51 +1,72 @@
-import { codeDeckExtension, sourceDeckExtension } from 'src/constants';
+import { codeDeckExtension, sourceDeckExtension } from "src/constants";
 import { Card } from "src/entities/card";
 
 export class Spacedcard extends Card {
-    constructor(id = -1, deckName: string, initialContent: string, fields: Record<string, string>, reversed: boolean, endOffset: number, tags: string[] = [], inserted = false, mediaNames: string[], containsCode: boolean) {
-        super(id, deckName, initialContent, fields, reversed, endOffset, tags, inserted, mediaNames, containsCode)
-        this.modelName = `Obsidian-spaced`
-        if (fields["Source"]) {
-            this.modelName += sourceDeckExtension
-        }
-        if (containsCode) {
-            this.modelName += codeDeckExtension
-        }
+  constructor(
+    id = -1,
+    deckName: string,
+    initialContent: string,
+    fields: Record<string, string>,
+    reversed: boolean,
+    endOffset: number,
+    tags: string[] = [],
+    inserted = false,
+    mediaNames: string[],
+    containsCode: boolean
+  ) {
+    super(
+      id,
+      deckName,
+      initialContent,
+      fields,
+      reversed,
+      endOffset,
+      tags,
+      inserted,
+      mediaNames,
+      containsCode
+    );
+    this.modelName = `Obsidian-spaced`;
+    if (fields["Source"]) {
+      this.modelName += sourceDeckExtension;
+    }
+    if (containsCode) {
+      this.modelName += codeDeckExtension;
+    }
+  }
+
+  public getCard(update = false): object {
+    const card: any = {
+      deckName: this.deckName,
+      modelName: this.modelName,
+      fields: this.fields,
+      tags: this.tags,
+    };
+
+    if (update) {
+      card["id"] = this.id;
     }
 
-    public getCard(update = false): object {
+    return card;
+  }
 
-        const card: any = {
-            "deckName": this.deckName,
-            "modelName": this.modelName,
-            "fields": this.fields,
-            "tags": this.tags,
-        }
+  public getMedias(): object[] {
+    const medias: object[] = [];
+    this.mediaBase64Encoded.forEach((data, index) => {
+      medias.push({
+        filename: this.mediaNames[index],
+        data: data,
+      });
+    });
 
-        if (update) {
-            card["id"] = this.id
-        }
+    return medias;
+  }
 
-        return card
-    }
+  public toString = (): string => {
+    return `Prompt: ${this.fields[0]}`;
+  };
 
-    public getMedias(): object[] {
-        const medias: object[] = []
-        this.mediaBase64Encoded.forEach((data, index) => {
-            medias.push({
-                "filename": this.mediaNames[index],
-                "data": data
-            })
-        })
-
-        return medias
-    }
-
-    public toString = (): string => {
-        return `Prompt: ${this.fields[0]}`
-    }
-
-    public getIdFormat(): string {
-        return "^" + this.id.toString() + "\n"
-    }
+  public getIdFormat(): string {
+    return "^" + this.id.toString() + "\n";
+  }
 }

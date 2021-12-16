@@ -36,7 +36,7 @@ export function escapeMarkdown(string: string, skips: string[] = []) {
     [/>/g, "&gt;", "angle brackets"],
     [/_/g, "\\_", "underscores"],
   ];
-  
+
   return replacements.reduce(function (s: string, replacement: any) {
     const name = replacement[2];
     return name && skips.indexOf(name) !== -1
