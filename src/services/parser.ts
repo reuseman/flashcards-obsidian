@@ -191,7 +191,7 @@ export class Parser {
         continue;
       }
 
-      const reversed: boolean = match[3].trim().toLowerCase() === ":::";
+      const reversed: boolean = match[3] === this.settings.inlineSeparatorReverse;
       let headingLevel = -1;
       if (match[1]) {
         headingLevel =

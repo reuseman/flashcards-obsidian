@@ -44,3 +44,8 @@ export function escapeMarkdown(string: string, skips: string[] = []) {
       : s.replace(replacement[0], replacement[1]);
   }, string);
 }
+
+
+  export function escapeRegExp(str: string) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
+  }

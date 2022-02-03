@@ -1,5 +1,6 @@
 import { Notice, PluginSettingTab, Setting } from "obsidian";
 import { Anki } from "src/services/anki";
+import { escapeRegExp } from "src/utils";
 
 export class SettingsTab extends PluginSettingTab {
   display(): void {
@@ -102,6 +103,60 @@ export class SettingsTab extends PluginSettingTab {
             }
           });
       });
+
+     new Setting(containerEl)
+      .setName("Inline card separator")
+      .setDesc(
+        "The separator to identifty the inline cards in the notes."
+      )
+      .addText((text) => {
+        text
+          .setValue(plugin.settings.inlineSeparator)
+          .setPlaceholder("::")
+          .onChange((value) => {
+            // if the value is empty or is the same like the inlineseparatorreverse then set it to the default, otherwise save it
+            if (value.trim().length === 0 || value === plugin.settings.inlineSeparatorReverse) {
+              plugin.settings.inlineSeparator = "::";
+              if (value.trim().length === 0) {
+                new Notice("The separator must be at least 1 character long");
+              } else if (value === plugin.settings.inlineSeparatorReverse) {
+                new Notice("The separator must be different from the inline reverse separator");
+              }
+            } else {
+              plugin.settings.inlineSeparator = escapeRegExp(value.trim());
+              new Notice("The separator has been changed");
+            }
+            plugin.saveData(plugin.settings);
+          });
+      });
+
+
+     new Setting(containerEl)
+      .setName("Inline reverse card separator")
+      .setDesc(
+        "The separator to identifty the inline revese cards in the notes."
+      )
+      .addText((text) => {
+        text
+          .setValue(plugin.settings.inlineSeparatorReverse)
+          .setPlaceholder(":::")
+          .onChange((value) => {
+            // if the value is empty or is the same like the inlineseparatorreverse then set it to the default, otherwise save it
+            if (value.trim().length === 0 || value === plugin.settings.inlineSeparator) {
+              plugin.settings.inlineSeparatorReverse = ":::";
+              if (value.trim().length === 0) {
+                new Notice("The separator must be at least 1 character long");
+              } else if (value === plugin.settings.inlineSeparator) {
+                new Notice("The separator must be different from the inline separator");
+              }
+            } else {
+              plugin.settings.inlineSeparatorReverse = escapeRegExp(value.trim());
+              new Notice("The separator has been changed");
+            }
+            plugin.saveData(plugin.settings);
+          });
+      });
+
 
     new Setting(containerEl)
       .setName("Default Anki tag")

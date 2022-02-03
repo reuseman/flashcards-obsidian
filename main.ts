@@ -3,8 +3,7 @@ import { ISettings } from 'src/settings';
 import { SettingsTab } from 'src/gui/settings-tab';
 import { CardsService } from 'src/services/cards';
 import { Anki } from 'src/services/anki';
-import { noticeTimeout } from 'src/constants'
-import { flashcardsIcon } from 'src/constants'
+import { noticeTimeout, flashcardsIcon } from 'src/constants';
 
 export default class ObsidianFlashcard extends Plugin {
 	private settings: ISettings
@@ -14,17 +13,17 @@ export default class ObsidianFlashcard extends Plugin {
 		addIcon("flashcards", flashcardsIcon)
 
 		// TODO test when file did not insert flashcards, but one of them is in Anki already
-		let anki = new Anki()
+		const anki = new Anki()
 		this.settings = await this.loadData() || this.getDefaultSettings()
 		this.cardsService = new CardsService(this.app, this.settings)
 
-		let statusBar = this.addStatusBarItem()
+		const statusBar = this.addStatusBarItem()
 
 		this.addCommand({
 			id: 'generate-flashcard-current-file',
 			name: 'Generate for the current file',
 			checkCallback: (checking: boolean) => {
-				let activeFile = this.app.workspace.getActiveFile()
+				const activeFile = this.app.workspace.getActiveFile()
 				if (activeFile) {
 					if (!checking) {
 						this.generateCards(activeFile)
@@ -36,7 +35,7 @@ export default class ObsidianFlashcard extends Plugin {
 		});
 
 		this.addRibbonIcon('flashcards', 'Generate flashcards', () => {
-			let activeFile = this.app.workspace.getActiveFile()
+			const activeFile = this.app.workspace.getActiveFile()
 			if (activeFile) {
 				this.generateCards(activeFile)
 			} else {
@@ -56,12 +55,12 @@ export default class ObsidianFlashcard extends Plugin {
 	}
 
 	private getDefaultSettings(): ISettings {
-		return { contextAwareMode: true, sourceSupport: false, codeHighlightSupport: false, inlineID: false, contextSeparator: " > ", deck: "Default", flashcardsTag: "card", defaultAnkiTag: "obsidian" }
+		return { contextAwareMode: true, sourceSupport: false, codeHighlightSupport: false, inlineID: false, contextSeparator: " > ", deck: "Default", flashcardsTag: "card", inlineSeparator: "::", inlineSeparatorReverse: ":::", defaultAnkiTag: "obsidian" }
 	}
 
 	private generateCards(activeFile: TFile) {
 		this.cardsService.execute(activeFile).then(res => {
-			for (let r of res) {
+			for (const r of res) {
 				new Notice(r, noticeTimeout)
 			}
 			console.log(res)
