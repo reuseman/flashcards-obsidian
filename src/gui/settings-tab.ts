@@ -10,6 +10,35 @@ export class SettingsTab extends PluginSettingTab {
     containerEl.empty();
     containerEl.createEl("h1", { text: "Flashcards" });
 
+    const description = createFragment()
+    description.append(
+      "This needs to be done only one time. Open Anki and click the button to grant permission.",
+          createEl('br'),
+        'Be aware that AnkiConnect must be installed.',
+    )
+
+    new Setting(containerEl)
+      .setName("Give Permission")
+      .setDesc(description)
+      .addButton((button) => {
+        button.setButtonText("Grant Permission").onClick(() => {
+
+          new Anki().requestPermission().then((result) => {
+            if (result.permission === "granted") {
+              plugin.settings.ankiConnectPermission = true;
+              plugin.saveData(plugin.settings);
+              new Notice("Anki Connect permission granted");
+            } else {
+              new Notice("AnkiConnect permission not granted");
+            }
+          }).catch((error) => {
+            new Notice("Something went wrong, is Anki open?");
+            console.error(error);
+          });
+        });
+      });
+  
+
     new Setting(containerEl)
       .setName("Test Anki")
       .setDesc("Test that connection between Anki and Obsidian actually works.")

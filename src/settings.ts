@@ -9,4 +9,5 @@ export interface ISettings {
   inlineSeparator: string;
   inlineSeparatorReverse: string;
   defaultAnkiTag: string;
+  ankiConnectPermission: boolean;
 }

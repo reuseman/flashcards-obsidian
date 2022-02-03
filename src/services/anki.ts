@@ -303,4 +303,8 @@ export class Anki {
 
     return [obsidianBasic, obsidianBasicReversed, obsidianSpaced];
   }
+
+  public async requestPermission() {
+    return await this.invoke("requestPermission", 6);
+  }
 }
