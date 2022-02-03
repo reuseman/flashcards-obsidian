@@ -3,6 +3,7 @@
 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/reuseman/flashcards-obsidian?style=for-the-badge&sort=semver)](https://github.com/reuseman/flashcards-obsidian/releases/latest)
 ![GitHub All Releases](https://img.shields.io/github/downloads/reuseman/flashcards-obsidian/total?style=for-the-badge)
 
+![logo](logo.png)
 Anki integration for [Obsidian](https://obsidian.md/).
 
 ## Features
@@ -37,11 +38,9 @@ The wiki explains in detail [how to use it](https://github.com/reuseman/flashcar
 
 ## How to install
 
-1. Install this plugin on Obsidian
+1. [Install](obsidian://show-plugin?id=flashcards-obsidian) this plugin on Obsidian:
 
-   From Obsidian v0.9.8+, you can activate this plugin within Obsidian by doing the following:
-
-   - Open Settings > Third-party plugin
+   - Open Settings > Community plugins
    - Make sure Safe mode is off
    - Click Browse community plugins
    - Search for "**Flashcards**"
@@ -53,16 +52,4 @@ The wiki explains in detail [how to use it](https://github.com/reuseman/flashcar
    - Paste the code **2055492159** > Ok
    - Select the plugin > Config > Paste the configuration below
 
-Configuration:
-
-    {
-        "apiKey": null,
-        "apiLogPath": null,
-        "webBindAddress": "127.0.0.1",
-        "webBindPort": 8765,
-        "webCorsOrigin": "http://localhost",
-        "webCorsOriginList": [
-            "http://localhost",
-            "app://obsidian.md"
-        ]
-    }
+3. Open the settings of the plugin, and while Anki is opened press "**Grant Permission**"
