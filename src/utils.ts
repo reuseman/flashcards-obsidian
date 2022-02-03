@@ -24,9 +24,9 @@ export function arraysEqual(a: string[], b: string[]) {
 
 export function escapeMarkdown(string: string, skips: string[] = []) {
   const replacements: any = [
-    [/\*/g, "\\*", "asterisks"],
-    [/#/g, "\\#", "number signs"],
-    [/\//g, "\\/", "slashes"],
+    // [/\*/g, "\\*", "asterisks"],
+    [/#/g, "#", "number signs"],
+    // [/\//g, "\\/", "slashes"],
     [/\\/g, "\\\\", "backslash"],
     [/\(/g, "\\(", "parentheses"],
     [/\)/g, "\\)", "parentheses"],
