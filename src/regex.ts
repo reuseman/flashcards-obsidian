@@ -5,6 +5,7 @@ export class Regex {
   wikiImageLinks: RegExp;
   markdownImageLinks: RegExp;
   wikiAudioLinks: RegExp;
+  obsidianCodeBlock: RegExp;
   codeBlock: RegExp;
   cardsDeckLine: RegExp;
   cardsToDelete: RegExp;
@@ -13,6 +14,10 @@ export class Regex {
   flashscardsWithTag: RegExp;
   cardsInlineStyle: RegExp;
   cardsSpacedStyle: RegExp;
+  cardsClozeWholeLine: RegExp;
+  singleClozeCurly: RegExp;
+  singleClozeHighlight: RegExp;
+  clozeHighlight: RegExp;
 
   constructor(settings: ISettings) {
     this.update(settings);
@@ -30,6 +35,9 @@ export class Regex {
 
     this.wikiAudioLinks =
       /!\[\[(.*\.(?:mp3|webm|wav|m4a|ogg|3gp|flac)).*?\]\]/gim;
+
+    // https://regex101.com/r/eqnJeW/1
+    this.obsidianCodeBlock = /(?:```(?:.*?\n?)+?```)(?:\n|$)/gim;
 
     this.codeBlock = /<code\b[^>]*>(.*?)<\/code>/gims;
 
@@ -70,5 +78,15 @@ export class Regex {
       settings.flashcardsTag +
       "[/-]spaced)((?: *#[\\p{Letter}-]+)*) *\\n?(?:\\^(\\d{13}))?";
     this.cardsSpacedStyle = new RegExp(str, flags);
+
+    // https://regex101.com/r/cgtnLf/1
+    // str = "(?:.*?(==(.*?)==).*)(?:\n?^(d{13}))?";
+    // this.clozeHighlight = /((==)(.*?)(==))/gm;
+
+    // str = "( {0,3}[#]{0,6})?(?:(?:[\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.*?(==.+?==|{.+?}).*?)((?: *#[\\w-]+)+|$)(?:\n\\^(?:\\d{13}))?"
+    // this.cardsClozeWholeLine = new RegExp(str, flags);
+    
+    // this.singleClozeCurly = /((?:{)(?:(\d):?)?(.+?)(?:}))/g;
+    // this.singleClozeHighlight = /((?:==)(.+?)(?:==))/g;
   }
 }

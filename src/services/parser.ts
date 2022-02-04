@@ -4,7 +4,9 @@ import { Regex } from "src/regex";
 import { Flashcard } from "../entities/flashcard";
 import { Inlinecard } from "src/entities/inlinecard";
 import { Spacedcard } from "src/entities/spacedcard";
+import { Clozecard } from "src/entities/clozecard";
 import { escapeMarkdown } from "src/utils";
+import { Card } from "src/entities/card";
 
 export class Parser {
   private regex: Regex;
@@ -40,6 +42,11 @@ export class Parser {
       headings = [...file.matchAll(this.regex.headingsRegex)];
     }
 
+     // filter  in cacheCodeSections only the objects with type "code"
+    // the line is 0-indexed
+    // const codeSections = this.app.metadataCache.getFileCache(this.app.workspace.getActiveFile()).sections.filter(section => section.type === "code")
+
+
     note = this.substituteObsidianLinks(`[[${note}]]`, vault);
     cards = cards.concat(
       this.generateCardsWithTag(file, headings, deck, vault, note, globalTags)
@@ -50,6 +57,9 @@ export class Parser {
     cards = cards.concat(
       this.generateSpacedCards(file, headings, deck, vault, note, globalTags)
     );
+    // cards = cards.concat(
+    //   this.generateClozeCards(file, headings, deck, vault, note, globalTags)
+    // );
     cards.sort((a, b) => a.endOffset - b.endOffset);
 
     const defaultAnkiTag = this.settings.defaultAnkiTag;
