@@ -42,11 +42,6 @@ export class Parser {
       headings = [...file.matchAll(this.regex.headingsRegex)];
     }
 
-     // filter  in cacheCodeSections only the objects with type "code"
-    // the line is 0-indexed
-    // const codeSections = this.app.metadataCache.getFileCache(this.app.workspace.getActiveFile()).sections.filter(section => section.type === "code")
-
-
     note = this.substituteObsidianLinks(`[[${note}]]`, vault);
     cards = cards.concat(
       this.generateCardsWithTag(file, headings, deck, vault, note, globalTags)
@@ -57,9 +52,24 @@ export class Parser {
     cards = cards.concat(
       this.generateSpacedCards(file, headings, deck, vault, note, globalTags)
     );
-    // cards = cards.concat(
+          // cards = cards.concat(
     //   this.generateClozeCards(file, headings, deck, vault, note, globalTags)
     // );
+
+    
+    // Filter out cards that are fully inside a code block
+    const codeBlocks = [...file.matchAll(this.regex.obsidianCodeBlock)];
+    const rangesToDiscard = codeBlocks.map(x=>([x.index, x.index+x[0].length]))
+    cards = cards.filter(card => {
+      const cardRange = [card.initialOffset, card.endOffset];
+      const isInRangeToDiscard = rangesToDiscard.some(range => {
+        return (
+          cardRange[0] >= range[0] && cardRange[1] <= range[1]
+        );
+      });
+      return !isInRangeToDiscard;
+    });
+
     cards.sort((a, b) => a.endOffset - b.endOffset);
 
     const defaultAnkiTag = this.settings.defaultAnkiTag;
@@ -154,6 +164,7 @@ export class Parser {
       medias = medias.concat(this.getAudioLinks(prompt));
       prompt = this.parseLine(prompt, vault);
 
+      const initialOffset = match.index;
       const endingLine = match.index + match[0].length;
       const tags: string[] = this.parseTags(match[4], globalTags);
       const id: number = match[5] ? Number(match[5]) : -1;
@@ -170,6 +181,7 @@ export class Parser {
         originalPrompt,
         fields,
         reversed,
+        initialOffset,
         endingLine,
         tags,
         inserted,
@@ -226,6 +238,7 @@ export class Parser {
       question = this.parseLine(question, vault);
       answer = this.parseLine(answer, vault);
 
+      const initialOffset = match.index
       const endingLine = match.index + match[0].length;
       const tags: string[] = this.parseTags(match[5], globalTags);
       const id: number = match[6] ? Number(match[6]) : -1;
@@ -242,6 +255,7 @@ export class Parser {
         originalQuestion,
         fields,
         reversed,
+        initialOffset,
         endingLine,
         tags,
         inserted,
@@ -291,6 +305,7 @@ export class Parser {
       question = this.parseLine(question, vault);
       answer = this.parseLine(answer, vault);
 
+      const initialOffset = match.index
       const endingLine = match.index + match[0].length;
       const tags: string[] = this.parseTags(match[4], globalTags);
       const id: number = match[6] ? Number(match[6]) : -1;
@@ -307,6 +322,7 @@ export class Parser {
         originalQuestion,
         fields,
         reversed,
+        initialOffset,
         endingLine,
         tags,
         inserted,

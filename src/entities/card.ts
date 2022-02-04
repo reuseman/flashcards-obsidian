@@ -7,6 +7,7 @@ export abstract class Card {
   initialContent: string;
   fields: Record<string, string>;
   reversed: boolean;
+  initialOffset: number;
   endOffset: number;
   tags: string[];
   inserted: boolean;
@@ -22,6 +23,7 @@ export abstract class Card {
     initialContent: string,
     fields: Record<string, string>,
     reversed: boolean,
+    initialOffset: number,
     endOffset: number,
     tags: string[],
     inserted: boolean,
@@ -33,6 +35,7 @@ export abstract class Card {
     this.initialContent = initialContent;
     this.fields = fields;
     this.reversed = reversed;
+    this.initialOffset = initialOffset
     this.endOffset = endOffset;
     this.tags = tags;
     this.inserted = inserted;
