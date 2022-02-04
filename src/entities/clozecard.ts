@@ -28,7 +28,7 @@ export class Clozecard extends Card {
       mediaNames,
       containsCode
     );
-    this.modelName = `Obsidian-clozed`;
+    this.modelName = `Obsidian-cloze`;
     if (fields["Source"]) {
       this.modelName += sourceDeckExtension;
     }
@@ -69,6 +69,6 @@ export class Clozecard extends Card {
   };
 
   public getIdFormat(): string {
-    return "^" + this.id.toString() + "\n";
+    return "\n^" + this.id.toString();
   }
 }

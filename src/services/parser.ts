@@ -52,12 +52,12 @@ export class Parser {
     cards = cards.concat(
       this.generateSpacedCards(file, headings, deck, vault, note, globalTags)
     );
-          // cards = cards.concat(
-    //   this.generateClozeCards(file, headings, deck, vault, note, globalTags)
-    // );
+    cards = cards.concat(
+      this.generateClozeCards(file, headings, deck, vault, note, globalTags)
+    );
 
     
-    // Filter out cards that are fully inside a code block
+    // Filter out cards that are fully inside a code block (that's needed for the  )
     const codeBlocks = [...file.matchAll(this.regex.obsidianCodeBlock)];
     const rangesToDiscard = codeBlocks.map(x=>([x.index, x.index+x[0].length]))
     cards = cards.filter(card => {
@@ -179,6 +179,87 @@ export class Parser {
         id,
         deck,
         originalPrompt,
+        fields,
+        reversed,
+        initialOffset,
+        endingLine,
+        tags,
+        inserted,
+        medias,
+        containsCode
+      );
+      cards.push(card);
+    }
+
+    return cards;
+  }
+
+  private generateClozeCards(
+    file: string,
+    headings: any,
+    deck: string,
+    vault: string,
+    note: string,
+    globalTags: string[] = []
+  ) {
+    const contextAware = this.settings.contextAwareMode;
+    const cards: Clozecard[] = [];
+    const matches = [...file.matchAll(this.regex.cardsClozeWholeLine)];
+
+    for (const match of matches) {
+      const reversed = false;
+      let headingLevel = -1;
+      if (match[1]) {
+        headingLevel =
+          match[1].trim().length !== 0 ? match[1].trim().length : -1;
+      }
+      // Match.index - 1 because otherwise in the context there will be even match[1], i.e. the question itself
+      const context = contextAware
+        ? this.getContext(headings, match.index - 1, headingLevel)
+        : "";
+      
+
+        // Replace the curly in the line with Anki syntax
+      let clozeText = match[2].replace(this.regex.singleClozeCurly, (match, g1, g2, g3) => {
+        console.log("group1 :" + g1);
+        console.log("group2 :" + g2);
+        console.log("group3 :" + g3);
+          if (g2) {
+            return `{{c${g2}::${g3}}}`;
+          } else {
+            return `{{c1::${g3}}}`;
+          }
+        } );
+      
+      // Replace the highlight clozes in the line with Anki syntax
+      clozeText = clozeText.replace(this.regex.singleClozeHighlight, "{{c1::$2}}");
+
+      const originalLine = match[2].trim();
+      // Add context
+      clozeText = contextAware
+        ? [...context, clozeText.trim()].join(
+            `${this.settings.contextSeparator}`
+          )
+        : clozeText.trim();
+      let medias: string[] = this.getImageLinks(clozeText);
+      medias = medias.concat(this.getAudioLinks(clozeText));
+      clozeText = this.parseLine(clozeText, vault);
+
+      const initialOffset = match.index;
+      const endingLine = match.index + match[0].length;
+      const tags: string[] = this.parseTags(match[4], globalTags);
+      const id: number = match[5] ? Number(match[5]) : -1;
+      const inserted: boolean = match[5] ? true : false;
+      const fields: any = { Text: clozeText, Extra: "" };
+      if (this.settings.sourceSupport) {
+        fields["Source"] = note;
+      }
+      const containsCode = this.containsCode([clozeText]);
+
+      const card = new Clozecard(
+        id,
+        deck,
+        originalLine,
         fields,
         reversed,
         initialOffset,
@@ -398,8 +479,7 @@ export class Parser {
         filename
       )}.md`;
       const fileRename = rename ? rename : filename;
-      const link = `<a href="${href}">[[${fileRename}]]</a>`;
-      return link;
+      return `<a href="${href}">[[${fileRename}]]</a>`;
     });
   }
 

@@ -80,13 +80,11 @@ export class Regex {
     this.cardsSpacedStyle = new RegExp(str, flags);
 
     // https://regex101.com/r/cgtnLf/1
-    // str = "(?:.*?(==(.*?)==).*)(?:\n?^(d{13}))?";
-    // this.clozeHighlight = /((==)(.*?)(==))/gm;
 
-    // str = "( {0,3}[#]{0,6})?(?:(?:[\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.*?(==.+?==|{.+?}).*?)((?: *#[\\w-]+)+|$)(?:\n\\^(?:\\d{13}))?"
-    // this.cardsClozeWholeLine = new RegExp(str, flags);
+    str = "( {0,3}[#]{0,6})?(?:(?:[\\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.*?(==.+?==|\\{.+?\\}).*?)((?: *#[\\w\\-\\/_]+)+|$)(?:\n\\^(\\d{13}))?"
+    this.cardsClozeWholeLine = new RegExp(str, flags);
     
-    // this.singleClozeCurly = /((?:{)(?:(\d):?)?(.+?)(?:}))/g;
-    // this.singleClozeHighlight = /((?:==)(.+?)(?:==))/g;
+    this.singleClozeCurly = /((?:{)(?:(\d):?)?(.+?)(?:}))/g;
+    this.singleClozeHighlight = /((?:==)(.+?)(?:==))/g;
   }
 }

@@ -13,8 +13,10 @@ Anki integration for [Obsidian](https://obsidian.md/).
 📅 Spaced-only cards with **#card-spaced** or **#card/spaced**  
 ✍️ Inline style with **Question::Answer**  
 ✍️ Inline style reversed with **Question:::Answer**  
+📃 Cloze with **==Highlight==** or **{Curly brackets}** or  **{2:Cloze}**   
 🧠 **Context-aware** mode  
 🏷️ Global and local **tags**  
+
 🔢 Support for **LaTeX**  
 🖼️ Support for **images**  
 🎤 Support for **audios**   
