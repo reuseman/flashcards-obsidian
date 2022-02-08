@@ -57,7 +57,7 @@ The wiki explains in detail [how to use it](https://github.com/reuseman/flashcar
 3. Open the settings of the plugin, and while Anki is opened press "**Grant Permission**"
 
 ## Contributing
-Contributions via bug reports, bug fixes, are welcome. If you have ideas about features to be implemented, please open an issue so we can discuss the best way to implement it. 
+Contributions via bug reports, bug fixes, are welcome. If you have ideas about features to be implemented, please open an issue so we can discuss the best way to implement it. For more details check [Contributing.md](docs/CONTRIBUTING.md)
 
 ## Support
 If flashcards plugin is useful to you and you want to support me, you can thank me with a coffee :)
