@@ -8,7 +8,7 @@ export class SettingsTab extends PluginSettingTab {
     const plugin = (this as any).plugin;
 
     containerEl.empty();
-    containerEl.createEl("h1", { text: "Flashcards" });
+    containerEl.createEl("h1", { text: "Flashcards - Settings" });
 
     const description = createFragment()
     description.append(
@@ -50,7 +50,8 @@ export class SettingsTab extends PluginSettingTab {
             .catch(() => new Notice("Anki is not connected"));
         });
       });
-    containerEl.createEl("h2", { text: "General Settings" });
+  
+    containerEl.createEl("h2", { text: "General" });
 
     new Setting(containerEl)
       .setName("Context-aware mode")
@@ -125,6 +126,22 @@ export class SettingsTab extends PluginSettingTab {
           });
       });
 
+      new Setting(containerEl)
+        .setName("Default Anki tag")
+        .setDesc("This tag will be added to each generated card on Anki")
+        .addText((text) => {
+          text
+            .setValue(plugin.settings.defaultAnkiTag)
+            .setPlaceholder("Anki tag")
+            .onChange((value) => {
+              if (!value) new Notice("No default tags will be added");
+              plugin.settings.defaultAnkiTag = value.toLowerCase();
+              plugin.saveData(plugin.settings);
+            });
+        });
+
+    containerEl.createEl("h2", { text: "Cards Identification" });
+
     new Setting(containerEl)
       .setName("Flashcards #tag")
       .setDesc(
@@ -198,18 +215,5 @@ export class SettingsTab extends PluginSettingTab {
       });
 
 
-    new Setting(containerEl)
-      .setName("Default Anki tag")
-      .setDesc("This tag will be added to each generated card on Anki")
-      .addText((text) => {
-        text
-          .setValue(plugin.settings.defaultAnkiTag)
-          .setPlaceholder("Anki tag")
-          .onChange((value) => {
-            if (!value) new Notice("No default tags will be added");
-            plugin.settings.defaultAnkiTag = value.toLowerCase();
-            plugin.saveData(plugin.settings);
-          });
-      });
   }
 }
