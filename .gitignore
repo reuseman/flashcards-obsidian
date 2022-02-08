@@ -9,6 +9,8 @@ package-lock.json
 # build
 main.js
 *.js.map
+docs/test-vault/.obsidian/plugins/flashcards/main.js
+docs/test-vault/.obsidian/plugins/flashcards/manifest.json
 
 # scripts
 move.sh
@@ -24,5 +26,8 @@ move.sh
 # Local History for Visual Studio Code
 .history/
 
-# Gtihub
+# Github
 .DS_Store
+
+# Test-vault
+docs/test-vault/.obsidian/workspace
