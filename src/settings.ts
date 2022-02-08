@@ -5,6 +5,7 @@ export interface ISettings {
   inlineID: boolean;
   contextSeparator: string;
   deck: string;
+  folderBasedDeck: boolean;
   flashcardsTag: string;
   inlineSeparator: string;
   inlineSeparatorReverse: string;

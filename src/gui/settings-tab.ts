@@ -96,7 +96,18 @@ export class SettingsTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Default deck")
+      .setName("Folder-based deck name")
+      .setDesc("Add ID to end of line for inline cards.")
+      .addToggle((toggle) =>
+        toggle.setValue(plugin.settings.folderBasedDeck).onChange((value) => {
+          plugin.settings.folderBasedDeck = value;
+          plugin.saveData(plugin.settings);
+        })
+      );
+
+
+    new Setting(containerEl)
+      .setName("Default deck name")
       .setDesc(
         "The name of the default deck where the cards will be added when not specified."
       )
