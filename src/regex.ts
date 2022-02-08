@@ -5,12 +5,15 @@ export class Regex {
   wikiImageLinks: RegExp;
   markdownImageLinks: RegExp;
   wikiAudioLinks: RegExp;
-  obsidianCodeBlock: RegExp;
+  obsidianCodeBlock: RegExp; // ```code block``
   codeBlock: RegExp;
+  mathBlock: RegExp; // $$ latex $$
+  mathInline: RegExp; // $ latex $
   cardsDeckLine: RegExp;
   cardsToDelete: RegExp;
   globalTagsSplitter: RegExp;
   tagHierarchy: RegExp;
+
   flashscardsWithTag: RegExp;
   cardsInlineStyle: RegExp;
   cardsSpacedStyle: RegExp;
@@ -40,6 +43,9 @@ export class Regex {
     this.obsidianCodeBlock = /(?:```(?:.*?\n?)+?```)(?:\n|$)/gim;
 
     this.codeBlock = /<code\b[^>]*>(.*?)<\/code>/gims;
+
+    this.mathBlock = /(\$\$)(.*?)(\$\$)/gis;
+    this.mathInline = /(\$)(.*?)(\$)/gi;
 
     this.cardsDeckLine = /cards-deck: [\p{L}]+/giu;
     this.cardsToDelete = /^\s*(?:\n)(?:\^(\d{13}))(?:\n\s*?)?/gm;
