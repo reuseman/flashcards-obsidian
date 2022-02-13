@@ -96,6 +96,17 @@ export class SettingsTab extends PluginSettingTab {
         })
       );
 
+      new Setting(containerEl)
+      .setName("Hide IDs")
+      .setDesc("Uses HTMl to comment out and hide IDs. NOTE: Will break all cards that were created before/after changing.")
+      .addToggle((toggle) =>
+        toggle.setValue(plugin.settings.hideID).onChange((value) => {
+          plugin.settings.hideID = value;
+          plugin.saveData(plugin.settings);
+        })
+      );
+
+
     new Setting(containerEl)
       .setName("Folder-based deck name")
       .setDesc("Add ID to end of line for inline cards.")

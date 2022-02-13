@@ -55,13 +55,23 @@ export class Regex {
       /\[\[(.*?)\]\]|#([\p{L}:\-_/]+)|([\p{L}:\-_/]+)/gimu;
     this.tagHierarchy = /\//gm;
 
+
+    // Opening and closing tags for HTML comments
+    let commentOpen = "";
+    let commentClose = "";
+
+    if (settings.hideID) {
+      commentOpen = "<!--";
+      commentClose = "-->";
+    }
+
     // Cards
     const flags = "gimu";
     // https://regex101.com/r/p3yQwY/2
     let str =
       "( {0,3}[#]*)((?:[^\\n]\\n?)+?)(#" +
       settings.flashcardsTag +
-      "(?:[/-]reverse)?)((?: *#[\\p{Letter}\\-\\/_]+)*) *?\\n+((?:[^\\n]\\n?)*?(?=\\^\\d{13}|$))(?:\\^(\\d{13}))?";
+      "(?:[/-]reverse)?)((?: *#[\\p{Letter}\\-\\/_]+)*) *?\\n+((?:[^\\n]\\n?)*?(?=" + commentOpen + "\\^\\d{13}|$))(?:" + commentOpen + "\\^(\\d{13})" + commentClose + ")?";
     this.flashscardsWithTag = new RegExp(str, flags);
 
     // https://regex101.com/r/8wmOo8/1
@@ -71,10 +81,11 @@ export class Regex {
     // sepShortest is the shortest
     if (settings.inlineID) {
       str =
-        "( {0,3}[#]{0,6})?(?:(?:[\\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.+?) ?(" + sepLongest + "|" + sepShortest + ") ?(.+?)((?: *#[\\p{Letter}\\-\\/_]+)+)?(?:\\s+\\^(\\d{13})|$)";
+          "( {0,3}[#]{0,6})?(?:(?:[\\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.+?) ?(" + sepLongest + "|" + sepShortest + ") ?(.+?)((?: *#[\\p{Letter}\\-\\/_]+)+)?(?:\\s+" + commentOpen + "\\^(\\d{13})" + commentClose + "|$)";  
+    
     } else {
       str =
-        "( {0,3}[#]{0,6})?(?:(?:[\\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.+?) ?(" + sepLongest + "|" + sepShortest + ") ?(.+?)((?: *#[\\p{Letter}\\-\\/_]+)+|$)(?:\\n\\^(\\d{13}))?";
+          "( {0,3}[#]{0,6})?(?:(?:[\\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.+?) ?(" + sepLongest + "|" + sepShortest + ") ?(.+?)((?: *#[\\p{Letter}\\-\\/_]+)+)?(?:\\s+" + commentOpen + "\\^(\\d{13})" + commentClose + "|$)";
     }
     this.cardsInlineStyle = new RegExp(str, flags);
 
@@ -82,12 +93,12 @@ export class Regex {
     str =
       "( {0,3}[#]*)((?:[^\\n]\\n?)+?)(#" +
       settings.flashcardsTag +
-      "[/-]spaced)((?: *#[\\p{Letter}-]+)*) *\\n?(?:\\^(\\d{13}))?";
+      "[/-]spaced)((?: *#[\\p{Letter}-]+)*) *\\n?(?:" + commentOpen +"\\^(\\d{13})" + commentClose + ")?";
     this.cardsSpacedStyle = new RegExp(str, flags);
 
     // https://regex101.com/r/cgtnLf/1
 
-    str = "( {0,3}[#]{0,6})?(?:(?:[\\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.*?(==.+?==|\\{.+?\\}).*?)((?: *#[\\w\\-\\/_]+)+|$)(?:\n\\^(\\d{13}))?"
+    str = "( {0,3}[#]{0,6})?(?:(?:[\\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.*?(==.+?==|\\{.+?\\}).*?)((?: *#[\\w\\-\\/_]+)+|$)(?:\n" + commentOpen + "\\^(\\d{13})" + commentClose +")?"
     this.cardsClozeWholeLine = new RegExp(str, flags);
     
     this.singleClozeCurly = /((?:{)(?:(\d):?)?(.+?)(?:}))/g;

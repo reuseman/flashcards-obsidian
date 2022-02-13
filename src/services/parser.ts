@@ -7,6 +7,7 @@ import { Spacedcard } from "src/entities/spacedcard";
 import { Clozecard } from "src/entities/clozecard";
 import { escapeMarkdown } from "src/utils";
 import { Card } from "src/entities/card";
+import { settings } from "cluster";
 
 export class Parser {
   private regex: Regex;
@@ -176,6 +177,7 @@ export class Parser {
         fields["Source"] = note;
       }
       const containsCode = this.containsCode([prompt]);
+      const hideId = this.settings.hideID;
 
       const card = new Spacedcard(
         id,
@@ -188,7 +190,8 @@ export class Parser {
         tags,
         inserted,
         medias,
-        containsCode
+        containsCode,
+        hideId
       );
       cards.push(card);
     }
@@ -272,6 +275,7 @@ export class Parser {
         fields["Source"] = note;
       }
       const containsCode = this.containsCode([clozeText]);
+      const hideId = this.settings.hideID;
 
       const card = new Clozecard(
         id,
@@ -284,7 +288,8 @@ export class Parser {
         tags,
         inserted,
         medias,
-        containsCode
+        containsCode,
+        hideId
       );
       cards.push(card);
     }
@@ -346,6 +351,7 @@ export class Parser {
         fields["Source"] = note;
       }
       const containsCode = this.containsCode([question, answer]);
+      const hideId = this.settings.hideID;
 
       const card = new Inlinecard(
         id,
@@ -358,7 +364,8 @@ export class Parser {
         tags,
         inserted,
         medias,
-        containsCode
+        containsCode,
+        hideId
       );
       cards.push(card);
     }
@@ -413,6 +420,7 @@ export class Parser {
         fields["Source"] = note;
       }
       const containsCode = this.containsCode([question, answer]);
+      const hideId = this.settings.hideID;
 
       const card = new Flashcard(
         id,
@@ -425,7 +433,8 @@ export class Parser {
         tags,
         inserted,
         medias,
-        containsCode
+        containsCode,
+        hideId
       );
       cards.push(card);
     }

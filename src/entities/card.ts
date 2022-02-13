@@ -15,6 +15,7 @@ export abstract class Card {
   mediaBase64Encoded: string[];
   oldTags: string[];
   containsCode: boolean;
+  hideId: boolean;
   modelName: string;
 
   constructor(
@@ -28,7 +29,8 @@ export abstract class Card {
     tags: string[],
     inserted: boolean,
     mediaNames: string[],
-    containsCode = false
+    containsCode = false,
+    hideId: boolean
   ) {
     this.id = id;
     this.deckName = deckName;
@@ -43,6 +45,7 @@ export abstract class Card {
     this.mediaBase64Encoded = [];
     this.oldTags = [];
     this.containsCode = containsCode;
+    this.hideId = hideId;
     this.modelName = "";
   }
 

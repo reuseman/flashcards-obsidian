@@ -3,6 +3,7 @@ export interface ISettings {
   sourceSupport: boolean;
   codeHighlightSupport: boolean;
   inlineID: boolean;
+  hideID: boolean;
   contextSeparator: string;
   deck: string;
   folderBasedDeck: boolean;

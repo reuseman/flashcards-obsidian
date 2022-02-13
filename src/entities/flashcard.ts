@@ -13,7 +13,8 @@ export class Flashcard extends Card {
     tags: string[] = [],
     inserted = false,
     mediaNames: string[],
-    containsCode: boolean
+    containsCode: boolean,
+    hideId: boolean
   ) {
     super(
       id,
@@ -26,7 +27,8 @@ export class Flashcard extends Card {
       tags,
       inserted,
       mediaNames,
-      containsCode
+      containsCode,
+      hideId
     );
     this.modelName = this.reversed
       ? `Obsidian-basic-reversed`
@@ -71,6 +73,10 @@ export class Flashcard extends Card {
   };
 
   public getIdFormat(): string {
-    return "^" + this.id.toString() + "\n";
+    if(this.hideId) {
+      return "<!--^" + this.id.toString() + "-->\n"; 
+    } else {
+      return "^" + this.id.toString() + "\n";
+    }
   }
 }

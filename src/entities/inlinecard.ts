@@ -13,7 +13,8 @@ export class Inlinecard extends Card {
     tags: string[] = [],
     inserted = false,
     mediaNames: string[],
-    containsCode: boolean
+    containsCode: boolean,
+    hideId: boolean
   ) {
     super(
       id,
@@ -26,7 +27,8 @@ export class Inlinecard extends Card {
       tags,
       inserted,
       mediaNames,
-      containsCode
+      containsCode,
+      hideId
     ); // ! CHANGE []
 
     this.modelName = this.reversed
@@ -72,6 +74,10 @@ export class Inlinecard extends Card {
   };
 
   public getIdFormat(): string {
-    return "^" + this.id.toString();
+    if(this.hideId) {
+      return "<!--^" + this.id.toString() + "-->";
+    } else {
+      return "^" + this.id.toString();
+    }
   }
 }

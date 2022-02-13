@@ -13,7 +13,8 @@ export class Clozecard extends Card {
     tags: string[] = [],
     inserted = false,
     mediaNames: string[],
-    containsCode: boolean
+    containsCode: boolean,
+    hideId: boolean
   ) {
     super(
       id,
@@ -26,7 +27,8 @@ export class Clozecard extends Card {
       tags,
       inserted,
       mediaNames,
-      containsCode
+      containsCode,
+      hideId
     );
     this.modelName = `Obsidian-cloze`;
     if (fields["Source"]) {
@@ -69,6 +71,10 @@ export class Clozecard extends Card {
   };
 
   public getIdFormat(): string {
-    return "\n^" + this.id.toString();
+    if(this.hideId) {
+      return "\n<!--^" + this.id.toString() + "-->";
+    } else {
+      return "\n^" + this.id.toString();
+    }
   }
 }

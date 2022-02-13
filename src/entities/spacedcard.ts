@@ -13,7 +13,8 @@ export class Spacedcard extends Card {
     tags: string[] = [],
     inserted = false,
     mediaNames: string[],
-    containsCode: boolean
+    containsCode: boolean,
+    hideId: boolean
   ) {
     super(
       id,
@@ -26,7 +27,8 @@ export class Spacedcard extends Card {
       tags,
       inserted,
       mediaNames,
-      containsCode
+      containsCode,
+      hideId
     );
     this.modelName = `Obsidian-spaced`;
     if (fields["Source"]) {
@@ -69,6 +71,10 @@ export class Spacedcard extends Card {
   };
 
   public getIdFormat(): string {
-    return "^" + this.id.toString() + "\n";
+    if(this.hideId) {
+      return "<!--^" + this.id.toString() + "-->\n";
+    } else {
+      return "^" + this.id.toString() + "\n";
+    }
   }
 }
