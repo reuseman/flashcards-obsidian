@@ -8,11 +8,11 @@ import {
   TFile,
 } from "obsidian";
 import { Parser } from "src/services/parser";
-import { ISettings } from "src/settings";
+import { ISettings } from "src/conf/settings";
 import { Card } from "src/entities/card";
 import { arrayBufferToBase64 } from "src/utils";
-import { Regex } from "src/regex";
-import { noticeTimeout } from "src/constants";
+import { Regex } from "src/conf/regex";
+import { noticeTimeout } from "src/conf/constants";
 import { Inlinecard } from "src/entities/inlinecard";
 
 export class CardsService {

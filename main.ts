@@ -1,9 +1,9 @@
 import { addIcon, Notice, Plugin, TFile } from 'obsidian';
-import { ISettings } from 'src/settings';
+import { ISettings } from 'src/conf/settings';
 import { SettingsTab } from 'src/gui/settings-tab';
 import { CardsService } from 'src/services/cards';
 import { Anki } from 'src/services/anki';
-import { noticeTimeout, flashcardsIcon } from 'src/constants';
+import { noticeTimeout, flashcardsIcon } from 'src/conf/constants';
 
 export default class ObsidianFlashcard extends Plugin {
 	private settings: ISettings

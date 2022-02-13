@@ -1,6 +1,6 @@
-import { ISettings } from "src/settings";
+import { ISettings } from "src/conf/settings";
 import * as showdown from "showdown";
-import { Regex } from "src/regex";
+import { Regex } from "src/conf/regex";
 import { Flashcard } from "../entities/flashcard";
 import { Inlinecard } from "src/entities/inlinecard";
 import { Spacedcard } from "src/entities/spacedcard";

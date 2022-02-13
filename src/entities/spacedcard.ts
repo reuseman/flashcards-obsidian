@@ -1,4 +1,4 @@
-import { codeDeckExtension, sourceDeckExtension } from "src/constants";
+import { codeDeckExtension, sourceDeckExtension } from "src/conf/constants";
 import { Card } from "src/entities/card";
 
 export class Spacedcard extends Card {

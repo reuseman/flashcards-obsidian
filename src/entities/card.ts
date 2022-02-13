@@ -1,4 +1,4 @@
-import { codeDeckExtension } from "src/constants";
+import { codeDeckExtension } from "src/conf/constants";
 import { arraysEqual } from "src/utils";
 
 export abstract class Card {

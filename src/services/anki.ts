@@ -7,7 +7,7 @@ import {
   highlightCssBase64,
   codeDeckExtension,
   sourceDeckExtension,
-} from "src/constants";
+} from "src/conf/constants";
 
 export class Anki {
   public async createModels(
