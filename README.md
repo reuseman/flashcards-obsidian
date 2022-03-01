@@ -24,6 +24,8 @@ Anki integration for [Obsidian](https://obsidian.md/).
 ⚓ Support for **reference to note**  
 📟 Support for **code syntax highlight**
 
+For other features check the [wiki](https://github.com/reuseman/flashcards-obsidian/wiki).
+
 ## How it works?
 
 The following is a demo where the three main operations are shown:
