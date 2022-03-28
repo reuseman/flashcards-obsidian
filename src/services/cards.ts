@@ -58,15 +58,13 @@ export class CardsService {
     // Parse frontmatter
     const frontmatter = fileCachedMetadata.frontmatter;
     let deckName = "";
-    if (this.settings.folderBasedDeck && activeFile.parent.path !== "/") {
+    if (parseFrontMatterEntry(frontmatter, "cards-deck")) {
+      deckName = parseFrontMatterEntry(frontmatter, "cards-deck");
+    } else if (this.settings.folderBasedDeck && activeFile.parent.path !== "/") {
       // If the current file is in the path "programming/java/strings.md" then the deck name is "programming::java"
-      deckName = activeFile.parent.path.split("/").join("::")
+      deckName = activeFile.parent.path.split("/").join("::");
     } else {
       deckName = this.settings.deck;
-    }
-    if (frontmatter) {
-      deckName =
-        parseFrontMatterEntry(frontmatter, "cards-deck") || this.settings.deck;
     }
 
     try {
