@@ -22,6 +22,8 @@ export class Regex {
   singleClozeHighlight: RegExp;
   clozeHighlight: RegExp;
 
+  embedBlock: RegExp;
+
   constructor(settings: ISettings) {
     this.update(settings);
   }
@@ -92,5 +94,7 @@ export class Regex {
     
     this.singleClozeCurly = /((?:{)(?:(\d):?)?(.+?)(?:}))/g;
     this.singleClozeHighlight = /((?:==)(.+?)(?:==))/g;
+
+    this.embedBlock = /!\[\[(.*?)\]\]/g;
   }
 }

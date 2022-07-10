@@ -7,6 +7,7 @@ import { Spacedcard } from "src/entities/spacedcard";
 import { Clozecard } from "src/entities/clozecard";
 import { escapeMarkdown } from "src/utils";
 import { Card } from "src/entities/card";
+import { htmlToMarkdown } from 'obsidian';
 
 export class Parser {
   private regex: Regex;
@@ -378,6 +379,8 @@ export class Parser {
     const cards: Flashcard[] = [];
     const matches = [...file.matchAll(this.regex.flashscardsWithTag)];
 
+    const embedMap = this.getEmbedMap();
+
     for (const match of matches) {
       const reversed: boolean =
         match[3].trim().toLowerCase() ===
@@ -400,6 +403,9 @@ export class Parser {
       let medias: string[] = this.getImageLinks(question);
       medias = medias.concat(this.getImageLinks(answer));
       medias = medias.concat(this.getAudioLinks(answer));
+
+      answer = this.getEmbedWrapContent(embedMap, answer);
+
       question = this.parseLine(question, vault);
       answer = this.parseLine(answer, vault);
 
@@ -543,4 +549,40 @@ export class Parser {
   public getAnkiIDsBlocks(file: string): RegExpMatchArray[] {
     return Array.from(file.matchAll(/\^(\d{13})\s*/gm));
   }
+
+  private getEmbedMap() {
+
+    // key：link url 
+    // value： embed content parse from html document
+    const embedMap = new Map()
+  
+    var embedList = Array.from(document.documentElement.getElementsByClassName('internal-embed'));
+  
+  
+    Array.from(embedList).forEach((el) => {
+      // markdown-embed-content markdown-embed-page
+      var embedContentHtml = el.getElementsByClassName('markdown-embed-content')[0];
+  
+      var embedValue = this.htmlConverter.makeMarkdown(this.htmlConverter.makeHtml(embedContentHtml.outerHTML).toString());
+
+      var embedKey = el.getAttribute("src");
+      embedMap.set(embedKey, embedValue);
+  
+      // console.log("embedKey: \n" + embedKey);
+      // console.log("embedValue: \n" + embedValue);
+    });
+  
+    return embedMap;
+  }
+  
+  private getEmbedWrapContent(embedMap: Map<any, any>, embedContent: string): string {
+        var result = embedContent.match(this.regex.embedBlock);
+        while( result = this.regex.embedBlock.exec(embedContent)){
+          // console.log("result[0]: " + result[0]);
+          // console.log("embedMap.get(result[1]): " + embedMap.get(result[1]));
+          embedContent = embedContent.concat(embedMap.get(result[1]));
+        }
+        return embedContent;
+  }
+  
 }
