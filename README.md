@@ -54,7 +54,6 @@ The wiki explains in detail [how to use it](https://github.com/reuseman/flashcar
 2. Install [AnkiConnect](https://ankiweb.net/shared/info/2055492159) on Anki
    - Tools > Add-ons -> Get Add-ons...
    - Paste the code **2055492159** > Ok
-   - Select the plugin > Config > Paste the configuration below
 
 3. Open the settings of the plugin, and while Anki is opened press "**Grant Permission**"
 
