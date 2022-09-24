@@ -1,3 +1,6 @@
+> :warning: **I am currently looking out for a co-maintainer.** Look at [#125](https://github.com/reuseman/flashcards-obsidian/issues/125), and if you are interested let me know :)
+---
+
 # Flashcards
 
 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/reuseman/flashcards-obsidian?style=for-the-badge&sort=semver)](https://github.com/reuseman/flashcards-obsidian/releases/latest)
