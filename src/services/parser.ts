@@ -62,7 +62,7 @@ export class Parser {
     const mathBlocks = [...file.matchAll(this.regex.mathBlock)];
     const mathInline = [...file.matchAll(this.regex.mathInline)];
     const blocksToFilter = [...codeBlocks, ...mathBlocks, ...mathInline];
-    const rangesToDiscard = blocksToFilter.map(x=>([x.index, x.index+x[0].length]))
+    const rangesToDiscard = blocksToFilter.map(x => ([x.index, x.index + x[0].length]))
     cards = cards.filter(card => {
       const cardRange = [card.initialOffset, card.endOffset];
       const isInRangeToDiscard = rangesToDiscard.some(range => {
@@ -160,8 +160,8 @@ export class Parser {
       const originalPrompt = match[2].trim();
       let prompt = contextAware
         ? [...context, match[2].trim()].join(
-            `${this.settings.contextSeparator}`
-          )
+          `${this.settings.contextSeparator}`
+        )
         : match[2].trim();
       let medias: string[] = this.getImageLinks(prompt);
       medias = medias.concat(this.getAudioLinks(prompt));
@@ -212,7 +212,7 @@ export class Parser {
     const mathBlocks = [...file.matchAll(this.regex.mathBlock)];
     const mathInline = [...file.matchAll(this.regex.mathInline)];
     const blocksToFilter = [...mathBlocks, ...mathInline];
-    const rangesToDiscard = blocksToFilter.map(x=>([x.index, x.index+x[0].length]))
+    const rangesToDiscard = blocksToFilter.map(x => ([x.index, x.index + x[0].length]))
 
     for (const match of matches) {
       const reversed = false;
@@ -236,7 +236,7 @@ export class Parser {
         if (isInMathBlock) {
           return match;
         } else {
-           if (g2) {
+          if (g2) {
             return `{{c${g2}::${g3}}}`;
           } else {
             return `{{c1::${g3}}}`;
@@ -256,8 +256,8 @@ export class Parser {
       // Add context
       clozeText = contextAware
         ? [...context, clozeText.trim()].join(
-            `${this.settings.contextSeparator}`
-          )
+          `${this.settings.contextSeparator}`
+        )
         : clozeText.trim();
       let medias: string[] = this.getImageLinks(clozeText);
       medias = medias.concat(this.getAudioLinks(clozeText));
@@ -327,8 +327,8 @@ export class Parser {
       const originalQuestion = match[2].trim();
       let question = contextAware
         ? [...context, match[2].trim()].join(
-            `${this.settings.contextSeparator}`
-          )
+          `${this.settings.contextSeparator}`
+        )
         : match[2].trim();
       let answer = match[4].trim();
       let medias: string[] = this.getImageLinks(question);
@@ -384,9 +384,9 @@ export class Parser {
     for (const match of matches) {
       const reversed: boolean =
         match[3].trim().toLowerCase() ===
-          `#${this.settings.flashcardsTag}-reverse` ||
+        `#${this.settings.flashcardsTag}-reverse` ||
         match[3].trim().toLowerCase() ===
-          `#${this.settings.flashcardsTag}/reverse`;
+        `#${this.settings.flashcardsTag}/reverse`;
       const headingLevel = match[1].trim().length !== 0 ? match[1].length : -1;
       // Match.index - 1 because otherwise in the context there will be even match[1], i.e. the question itself
       const context = contextAware
@@ -396,8 +396,8 @@ export class Parser {
       const originalQuestion = match[2].trim();
       let question = contextAware
         ? [...context, match[2].trim()].join(
-            `${this.settings.contextSeparator}`
-          )
+          `${this.settings.contextSeparator}`
+        )
         : match[2].trim();
       let answer = match[5].trim();
       let medias: string[] = this.getImageLinks(question);
@@ -494,7 +494,7 @@ export class Parser {
   }
 
   private substituteObsidianLinks(str: string, vaultName: string) {
-    const linkRegex = /\[\[(.+?)(?:\|(.+))?\]\]/gim;
+    const linkRegex = /\[\[(.+?)(?:\|(.+?))?\]\]/gim;
     vaultName = encodeURIComponent(vaultName);
 
     return str.replace(linkRegex, (match, filename, rename) => {
@@ -555,34 +555,34 @@ export class Parser {
     // key：link url 
     // value： embed content parse from html document
     const embedMap = new Map()
-  
+
     var embedList = Array.from(document.documentElement.getElementsByClassName('internal-embed'));
-  
-  
+
+
     Array.from(embedList).forEach((el) => {
       // markdown-embed-content markdown-embed-page
       var embedContentHtml = el.getElementsByClassName('markdown-embed-content')[0];
-  
+
       var embedValue = this.htmlConverter.makeMarkdown(this.htmlConverter.makeHtml(embedContentHtml.outerHTML).toString());
 
       var embedKey = el.getAttribute("src");
       embedMap.set(embedKey, embedValue);
-  
+
       // console.log("embedKey: \n" + embedKey);
       // console.log("embedValue: \n" + embedValue);
     });
-  
+
     return embedMap;
   }
-  
+
   private getEmbedWrapContent(embedMap: Map<any, any>, embedContent: string): string {
-        var result = embedContent.match(this.regex.embedBlock);
-        while( result = this.regex.embedBlock.exec(embedContent)){
-          // console.log("result[0]: " + result[0]);
-          // console.log("embedMap.get(result[1]): " + embedMap.get(result[1]));
-          embedContent = embedContent.concat(embedMap.get(result[1]));
-        }
-        return embedContent;
+    var result = embedContent.match(this.regex.embedBlock);
+    while (result = this.regex.embedBlock.exec(embedContent)) {
+      // console.log("result[0]: " + result[0]);
+      // console.log("embedMap.get(result[1]): " + embedMap.get(result[1]));
+      embedContent = embedContent.concat(embedMap.get(result[1]));
+    }
+    return embedContent;
   }
-  
+
 }
