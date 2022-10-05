@@ -494,7 +494,7 @@ export class Parser {
   }
 
   private substituteObsidianLinks(str: string, vaultName: string) {
-    const linkRegex = /\[\[(.+?)(?:\|(.+))?\]\]/gim;
+    const linkRegex = /\[\[(.+?)(?:\|(.+?))?\]\]/gim;
     vaultName = encodeURIComponent(vaultName);
 
     return str.replace(linkRegex, (match, filename, rename) => {
