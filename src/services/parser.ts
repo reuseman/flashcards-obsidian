@@ -245,7 +245,21 @@ export class Parser {
       });
 
       // Replace the highlight clozes in the line with Anki syntax
-      clozeText = clozeText.replace(this.regex.singleClozeHighlight, "{{c1::$2}}");
+      // increment c1, c2, c3, etc. as regex greedily replaces for every match in the regex
+      // example: clozeText = clozeText.replace(this.regex.singleClozeHighlight, "{{c1::$2}}");
+      
+      let clozeNumber = 1;
+      // loop through all the clozes in the line
+      for (const cloze of clozeText.matchAll(this.regex.singleClozeHighlight)) {
+        // if the cloze is not in a math block, then replace it with Anki syntax
+        const globalOffset = matchIndex + cloze.index;
+        const isInMathBlock = rangesToDiscard.some(x => (globalOffset >= x[0] && globalOffset + cloze[0].length <= x[1]));
+        if (!isInMathBlock) {
+          clozeText = clozeText.replace(cloze[0], `{{c${clozeNumber}::${cloze[2]}}}`);
+          clozeNumber++;
+        }
+      }
+
 
       if (clozeText === match[2]) {
         // If the clozeText is the same as the match it means that the curly clozes were all in math blocks
