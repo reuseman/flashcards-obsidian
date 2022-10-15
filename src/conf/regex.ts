@@ -54,7 +54,7 @@ export class Regex {
 
     // https://regex101.com/r/WxuFI2/1
     this.globalTagsSplitter =
-      /\[\[(.*?)\]\]|#([\p{L}:\-_/]+)|([\p{L}:\-_/]+)/gimu;
+      /\[\[(.*?)\]\]|#([\p{L}\d:\-_/]+)|([\p{L}\d:\-_/]+)/gimu;
     this.tagHierarchy = /\//gm;
 
     // Cards
