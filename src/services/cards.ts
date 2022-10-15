@@ -413,7 +413,7 @@ export class CardsService {
     if (globalTags) {
       for (let i = 0; i < globalTags.length; i++) {
         globalTags[i] = globalTags[i].replace("#", "");
-        globalTags[i] = globalTags[i].replace("/", "::");
+        globalTags[i] = globalTags[i].replaceAll("/", "::");
         globalTags[i] = globalTags[i].replace(/\[\[(.*)\]\]/, "$1");
         globalTags[i] = globalTags[i].trim();
         globalTags[i] = globalTags[i].replace(/ /g, "-");
