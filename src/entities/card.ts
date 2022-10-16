@@ -57,7 +57,7 @@ export abstract class Card {
     //     return false
     // }
 
-    const fields = Object.entries(card.fields);
+    const fields : any = Object.entries(card.fields);
     // This is the case of a switch from a model to another one. It cannot be handeled
     if (fields.length !== Object.entries(this.fields).length) {
       return true;
