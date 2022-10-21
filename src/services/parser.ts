@@ -561,9 +561,7 @@ export class Parser {
 
     Array.from(embedList).forEach((el) => {
       // markdown-embed-content markdown-embed-page
-      var embedContentHtml = el.getElementsByClassName('markdown-embed-content')[0];
-
-      var embedValue = this.htmlConverter.makeMarkdown(this.htmlConverter.makeHtml(embedContentHtml.outerHTML).toString());
+      var embedValue = this.htmlConverter.makeMarkdown(this.htmlConverter.makeHtml(el.outerHTML).toString());
 
       var embedKey = el.getAttribute("src");
       embedMap.set(embedKey, embedValue);
