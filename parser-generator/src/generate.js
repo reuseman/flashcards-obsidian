@@ -12,24 +12,22 @@ semantics.addOperation('eval()', {
 		return out;
 	},
 
-	Flashcard(question, back) {
+	Flashcard(flashcard) {
+		return {
+			flashcard: flashcard.eval(),
+		};
+	},
+
+	FlashcardTagged(question, answer, tag) {
 		return {
 			question: question.eval(),
-			back: back.eval(),
-		};
-	},
-
-	questionTagged(question, _tag) {
-		return {
-			question: question.sourceString,
-		}
-	},
-
-	backTagged(answer, id) {
-		return {
 			answer: answer.sourceString,
-			id: id.sourceString,
+			tag: tag.sourceString,
 		};
+	},
+
+	question(question, _delimiter) {
+		return question.sourceString;
 	},
 
 	flashcardId(_, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13) {
