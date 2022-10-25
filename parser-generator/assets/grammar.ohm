@@ -2,11 +2,12 @@ G {
   Main = Flashcard* end
 
   // PLUGIN SYNTAX
-  Flashcard = questionTagged backTagged
-  backTagged = answerTagged flashcardId? // backTagged represents second half of card
-  answerTagged = (~(flashcardId? answerTaggedDelimiter) answerContentType)*
+  Flashcard = frontTagged backTagged
+  frontTagged = question<tag>
+  backTagged = answer<answerTaggedDelimiter> flashcardId?
+  question<delimiter> = (~delimiter questionContentType)* delimiter
+  answer<delimiter> = (~(flashcardId? delimiter) answerContentType)*
   answerTaggedDelimiter = newline newline
-  questionTagged = (~tag questionContentType)* tag
   tag = "#card"
 
   answerContentType = any
