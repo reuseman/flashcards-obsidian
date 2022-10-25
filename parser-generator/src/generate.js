@@ -19,10 +19,11 @@ semantics.addOperation('eval()', {
 	},
 
 	FlashcardTagged(question, answer, tag) {
+		console.log(Object.getOwnPropertyNames(tag.source))
 		return {
 			question: question.eval(),
 			answer: answer.sourceString,
-			tag: tag.sourceString,
+			tag: tag.child(0)?.eval(),
 		};
 	},
 
@@ -31,9 +32,7 @@ semantics.addOperation('eval()', {
 	},
 
 	flashcardId(_, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13) {
-		// Concatenate all the digits and return the source string
 		const digits = [d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13].map(d => d.sourceString).join('');
-		// Convert to a number
 		return parseInt(digits, 10);
 	},
 });
