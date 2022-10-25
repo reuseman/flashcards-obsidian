@@ -1,0 +1,31 @@
+G {
+//   Start = ListOf<letter, ",">
+  Main = Flashcard* end
+  // Flashcard = F_id | Obsidian_tag
+
+  // PLUGIN SYNTAX
+  Flashcard = Question "#card" Newline? Answer F_id?
+
+  Question = alnum*
+  Answer = alnum*
+
+  // ANKI SYNTAX
+
+  // Anki card ID - e.g. ^1643061575720
+  F_id = "^" digit digit digit digit digit digit digit digit digit digit digit digit digit
+
+  // OBSIDIAN SYNTAX
+
+  // Obsidian tag - e.g. #main_tag/sub_tag-with123/other_sub
+  Tag = "#" letter (alnum | "_" | "-" | "/")*
+
+  header1 = "#"
+  header2 = "##"
+  header3 = "###"
+  header4 = "####"
+  header5 = "#####"
+  header6 = "######"
+
+  // OTHER
+  Newline = "\r\n" | "\n" | "\r"
+}
