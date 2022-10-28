@@ -1,0 +1,33 @@
+G {
+  Main = Flashcard* end
+
+  // PLUGIN SYNTAX
+  Flashcard = FlashcardTagged
+  FlashcardTagged = question<tag> answer<answerTaggedDelimiter> flashcardId?
+  question<delimiter> = (~delimiter questionContentType)* delimiter
+  answer<delimiter> = (~(flashcardId? delimiter) answerContentType)*
+
+  tag = "#card"
+  answerTaggedDelimiter = newline newline
+
+  answerContentType = any
+  questionContentType = any
+
+  // Anki card ID - e.g. ^1643061575720
+  flashcardId = "^" digit digit digit digit digit digit digit digit digit digit digit digit digit
+
+  // OTHER
+  newline = "\r\n" | "\n" | "\r"
+
+  // OBSIDIAN SYNTAX
+
+  // Obsidian tag - e.g. #main_tag/sub_tag-with123/other_sub
+  //Tag = "#" letter (alnum | "_" | "-" | "/")*
+
+  header1 = "#"
+  header2 = "##"
+  header3 = "###"
+  header4 = "####"
+  header5 = "#####"
+  header6 = "######"
+}
