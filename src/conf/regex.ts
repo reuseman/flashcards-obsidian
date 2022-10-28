@@ -54,7 +54,7 @@ export class Regex {
 
     // https://regex101.com/r/WxuFI2/1
     this.globalTagsSplitter =
-      /\[\[(.*?)\]\]|#([\p{L}:\-_/]+)|([\p{L}:\-_/]+)/gimu;
+      /\[\[(.*?)\]\]|#([\p{L}\d:\-_/]+)|([\p{L}\d:\-_/]+)/gimu;
     this.tagHierarchy = /\//gm;
 
     // Cards
@@ -95,6 +95,7 @@ export class Regex {
     this.singleClozeCurly = /((?:{)(?:(\d):?)?(.+?)(?:}))/g;
     this.singleClozeHighlight = /((?:==)(.+?)(?:==))/g;
 
-    this.embedBlock = /!\[\[(.*?)\]\]/g;
+    // Matches any embedded block but the one with an used extension from the wikilinks
+    this.embedBlock = /!\[\[(.*?)(?<!\.(?:png|jpg|jpeg|gif|bmp|svg|tiff|mp3|webm|wav|m4a|ogg|3gp|flac))\]\]/g;
   }
 }
