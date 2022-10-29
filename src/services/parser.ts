@@ -158,11 +158,10 @@ export class Parser {
         : "";
 
       const originalPrompt = match[2].trim();
-      let prompt = contextAware
-        ? [...context, match[2].trim()].join(
-          `${this.settings.contextSeparator}`
-        )
-        : match[2].trim();
+
+      let promptContext = context.join(`${this.settings.contextSeparator}`)
+      let prompt = match[2].trim();
+
       let medias: string[] = this.getImageLinks(prompt);
       medias = medias.concat(this.getAudioLinks(prompt));
       prompt = this.parseLine(prompt, vault);
@@ -172,7 +171,7 @@ export class Parser {
       const tags: string[] = this.parseTags(match[4], globalTags);
       const id: number = match[5] ? Number(match[5]) : -1;
       const inserted: boolean = match[5] ? true : false;
-      const fields: any = { Prompt: prompt };
+      const fields: any = { Prompt: prompt, Context: promptContext };
       if (this.settings.sourceSupport) {
         fields["Source"] = note;
       }
@@ -253,12 +252,10 @@ export class Parser {
       }
 
       const originalLine = match[2].trim();
-      // Add context
-      clozeText = contextAware
-        ? [...context, clozeText.trim()].join(
-          `${this.settings.contextSeparator}`
-        )
-        : clozeText.trim();
+      
+      let clozeContext = context.join(`${this.settings.contextSeparator}`)
+      clozeText = clozeText.trim();
+
       let medias: string[] = this.getImageLinks(clozeText);
       medias = medias.concat(this.getAudioLinks(clozeText));
       clozeText = this.parseLine(clozeText, vault);
@@ -268,7 +265,7 @@ export class Parser {
       const tags: string[] = this.parseTags(match[4], globalTags);
       const id: number = match[5] ? Number(match[5]) : -1;
       const inserted: boolean = match[5] ? true : false;
-      const fields: any = { Text: clozeText, Extra: "" };
+      const fields: any = { Text: clozeText, Extra: "", Context: clozeContext };
       if (this.settings.sourceSupport) {
         fields["Source"] = note;
       }
@@ -325,11 +322,10 @@ export class Parser {
         : "";
 
       const originalQuestion = match[2].trim();
-      let question = contextAware
-        ? [...context, match[2].trim()].join(
-          `${this.settings.contextSeparator}`
-        )
-        : match[2].trim();
+
+      let questionContext = context.join(`${this.settings.contextSeparator}`)
+      let question = match[2].trim();
+
       let answer = match[4].trim();
       let medias: string[] = this.getImageLinks(question);
       medias = medias.concat(this.getImageLinks(answer));
@@ -342,7 +338,7 @@ export class Parser {
       const tags: string[] = this.parseTags(match[5], globalTags);
       const id: number = match[6] ? Number(match[6]) : -1;
       const inserted: boolean = match[6] ? true : false;
-      const fields: any = { Front: question, Back: answer };
+      const fields: any = { Front: question, Back: answer, Context: questionContext };
       if (this.settings.sourceSupport) {
         fields["Source"] = note;
       }
@@ -394,11 +390,10 @@ export class Parser {
         : "";
 
       const originalQuestion = match[2].trim();
-      let question = contextAware
-        ? [...context, match[2].trim()].join(
-          `${this.settings.contextSeparator}`
-        )
-        : match[2].trim();
+
+      let questionContext = context.join(`${this.settings.contextSeparator}`)
+      let question = match[2].trim();
+
       let answer = match[5].trim();
       let medias: string[] = this.getImageLinks(question);
       medias = medias.concat(this.getImageLinks(answer));
@@ -414,7 +409,7 @@ export class Parser {
       const tags: string[] = this.parseTags(match[4], globalTags);
       const id: number = match[6] ? Number(match[6]) : -1;
       const inserted: boolean = match[6] ? true : false;
-      const fields: any = { Front: question, Back: answer };
+      const fields: any = { Front: question, Back: answer, Context: questionContext };
       if (this.settings.sourceSupport) {
         fields["Source"] = note;
       }
