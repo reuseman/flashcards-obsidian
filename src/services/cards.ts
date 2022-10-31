@@ -230,6 +230,10 @@ export class CardsService {
     let newFrontmatter = "";
     const cardsDeckLine = `cards-deck: ${deckName}\n`;
     if (frontmatter) {
+      if (deckName === obsidian.parseFrontMatterEntry(frontmatter, "cards-deck")) {
+        console.log('Skipping frontmatter update, as there is no change in cards-deck');
+        return;
+      }
       const oldFrontmatter: string = this.file.substring(
         frontmatter.position.start.offset,
         frontmatter.position.end.offset
