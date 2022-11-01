@@ -333,6 +333,7 @@ export class Parser {
       let answer = match[4].trim();
       let medias: string[] = this.getImageLinks(question);
       medias = medias.concat(this.getImageLinks(answer));
+      medias = medias.concat(this.getAudioLinks(question));
       medias = medias.concat(this.getAudioLinks(answer));
       question = this.parseLine(question, vault);
       answer = this.parseLine(answer, vault);
@@ -402,6 +403,7 @@ export class Parser {
       let answer = match[5].trim();
       let medias: string[] = this.getImageLinks(question);
       medias = medias.concat(this.getImageLinks(answer));
+      medias = medias.concat(this.getAudioLinks(question));
       medias = medias.concat(this.getAudioLinks(answer));
 
       answer = this.getEmbedWrapContent(embedMap, answer);
