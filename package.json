@@ -35,6 +35,7 @@
   },
   "dependencies": {
     "@types/showdown": "^1.9.3",
-    "showdown": "^1.9.1"
+    "showdown": "^1.9.1",
+    "ts-dedent": "^2.2.0"
   }
 }
