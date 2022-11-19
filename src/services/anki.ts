@@ -8,12 +8,23 @@ import {
   codeDeckExtension,
   sourceDeckExtension,
 } from "src/conf/constants";
+import * as templates from "./templates";
+
+interface ModelParams {
+  modelName: string;
+  inOrderFields: string[];
+  css: string;
+  isCloze: boolean;
+  cardTemplates: { Name: string; Front: string; Back: string }[];
+}
+
+interface Model {
+  action: string;
+  params: ModelParams;
+}
 
 export class Anki {
-  public async createModels(
-    sourceSupport: boolean,
-    codeHighlightSupport: boolean
-  ) {
+  public async createModels(sourceSupport: boolean, codeHighlightSupport: boolean) {
     let models = this.getModels(sourceSupport, false);
     if (codeHighlightSupport) {
       models = models.concat(this.getModels(sourceSupport, true));
@@ -113,9 +124,7 @@ export class Anki {
         },
       });
 
-      updateActions = updateActions.concat(
-        this.mergeTags(card.oldTags, card.tags, card.id)
-      );
+      updateActions = updateActions.concat(this.mergeTags(card.oldTags, card.tags, card.id));
       ids.push(card.id);
     }
 
@@ -214,116 +223,79 @@ export class Anki {
     });
   }
 
-  private getModels(
-    sourceSupport: boolean,
-    codeHighlightSupport: boolean
-  ): object[] {
-    let sourceFieldContent = "";
-    let codeScriptContent = "";
-    let sourceExtension = "";
-    let codeExtension = "";
-    if (sourceSupport) {
-      sourceFieldContent = "\r\n" + sourceField;
-      sourceExtension = sourceDeckExtension;
-    }
+  private getModels(sourceSupport: boolean, codeHighlightSupport: boolean): Model[] {
+    const sourceExtension = sourceSupport ? sourceDeckExtension : "";
+    const sourceFieldContent = sourceSupport ? sourceField : "";
+    const codeExtension = codeHighlightSupport ? codeDeckExtension : "";
+    const codeScriptContent = codeHighlightSupport ? codeScript : "";
 
-    if (codeHighlightSupport) {
-      codeScriptContent = "\r\n" + codeScript + "\r\n";
-      codeExtension = codeDeckExtension;
-    }
+    const css = templates.formatStyle();
+    const front = templates.formatBasicFront(codeScriptContent);
+    const back = templates.formatBasicBack(sourceFieldContent);
+    const frontReversed = templates.formatReversedFront(codeScriptContent);
+    const backReversed = templates.formatReversedBack(sourceFieldContent);
+    const clozeFront = templates.formatClozeFront(codeScriptContent);
+    const clozeBack = templates.formatClozeBack(sourceFieldContent, codeScriptContent);
+    const prompt = templates.formatPromptFront(codeScriptContent);
+    const promptBack = templates.formatPromptBack(sourceFieldContent);
 
-    const css =
-      '.card {\r\n font-family: arial;\r\n font-size: 20px;\r\n text-align: center;\r\n color: black;\r\n background-color: white;\r\n}\r\n\r\n.tag::before {\r\n\tcontent: "#";\r\n}\r\n\r\n.tag {\r\n  color: white;\r\n  background-color: #9F2BFF;\r\n  border: none;\r\n  font-size: 11px;\r\n  font-weight: bold;\r\n  padding: 1px 8px;\r\n  margin: 0px 3px;\r\n  text-align: center;\r\n  text-decoration: none;\r\n  cursor: pointer;\r\n  border-radius: 14px;\r\n  display: inline;\r\n  vertical-align: middle;\r\n}\r\n .cloze { font-weight: bold; color: blue;}.nightMode .cloze { color: lightblue;}';
-    const front = `{{Front}}\r\n<p class=\"tags\">{{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>${codeScriptContent}`;
-    const back = `{{FrontSide}}\n\n<hr id=answer>\n\n{{Back}}${sourceFieldContent}`;
-    const frontReversed = `{{Back}}\r\n<p class=\"tags\">{{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>${codeScriptContent}`;
-    const backReversed = `{{FrontSide}}\n\n<hr id=answer>\n\n{{Front}}${sourceFieldContent}`;
-    const prompt = `{{Prompt}}\r\n<p class="tags\">🧠spaced {{Tags}}<\/p>\r\n\r\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>${codeScriptContent}`;
-    const promptBack = `{{FrontSide}}\n\n<hr id=answer>🧠 Review done.${sourceFieldContent}`;
-    const clozeFront = `{{cloze:Text}}\n\n<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>${codeScriptContent}`;
-    const clozeBack = `{{cloze:Text}}\n\n<br>{{Extra}}${sourceFieldContent}<script>\r\n    var tagEl = document.querySelector(\'.tags\');\r\n    var tags = tagEl.innerHTML.split(\' \');\r\n    var html = \'\';\r\n    tags.forEach(function(tag) {\r\n\tif (tag) {\r\n\t    var newTag = \'<span class=\"tag\">\' + tag + \'<\/span>\';\r\n           html += newTag;\r\n    \t    tagEl.innerHTML = html;\r\n\t}\r\n    });\r\n    \r\n<\/script>${codeScriptContent}`;
+    const makeModel = ({
+      name,
+      fields,
+      templates,
+      isCloze = false,
+    }: {
+      name: string;
+      fields: string[];
+      templates: { name: string; front: string; back: string }[];
+      isCloze?: boolean;
+    }): Model => {
+      if (sourceSupport) {
+        fields.push("Source");
+      }
 
-    let classicFields = ["Front", "Back"];
-    let promptFields = ["Prompt"];
-    let clozeFields = ["Text", "Extra"];
-    if (sourceSupport) {
-      classicFields = classicFields.concat("Source");
-      promptFields = promptFields.concat("Source");
-      clozeFields = clozeFields.concat("Source");
-    }
-
-    const obsidianBasic = {
-      action: "createModel",
-      params: {
-        modelName: `Obsidian-basic${sourceExtension}${codeExtension}`,
-        inOrderFields: classicFields,
-        css: css,
-        cardTemplates: [
-          {
-            Name: "Front / Back",
-            Front: front,
-            Back: back,
-          },
-        ],
-      },
+      return {
+        action: "createModel",
+        params: {
+          modelName: `Obsidian-${name}${sourceExtension}${codeExtension}`,
+          inOrderFields: fields,
+          isCloze,
+          css,
+          cardTemplates: templates.map((t) => ({
+            Name: t.name,
+            Front: t.front,
+            Back: t.back,
+          })),
+        },
+      };
     };
 
-    const obsidianBasicReversed = {
-      action: "createModel",
-      params: {
-        modelName: `Obsidian-basic-reversed${sourceExtension}${codeExtension}`,
-        inOrderFields: classicFields,
-        css: css,
-        cardTemplates: [
-          {
-            Name: "Front / Back",
-            Front: front,
-            Back: back,
-          },
-          {
-            Name: "Back / Front",
-            Front: frontReversed,
-            Back: backReversed,
-          },
-        ],
-      },
-    };
+    const basic = makeModel({
+      name: "basic",
+      fields: ["Front", "Back"],
+      templates: [{ name: "Front / Back", front, back }],
+    });
+    const reversed = makeModel({
+      name: "basic-reversed",
+      fields: ["Front", "Back"],
+      templates: [
+        { name: "Front / Back", front, back },
+        { name: "Back / Front", front: frontReversed, back: backReversed },
+      ],
+    });
+    const cloze = makeModel({
+      name: "cloze",
+      fields: ["Text", "Extra"],
+      isCloze: true,
+      templates: [{ name: "Cloze", front: clozeFront, back: clozeBack }],
+    });
+    const spaced = makeModel({
+      name: "spaced",
+      fields: ["Prompt"],
+      templates: [{ name: "Spaced", front: prompt, back: promptBack }],
+    });
 
-    const obsidianCloze = {
-      action: "createModel",
-      params: {
-        modelName: `Obsidian-cloze${sourceExtension}${codeExtension}`,
-        inOrderFields: clozeFields,
-        css: css,
-        isCloze: true,
-        cardTemplates: [
-          {
-            Name: "Cloze",
-            Front: clozeFront,
-            Back: clozeBack,
-          },
-        ],
-      },
-      
-    }
-
-    const obsidianSpaced = {
-      action: "createModel",
-      params: {
-        modelName: `Obsidian-spaced${sourceExtension}${codeExtension}`,
-        inOrderFields: promptFields,
-        css: css,
-        cardTemplates: [
-          {
-            Name: "Spaced",
-            Front: prompt,
-            Back: promptBack,
-          },
-        ],
-      },
-    };
-
-    return [obsidianBasic, obsidianBasicReversed, obsidianCloze, obsidianSpaced];
+    return [basic, reversed, cloze, spaced];
   }
 
   public async requestPermission() {
