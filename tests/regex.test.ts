@@ -22,7 +22,11 @@ describe("Regex class unit tests", () => {
       type Match = [string, string];
 
       const candidates: [string, Match[]][] = [
-        ["#Question :: Answer", [["Question", "Answer"]]],
+        ["Question :: Answer", [["Question", "Answer"]]],
+        // FIXME: should be "Question" instead of " Question"
+        // ["# Question :: Answer", [[" Question", "Answer"]]],
+        // FIXME: should not match? (tag then separator)
+        // ["#Question :: Answer", []],
         ["Answer ::: Question", [["Answer", "Question"]]],
         ["Question :: Answer ^123456789", [["Question", "Answer ^123456789"]]],
         ["Question :: Answer ^123456789\n^123456789", [["Question", "Answer ^123456789"]]],
@@ -66,7 +70,7 @@ describe("Regex class unit tests", () => {
             [" Item 2b", "Bb"],
           ],
         ],
-        // FIXME: should not match
+        // FIXME: should not match?
         // ["no :::: match", []],
         ["2000 :: answer", [["2000", "answer"]]],
       ];
