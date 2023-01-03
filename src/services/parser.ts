@@ -5,7 +5,7 @@ import { Flashcard } from "../entities/flashcard";
 import { Inlinecard } from "src/entities/inlinecard";
 import { Spacedcard } from "src/entities/spacedcard";
 import { Clozecard } from "src/entities/clozecard";
-import { escapeMarkdown } from "src/utils";
+import {escapeMarkdown, substituteSep} from "src/utils";
 import { Card } from "src/entities/card";
 import { htmlToMarkdown } from 'obsidian';
 
@@ -509,6 +509,9 @@ export class Parser {
   private substituteImageLinks(str: string): string {
     str = str.replace(this.regex.wikiImageLinks, "<img src='$1'>");
     str = str.replace(this.regex.markdownImageLinks, "<img src='$1'>");
+    str = str.replace(this.regex.htmlImgTags,  function (match, p1, p2) {
+      return substituteSep(match);
+    });
 
     return str;
   }
