@@ -1,5 +1,6 @@
 import { codeDeckExtension, sourceDeckExtension } from "src/conf/constants";
 import { Card } from "src/entities/card";
+import {substituteSep} from "src/utils";
 
 export class Flashcard extends Card {
   constructor(
@@ -58,7 +59,7 @@ export class Flashcard extends Card {
     const medias: object[] = [];
     this.mediaBase64Encoded.forEach((data, index) => {
       medias.push({
-        filename: this.mediaNames[index],
+        filename: substituteSep(this.mediaNames[index]),
         data: data,
       });
     });

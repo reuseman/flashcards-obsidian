@@ -5,6 +5,7 @@ export class Regex {
   wikiImageLinks: RegExp;
   markdownImageLinks: RegExp;
   wikiAudioLinks: RegExp;
+  htmlImgTags: RegExp;
   obsidianCodeBlock: RegExp; // ```code block``
   codeBlock: RegExp;
   mathBlock: RegExp; // $$ latex $$
@@ -40,6 +41,8 @@ export class Regex {
 
     this.wikiAudioLinks =
       /!\[\[(.*\.(?:mp3|webm|wav|m4a|ogg|3gp|flac)).*?\]\]/gim;
+
+    this.htmlImgTags = /<img src=([^>]+)'/g;
 
     // https://regex101.com/r/eqnJeW/1
     this.obsidianCodeBlock = /(?:```(?:.*?\n?)+?```)(?:\n|$)/gim;
