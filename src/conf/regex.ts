@@ -52,7 +52,7 @@ export class Regex {
     this.mathBlock = /(\$\$)(.*?)(\$\$)/gis;
     this.mathInline = /(\$)(.*?)(\$)/gi;
 
-    this.cardsDeckLine = /cards-deck: [\p{L}]+/giu;
+    this.cardsDeckLine = /cards-deck: [^\n]+/giu;
     this.cardsToDelete = /^\s*(?:\n)(?:\^(\d{13}))(?:\n\s*?)?/gm;
 
     // https://regex101.com/r/WxuFI2/1
