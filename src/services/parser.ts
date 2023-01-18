@@ -463,7 +463,7 @@ export class Parser {
           vaultName
         )
       )
-    );
+    ).replace(/&nbsp;/g, ' ');
   }
 
   private getImageLinks(str: string) {
