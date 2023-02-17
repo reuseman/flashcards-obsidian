@@ -139,7 +139,11 @@ export class Anki {
     return await this.invoke("cardsInfo", 6, { cards: ids });
   }
 
-  public async getCards(ids: number[]) {
+  public async findNotes(deckName: string) {
+    return await this.invoke("findNotes", 6, { query: `deck:"${deckName}"` });
+  }
+
+  public async notesInfo(ids: number[]) {
     return await this.invoke("notesInfo", 6, { notes: ids });
   }
 
@@ -304,7 +308,7 @@ export class Anki {
           },
         ],
       },
-      
+
     }
 
     const obsidianSpaced = {

@@ -60,7 +60,10 @@ export class CardsService {
     let deckName = "";
     if (parseFrontMatterEntry(frontmatter, "cards-deck")) {
       deckName = parseFrontMatterEntry(frontmatter, "cards-deck");
-    } else if (this.settings.folderBasedDeck && activeFile.parent.path !== "/") {
+    } else if (
+      this.settings.folderBasedDeck &&
+      activeFile.parent.path !== "/"
+    ) {
       // If the current file is in the path "programming/java/strings.md" then the deck name is "programming::java"
       deckName = activeFile.parent.path.split("/").join("::");
     } else {
@@ -81,8 +84,14 @@ export class CardsService {
       globalTags = this.parseGlobalTags(this.file);
       // TODO with empty check that does not call ankiCards line
       const ankiBlocks = this.parser.getAnkiIDsBlocks(this.file);
+      const ankiIDs = this.getAnkiIDs(ankiBlocks);
+      const ankiNotes = await this.anki.findNotes(deckName);
+      // const inObsidianNotAnki = ankiIDs.filter((x) => !ankiNotes.includes(x));
+      // const inAnkiNotObsidian = ankiNotes.filter((x) => !ankiIDs.includes(x));
+      const inBoth = ankiIDs.filter((x) => ankiNotes.includes(x));
+
       const ankiCards = ankiBlocks
-        ? await this.anki.getCards(this.getAnkiIDs(ankiBlocks))
+        ? await this.anki.notesInfo(inBoth)
         : undefined;
 
       const cards: Card[] = this.parser.generateFlashcards(
