@@ -4,7 +4,7 @@
   "description": "An Anki integration.",
   "main": "main.js",
   "scripts": {
-    "dev": "rollup --config rollup.config.js -w --environment BUILD:dev",
+    "dev": "cp manifest.json docs/test-vault/.obsidian/plugins/flashcards-obsidian/ && rollup --config rollup.config.js -w --environment BUILD:dev",
     "build": "rollup --config rollup.config.js --environment BUILD:production",
     "test": "jest"
   },

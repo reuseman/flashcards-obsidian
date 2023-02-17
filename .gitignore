@@ -1,33 +1,34 @@
-# Intellij
+# Obsidian
+data.json
+
+# IntelliJ
+.idea/
 *.iml
-.idea
 
 # npm
-node_modules
+node_modules/
 package-lock.json
 
-# build
+# Build
 main.js
-*.js.map
-docs/test-vault/.obsidian/plugins/flashcards/main.js
-docs/test-vault/.obsidian/plugins/flashcards/manifest.json
 
-# scripts
+# Scripts
 move.sh
 
 # Visual Studio Code
-.vscode/*
+.vscode/
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
-*.code-workspace
-
-# Local History for Visual Studio Code
 .history/
 
-# Github
+# macOS
 .DS_Store
 
-# Test-vault
-docs/test-vault/.obsidian/workspace
+# Test vault
+docs/test-vault/.obsidian/*.json
+!docs/test-vault/.obsidian/community-plugins.json
+docs/test-vault/.obsidian/plugins/flashcards-obsidian/*
+!docs/test-vault/.obsidian/plugins/flashcards-obsidian/.hotreload
+!docs/test-vault/.obsidian/plugins/hot-reload/*
