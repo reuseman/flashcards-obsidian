@@ -164,7 +164,7 @@ export class SettingsTab extends PluginSettingTab {
      new Setting(containerEl)
       .setName("Inline card separator")
       .setDesc(
-        "The separator to identifty the inline cards in the notes."
+        "The separator to identify the inline cards in the notes."
       )
       .addText((text) => {
         text
