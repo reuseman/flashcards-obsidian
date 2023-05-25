@@ -493,14 +493,21 @@ export class Parser {
     return links;
   }
 
+  public updateCardSource(cards: Card[]){
+      for(let card of cards){
+          if(card.id == null) continue
+          card.fields["Source"] = card.fields["Source"].replace("__BLOCK_ID__", String(card.id));
+      }
+  }
+
   private substituteObsidianLinks(str: string, vaultName: string) {
     const linkRegex = /\[\[(.+?)(?:\|(.+?))?\]\]/gim;
     vaultName = encodeURIComponent(vaultName);
 
     return str.replace(linkRegex, (match, filename, rename) => {
       const href = `obsidian://open?vault=${vaultName}&file=${encodeURIComponent(
-        filename
-      )}.md`;
+        filename + "#^__BLOCK_ID__"
+      )}`;
       const fileRename = rename ? rename : filename;
       return `<a href="${href}">${fileRename}</a>`;
     });
