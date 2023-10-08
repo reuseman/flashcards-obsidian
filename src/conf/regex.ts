@@ -92,7 +92,7 @@ export class Regex {
     str = "( {0,3}[#]{0,6})?(?:(?:[\\t ]*)(?:\\d.|[-+*]|#{1,6}))?(.*?(==.+?==|\\{.+?\\}).*?)((?: *#[\\w\\-\\/_]+)+|$)(?:\n\\^(\\d{13}))?"
     this.cardsClozeWholeLine = new RegExp(str, flags);
     
-    this.singleClozeCurly = /((?:{)(?:(\d):?)?(.+?)(?:}))/g;
+    this.singleClozeCurly = /((?:{)(?:(\d):?)?((\$(.+?)\$)|(.+?))(?:}))/g;
     this.singleClozeHighlight = /((?:==)(.+?)(?:==))/g;
 
     // Matches any embedded block but the one with an used extension from the wikilinks
