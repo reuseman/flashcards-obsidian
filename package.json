@@ -1,40 +1,50 @@
 {
-  "name": "flashcards",
-  "version": "0.2.0",
-  "description": "An Anki integration.",
+  "name": "flashcards-obsidian",
+  "version": "2.0.0",
+  "description": "Anki flashcards for markdown notes with an Obsidian adapter.",
   "main": "main.js",
+  "type": "module",
   "scripts": {
-    "dev": "rollup --config rollup.config.js -w --environment BUILD:dev",
-    "build": "rollup --config rollup.config.js --environment BUILD:production",
-    "test": "jest"
+    "build": "tsc --noEmit && node esbuild.config.mjs production",
+    "coverage": "vitest run --coverage",
+    "dev": "node esbuild.config.mjs",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "version": "node version-bump.mjs && git add manifest.json versions.json"
   },
   "keywords": [
     "obsidian",
     "anki",
     "flashcards"
   ],
-  "author": "",
+  "author": "Alex Colucci",
   "license": "MIT",
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^15.1.0",
-    "@rollup/plugin-node-resolve": "^9.0.0",
-    "@rollup/plugin-typescript": "^6.0.0",
-    "@types/jest": "^29.2.0",
-    "@types/node": "^14.17.4",
-    "@typescript-eslint/eslint-plugin": "^5.7.0",
-    "@typescript-eslint/parser": "^5.7.0",
-    "eslint": "^8.4.1",
-    "jest": "^29.2.2",
-    "obsidian": "https://github.com/obsidianmd/obsidian-api/tarball/master",
-    "rollup": "^2.52.2",
-    "rollup-plugin-copy": "^3.4.0",
-    "ts-jest": "^29.0.3",
-    "ts-node": "^10.9.1",
-    "tslib": "^2.3.0",
-    "typescript": "^4.3.4"
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^24.7.2",
+    "@vitest/coverage-v8": "^4.0.3",
+    "esbuild": "^0.25.11",
+    "eslint": "^9.39.1",
+    "fast-check": "^4.3.0",
+    "globals": "^16.4.0",
+    "prettier": "^3.6.2",
+    "tslib": "^2.8.1",
+    "typescript": "^6.0.0",
+    "typescript-eslint": "^8.46.2",
+    "vitest": "^4.0.3"
   },
   "dependencies": {
-    "@types/showdown": "^1.9.3",
-    "showdown": "^1.9.1"
+    "mdast-util-from-markdown": "^2.0.2",
+    "mdast-util-gfm": "^3.1.0",
+    "mdast-util-to-string": "^4.0.0",
+    "micromark-extension-frontmatter": "^2.0.0",
+    "obsidian": "latest",
+    "remark-frontmatter": "^5.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.0.0"
   }
 }

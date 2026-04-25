@@ -1,9 +1,9 @@
 {
   "id": "flashcards-obsidian",
   "name": "Flashcards",
-  "version": "1.6.5",
-  "minAppVersion": "0.9.17",
-  "description": "Anki integration",
+  "version": "2.0.0",
+  "minAppVersion": "1.8.7",
+  "description": "Anki flashcards for markdown notes",
   "author": "Alex Colucci",
   "authorUrl": "https://github.com/reuseman",
   "isDesktopOnly": true
