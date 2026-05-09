@@ -4,11 +4,10 @@ import type { FlashcardsSettings } from "../config/settings.js";
 import type { Flashcard } from "../domain/card.js";
 
 export interface LegacyExtractContext {
-  defaultDeck: string;
   defaultTags: string[];
-  metadataDeck?: string | null;
   metadataTags: string[];
   notePath: string;
+  resolvedDeck: string;
 }
 
 interface LineInfo {
@@ -134,7 +133,7 @@ function makeCard(
 ): Flashcard {
   return {
     answer,
-    deckName: context.metadataDeck ?? context.defaultDeck,
+    deckName: context.resolvedDeck,
     front,
     kind,
     source: {

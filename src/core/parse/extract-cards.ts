@@ -24,6 +24,11 @@ export function extractCardsFromMarkdown(
 ): ExtractCardsResult {
   const cards: Flashcard[] = [];
   const metadata = parseNoteMetadata(markdown);
+  const resolvedDeck = resolveDeckName(
+    options.notePath,
+    options.settings,
+    metadata.cardDeck,
+  );
   const tree = fromMarkdown(markdown, {
     extensions: [frontmatter(["yaml"])],
     mdastExtensions: [gfmFromMarkdown()],
@@ -39,7 +44,7 @@ export function extractCardsFromMarkdown(
       if (front && back) {
         cards.push({
           answer: back,
-          deckName: metadata.cardDeck ?? options.settings.defaultDeck,
+          deckName: resolvedDeck,
           front,
           kind: type === "reversed" ? "reversed" : "basic",
           source: {
@@ -63,7 +68,7 @@ export function extractCardsFromMarkdown(
       if (inline) {
         cards.push({
           answer: inline.answer,
-          deckName: metadata.cardDeck ?? options.settings.defaultDeck,
+          deckName: resolvedDeck,
           front: inline.front,
           kind: inline.kind,
           source: {
@@ -80,7 +85,7 @@ export function extractCardsFromMarkdown(
       if (cloze) {
         cards.push({
           answer: "",
-          deckName: metadata.cardDeck ?? options.settings.defaultDeck,
+          deckName: resolvedDeck,
           front: cloze,
           kind: "cloze",
           source: {
@@ -96,11 +101,10 @@ export function extractCardsFromMarkdown(
   });
 
   const legacyCards = extractLegacyHashtagCards(markdown, tree, options.settings, {
-    defaultDeck: options.settings.defaultDeck,
     defaultTags: options.settings.defaultTags,
-    metadataDeck: metadata.cardDeck,
     metadataTags: metadata.tags,
     notePath: options.notePath,
+    resolvedDeck,
   });
   cards.push(...legacyCards);
 
@@ -203,4 +207,38 @@ function childText(node: Parent): string {
 
 function hasChildren(node: object): node is Parent {
   return "children" in node;
+}
+
+function resolveDeckName(
+  notePath: string,
+  settings: FlashcardsSettings,
+  metadataCardDeck: string | null | undefined,
+): string {
+  if (metadataCardDeck && metadataCardDeck.trim().length > 0) {
+    return metadataCardDeck;
+  }
+
+  if (settings.folderBasedDecks) {
+    const folderDeck = folderDeckFromPath(notePath);
+    if (folderDeck !== null) return folderDeck;
+  }
+
+  return settings.defaultDeck;
+}
+
+function folderDeckFromPath(notePath: string): string | null {
+  let p = notePath;
+  if (p.startsWith("./")) p = p.slice(2);
+  if (p.startsWith("/")) p = p.slice(1);
+
+  const parts = p.split("/");
+  // Drop final segment (filename).
+  parts.pop();
+
+  const segments = parts
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  if (segments.length === 0) return null;
+  return segments.join("::");
 }
