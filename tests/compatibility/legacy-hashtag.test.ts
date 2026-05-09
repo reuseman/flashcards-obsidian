@@ -7,23 +7,40 @@ import { extractCardsFromMarkdown } from "../../src/core/parse/extract-cards.js"
 interface Expected {
   answer: string;
   front: string;
+  kind: "basic" | "reversed";
 }
 
 const EXPECTED: Record<string, Expected> = {
-  "basic-separate-line.md": { front: "Question", answer: "Answer" },
-  "basic-inline-tag.md": { front: "Question", answer: "Answer" },
-  "basic-heading-h1-separate-line.md": { front: "Question", answer: "Answer" },
-  "basic-heading-h1-inline-tag.md": { front: "Question", answer: "Answer" },
-  "basic-heading-h2-separate-line.md": { front: "Question", answer: "Answer" },
-  "basic-heading-h2-inline-tag.md": { front: "Question", answer: "Answer" },
-  "basic-heading-h3-separate-line.md": { front: "Question", answer: "Answer" },
-  "basic-heading-h3-inline-tag.md": { front: "Question", answer: "Answer" },
-  "basic-heading-h4-separate-line.md": { front: "Question", answer: "Answer" },
-  "basic-heading-h4-inline-tag.md": { front: "Question", answer: "Answer" },
-  "basic-heading-h5-separate-line.md": { front: "Question", answer: "Answer" },
-  "basic-heading-h5-inline-tag.md": { front: "Question", answer: "Answer" },
-  "basic-heading-h6-separate-line.md": { front: "Question", answer: "Answer" },
-  "basic-heading-h6-inline-tag.md": { front: "Question", answer: "Answer" },
+  "basic-separate-line.md": { front: "Question", answer: "Answer", kind: "basic" },
+  "basic-inline-tag.md": { front: "Question", answer: "Answer", kind: "basic" },
+  "basic-heading-h1-separate-line.md": { front: "Question", answer: "Answer", kind: "basic" },
+  "basic-heading-h1-inline-tag.md": { front: "Question", answer: "Answer", kind: "basic" },
+  "basic-heading-h2-separate-line.md": { front: "Question", answer: "Answer", kind: "basic" },
+  "basic-heading-h2-inline-tag.md": { front: "Question", answer: "Answer", kind: "basic" },
+  "basic-heading-h3-separate-line.md": { front: "Question", answer: "Answer", kind: "basic" },
+  "basic-heading-h3-inline-tag.md": { front: "Question", answer: "Answer", kind: "basic" },
+  "basic-heading-h4-separate-line.md": { front: "Question", answer: "Answer", kind: "basic" },
+  "basic-heading-h4-inline-tag.md": { front: "Question", answer: "Answer", kind: "basic" },
+  "basic-heading-h5-separate-line.md": { front: "Question", answer: "Answer", kind: "basic" },
+  "basic-heading-h5-inline-tag.md": { front: "Question", answer: "Answer", kind: "basic" },
+  "basic-heading-h6-separate-line.md": { front: "Question", answer: "Answer", kind: "basic" },
+  "basic-heading-h6-inline-tag.md": { front: "Question", answer: "Answer", kind: "basic" },
+  "reverse-inline-tag.md": { front: "Question", answer: "Answer", kind: "reversed" },
+  "reverse-separate-line.md": { front: "Question", answer: "Answer", kind: "reversed" },
+  "reverse-slash-inline-tag.md": { front: "Question", answer: "Answer", kind: "reversed" },
+  "reverse-slash-separate-line.md": { front: "Question", answer: "Answer", kind: "reversed" },
+  "reverse-heading-h1-separate-line.md": { front: "Question", answer: "Answer", kind: "reversed" },
+  "reverse-heading-h1-inline-tag.md": { front: "Question", answer: "Answer", kind: "reversed" },
+  "reverse-heading-h2-separate-line.md": { front: "Question", answer: "Answer", kind: "reversed" },
+  "reverse-heading-h2-inline-tag.md": { front: "Question", answer: "Answer", kind: "reversed" },
+  "reverse-heading-h3-separate-line.md": { front: "Question", answer: "Answer", kind: "reversed" },
+  "reverse-heading-h3-inline-tag.md": { front: "Question", answer: "Answer", kind: "reversed" },
+  "reverse-heading-h4-separate-line.md": { front: "Question", answer: "Answer", kind: "reversed" },
+  "reverse-heading-h4-inline-tag.md": { front: "Question", answer: "Answer", kind: "reversed" },
+  "reverse-heading-h5-separate-line.md": { front: "Question", answer: "Answer", kind: "reversed" },
+  "reverse-heading-h5-inline-tag.md": { front: "Question", answer: "Answer", kind: "reversed" },
+  "reverse-heading-h6-separate-line.md": { front: "Question", answer: "Answer", kind: "reversed" },
+  "reverse-heading-h6-inline-tag.md": { front: "Question", answer: "Answer", kind: "reversed" },
 };
 
 describe("legacy hashtag compatibility fixtures", () => {
@@ -37,7 +54,7 @@ describe("legacy hashtag compatibility fixtures", () => {
   );
 
   test.each(loadFixtures(fixturesDir))(
-    "parses legacy hashtag fixture %s as a single basic card",
+    "parses legacy hashtag fixture %s as a single card",
     (fixtureName, markdown) => {
       const expected = EXPECTED[fixtureName];
       if (!expected) {
@@ -53,7 +70,7 @@ describe("legacy hashtag compatibility fixtures", () => {
       expect(result.cards[0]).toMatchObject({
         answer: expected.answer,
         front: expected.front,
-        kind: "basic",
+        kind: expected.kind,
         source: { syntax: "legacy-hashtag" },
       });
     },

@@ -17,14 +17,28 @@ interface LineInfo {
   startOffset: number;
 }
 
+type CardKind = "basic" | "reversed";
+
+interface TagSpec {
+  /** Tags whose presence on a line terminates this kind's answer. */
+  answerTerminators: string[];
+  kind: CardKind;
+  /** The single tag string to match for question detection. */
+  tag: string;
+}
+
 /**
- * Extracts legacy `#card` style basic flashcards.
+ * Extracts legacy `#card` style flashcards, both basic and reversed.
  *
- * Two shapes are recognised:
- *   1. Separate-line: question line, then `#card` alone on the next line.
- *   2. Inline-tag:    question text followed by `#card` on the same line.
+ * Reverse forms are `#{hashtagBasic}-reverse` and `#{hashtagBasic}/reverse`.
  *
- * The answer continues until: blank line, next heading, next `#card`, or EOF.
+ * Two shapes are recognised per tag:
+ *   1. Separate-line: question line, then the tag alone on the next line.
+ *   2. Inline-tag:    question text followed by the tag on the same line.
+ *
+ * The answer continues until: blank line, next heading, next same-kind tag, or
+ * EOF. Termination is per-kind — a basic answer is not terminated by a reverse
+ * tag and vice versa.
  *
  * Excluded contexts (fenced code, HTML comments, blockquotes) are detected via
  * the mdast tree by collecting their source ranges and skipping any line whose
@@ -38,7 +52,21 @@ export function extractLegacyHashtagCards(
 ): Flashcard[] {
   if (!settings.legacy.enabled) return [];
 
-  const tag = `#${settings.legacy.hashtagBasic}`;
+  const basic = `#${settings.legacy.hashtagBasic}`;
+  const reverseDash = `${basic}-reverse`;
+  const reverseSlash = `${basic}/reverse`;
+  const reverseTags = [reverseDash, reverseSlash];
+
+  // Order matters: try reverse forms before basic, because `indexOfStandaloneTag`
+  // for `#card` would not match `#card-reverse` (suffix is non-whitespace), but
+  // we still want to keep the kinds independent and ensure each line is at most
+  // one card.
+  const specs: TagSpec[] = [
+    { answerTerminators: reverseTags, kind: "reversed", tag: reverseDash },
+    { answerTerminators: reverseTags, kind: "reversed", tag: reverseSlash },
+    { answerTerminators: [basic], kind: "basic", tag: basic },
+  ];
+
   const excluded = collectExcludedRanges(tree);
   const lines = splitLines(markdown);
   const cards: Flashcard[] = [];
@@ -55,31 +83,39 @@ export function extractLegacyHashtagCards(
     const headingText = headingMatch ? headingMatch[2]! : null;
     const lineForMatch = headingText ?? line.raw;
 
-    const inlineIdx = indexOfStandaloneTag(lineForMatch, tag);
+    let matched: { advanceTo: number } | null = null;
 
-    if (inlineIdx >= 0) {
-      // Inline-tag shape on this line.
-      const front = lineForMatch.slice(0, inlineIdx).replace(/\s+$/, "");
-      if (front.length > 0) {
-        const answer = collectAnswer(lines, i + 1, tag, excluded);
-        cards.push(makeCard(front, answer.text, line.startOffset, answer.endOffset, context, settings));
-        i = answer.nextIndex;
-        continue;
+    for (const spec of specs) {
+      const inlineIdx = indexOfStandaloneTag(lineForMatch, spec.tag);
+
+      if (inlineIdx >= 0) {
+        const front = lineForMatch.slice(0, inlineIdx).replace(/\s+$/, "");
+        if (front.length > 0) {
+          const answer = collectAnswer(lines, i + 1, spec.answerTerminators, excluded);
+          cards.push(makeCard(spec.kind, front, answer.text, line.startOffset, answer.endOffset, context));
+          matched = { advanceTo: answer.nextIndex };
+          break;
+        }
+      }
+
+      // Separate-line shape: current line is the question, next non-empty line is the tag alone.
+      if (line.raw.trim().length > 0 && i + 1 < lines.length) {
+        const next = lines[i + 1]!;
+        if (!isExcluded(next.startOffset, excluded) && next.raw.trim() === spec.tag) {
+          const front = (headingText ?? line.raw).replace(/\s+$/, "");
+          if (front.length > 0) {
+            const answer = collectAnswer(lines, i + 2, spec.answerTerminators, excluded);
+            cards.push(makeCard(spec.kind, front, answer.text, line.startOffset, answer.endOffset, context));
+            matched = { advanceTo: answer.nextIndex };
+            break;
+          }
+        }
       }
     }
 
-    // Separate-line shape: current line is the question, next non-empty line is `#card` alone.
-    if (line.raw.trim().length > 0 && i + 1 < lines.length) {
-      const next = lines[i + 1]!;
-      if (!isExcluded(next.startOffset, excluded) && next.raw.trim() === tag) {
-        const front = (headingText ?? line.raw).replace(/\s+$/, "");
-        if (front.length > 0) {
-          const answer = collectAnswer(lines, i + 2, tag, excluded);
-          cards.push(makeCard(front, answer.text, line.startOffset, answer.endOffset, context, settings));
-          i = answer.nextIndex;
-          continue;
-        }
-      }
+    if (matched) {
+      i = matched.advanceTo;
+      continue;
     }
 
     i++;
@@ -89,18 +125,18 @@ export function extractLegacyHashtagCards(
 }
 
 function makeCard(
+  kind: CardKind,
   front: string,
   answer: string,
   startOffset: number,
   endOffset: number,
   context: LegacyExtractContext,
-  _settings: FlashcardsSettings,
 ): Flashcard {
   return {
     answer,
     deckName: context.metadataDeck ?? context.defaultDeck,
     front,
-    kind: "basic",
+    kind,
     source: {
       endOffset,
       line: 1,
@@ -120,7 +156,7 @@ interface CollectedAnswer {
 function collectAnswer(
   lines: LineInfo[],
   startIndex: number,
-  tag: string,
+  terminators: string[],
   excluded: Range[],
 ): CollectedAnswer {
   const collected: string[] = [];
@@ -132,7 +168,7 @@ function collectAnswer(
     const trimmed = line.raw.trim();
     if (trimmed.length === 0) break;
     if (/^#{1,6}\s+/.test(line.raw)) break;
-    if (indexOfStandaloneTag(line.raw, tag) >= 0) break;
+    if (terminators.some((t) => indexOfStandaloneTag(line.raw, t) >= 0)) break;
 
     collected.push(line.raw);
     endOffset = line.endOffset;
