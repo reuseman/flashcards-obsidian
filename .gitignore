@@ -31,3 +31,12 @@ move.sh
 
 # Test-vault
 docs/test-vault/.obsidian/workspace
+
+# Agent workflow (kept local, not tracked)
+agent.md
+plan.md
+tasks.md
+docs/agents/
+.codex/
+.claude/
+CLAUDE.md
