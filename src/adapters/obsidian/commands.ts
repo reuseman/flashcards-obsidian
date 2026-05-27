@@ -2,12 +2,18 @@ import { Notice } from "obsidian";
 
 import type FlashcardsPlugin from "../../plugin.js";
 import { AnkiConnectClient } from "../anki/anki-connect-client.js";
+import { uploadMedia } from "../anki/upload-media.js";
 import { ObsidianMarkdownRepository } from "./obsidian-markdown-repository.js";
 import { MigrationModal } from "./migration-modal.js";
+import { buildMediaRewriteMap, resolveMedia } from "./media-resolver.js";
 import { createWikilinkResolver } from "./wikilink-resolver.js";
 import { backfillV1Vault } from "../../application/backfill-v1-vault.js";
 import { migrationCheck } from "../../application/migration-check.js";
-import { syncNote, type SyncNoteResult } from "../../application/sync-note.js";
+import {
+  syncNote,
+  type MediaPipeline,
+  type SyncNoteResult,
+} from "../../application/sync-note.js";
 import {
   syncVault,
   type SyncVaultResult,
@@ -130,6 +136,23 @@ async function runWithMigrationCheck(
   modal.open();
 }
 
+function createMediaPipeline(
+  plugin: FlashcardsPlugin,
+  ankiClient: AnkiConnectClient,
+): MediaPipeline {
+  return async (refs, sourcePath) => {
+    const resolution = await resolveMedia(plugin.app, sourcePath, refs);
+    await uploadMedia(ankiClient, resolution.resolved.values());
+    return {
+      rewriteMap: buildMediaRewriteMap(refs, resolution.resolved),
+      errors: resolution.errors.map((e) => ({
+        filename: e.filename,
+        reason: e.reason,
+      })),
+    };
+  };
+}
+
 async function dispatch(
   plugin: FlashcardsPlugin,
   repository: ObsidianMarkdownRepository,
@@ -138,6 +161,7 @@ async function dispatch(
   target: Target,
 ): Promise<void> {
   const resolveLink = createWikilinkResolver(plugin.app.metadataCache);
+  const mediaPipeline = createMediaPipeline(plugin, ankiClient);
   try {
     if (target === "current") {
       const note = await repository.getActiveNote();
@@ -151,6 +175,7 @@ async function dispatch(
         result = await syncNote({
           ankiClient,
           logger: plugin.logger,
+          mediaPipeline,
           note,
           repository,
           resolveLink,
@@ -169,6 +194,7 @@ async function dispatch(
         result = await syncVault({
           ankiClient,
           logger: plugin.logger,
+          mediaPipeline,
           onProgress: (current, total, notePath) => {
             const name = notePath.split("/").pop() ?? notePath;
             statusBar.setText(`Flashcards: ${current}/${total} — ${name}`);

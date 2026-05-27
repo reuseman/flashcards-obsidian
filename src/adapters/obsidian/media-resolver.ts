@@ -1,6 +1,7 @@
 import type { App, TFile } from "obsidian";
 
 import type { MediaRef } from "../../core/render/extract-media.js";
+import type { MediaRewriteMap } from "../../core/render/rewrite-media.js";
 
 export interface ResolvedMedia {
   finalName: string; // <sha1>.<ext>
@@ -109,4 +110,25 @@ export async function resolveMedia(
   }
 
   return { resolved, errors };
+}
+
+/**
+ * Build a `MediaRewriteMap` from the original refs and the per-name resolution
+ * outcome. Refs whose filenames are unresolved are skipped. `kind` is taken
+ * from the ref (image vs audio) since `ResolvedMedia` does not retain it.
+ */
+export function buildMediaRewriteMap(
+  refs: MediaRef[],
+  resolved: Map<string, ResolvedMedia>,
+): MediaRewriteMap {
+  const map: MediaRewriteMap = {};
+  const seen = new Set<string>();
+  for (const ref of refs) {
+    if (seen.has(ref.filename)) continue;
+    const r = resolved.get(ref.filename);
+    if (!r) continue;
+    seen.add(ref.filename);
+    map[ref.filename] = { kind: ref.kind, finalName: r.finalName };
+  }
+  return map;
 }
