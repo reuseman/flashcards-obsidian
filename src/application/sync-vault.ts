@@ -2,12 +2,18 @@ import type { AnkiConnectClient } from "../adapters/anki/anki-connect-client.js"
 import type { ObsidianMarkdownRepository } from "../adapters/obsidian/obsidian-markdown-repository.js";
 import type { FlashcardsSettings } from "../core/config/settings.js";
 import { NoopLogger, type Logger } from "../core/logging/logger.js";
-import { syncNote, type SyncNoteResult } from "./sync-note.js";
+import {
+  syncNote,
+  type CardMediaError,
+  type MediaPipeline,
+  type SyncNoteResult,
+} from "./sync-note.js";
 
 export interface SyncVaultInput {
   ankiClient: AnkiConnectClient;
   generateBlockId?: () => string;
   logger?: Logger;
+  mediaPipeline?: MediaPipeline;
   onProgress?: (current: number, total: number, notePath: string) => void;
   repository: ObsidianMarkdownRepository;
   resolveLink?: (target: string, sourcePath: string) => string | null;
@@ -15,8 +21,14 @@ export interface SyncVaultInput {
   vaultName: string;
 }
 
+export interface NoteMediaErrors {
+  notePath: string;
+  errors: CardMediaError[];
+}
+
 export interface SyncVaultResult {
   failedNotes: number;
+  mediaErrors: NoteMediaErrors[];
   noteCount: number;
   perNote: SyncNoteResult[];
   totalCreates: number;
@@ -36,6 +48,7 @@ export async function syncVault(
   const {
     ankiClient,
     generateBlockId,
+    mediaPipeline,
     onProgress,
     repository,
     resolveLink,
@@ -50,6 +63,7 @@ export async function syncVault(
   logger.info("syncVault start", { noteCount: total });
 
   const perNote: SyncNoteResult[] = [];
+  const mediaErrors: NoteMediaErrors[] = [];
   let totalCreates = 0;
   let totalUpdates = 0;
   let totalDeletes = 0;
@@ -63,6 +77,7 @@ export async function syncVault(
         ankiClient,
         ...(generateBlockId ? { generateBlockId } : {}),
         logger,
+        ...(mediaPipeline ? { mediaPipeline } : {}),
         note,
         repository,
         ...(resolveLink ? { resolveLink } : {}),
@@ -92,6 +107,13 @@ export async function syncVault(
         if (d.status === "ok") totalDeletes += 1;
     }
 
+    if (result.mediaErrors && result.mediaErrors.length > 0) {
+      mediaErrors.push({
+        notePath: result.notePath,
+        errors: result.mediaErrors,
+      });
+    }
+
     perNote.push(result);
     onProgress?.(i + 1, total, note.path);
   }
@@ -112,6 +134,7 @@ export async function syncVault(
 
   return {
     failedNotes,
+    mediaErrors,
     noteCount: total,
     perNote,
     totalCreates,

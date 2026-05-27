@@ -368,6 +368,75 @@ describe("syncVault — dependency threading", () => {
 
 // ===========================================================================
 
+describe("syncVault — media error aggregation", () => {
+  it("collects mediaErrors per note; clean notes do not appear", async () => {
+    // noteA has a missing image; noteB is clean. Use a non-mutating repo:
+    // sync-note expects `note.markdown` to remain the ORIGINAL markdown so
+    // the card-source offsets used during the media phase stay valid.
+    const noteA = makeNote(
+      "a.md",
+      ["![[missing.png]] Qa::Aa", ""].join("\n"),
+    );
+    const noteB = makeNote("b.md", ONE_CARD);
+    const saves: Array<{ path: string; markdown: string }> = [];
+    const repository = {
+      async getAllMarkdownNotes() {
+        return [noteA, noteB];
+      },
+      async getActiveNote() {
+        return noteA;
+      },
+      async saveNote(note: MarkdownNote, markdown: string) {
+        saves.push({ path: note.path, markdown });
+      },
+    } as unknown as ObsidianMarkdownRepository;
+    // noteA: bootstrap only (card dropped before addNote). noteB: bootstrap + create.
+    const { fetch } = makeFakeFetch([
+      ...bootAllV2(ALL_MODELS),
+      ...bootAllV2(ALL_MODELS),
+      ok(["Default"]),
+      ok(2001),
+    ]);
+
+    const mediaPipeline = async (
+      _refs: unknown,
+      sourcePath: string,
+    ): Promise<{
+      rewriteMap: Record<string, never>;
+      errors: Array<{ filename: string; reason: "not-found" }>;
+    }> => {
+      if (sourcePath === "a.md") {
+        return {
+          rewriteMap: {},
+          errors: [{ filename: "missing.png", reason: "not-found" }],
+        };
+      }
+      return { rewriteMap: {}, errors: [] };
+    };
+
+    const result = await syncVault({
+      ankiClient: new AnkiConnectClient({ fetch }),
+      generateBlockId: seededGenerator(["q-aaaa", "q-bbbb"]),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mediaPipeline: mediaPipeline as any,
+      repository,
+      settings: settingsWith(),
+      vaultName: VAULT,
+    });
+
+    expect(result.mediaErrors).toBeDefined();
+    expect(result.mediaErrors).toHaveLength(1);
+    expect(result.mediaErrors![0]!.notePath).toBe("a.md");
+    expect(result.mediaErrors![0]!.errors).toHaveLength(1);
+    expect(result.mediaErrors![0]!.errors[0]!.blockId).toBe("q-aaaa");
+    expect(result.mediaErrors![0]!.errors[0]!.errors[0]!.filename).toBe(
+      "missing.png",
+    );
+    // noteB stays clean and still produces its create.
+    expect(result.totalCreates).toBe(1);
+  });
+});
+
 describe("syncVault — resolveLink threading", () => {
   it("threads resolveLink through to every note's syncNote → addNote Front", async () => {
     const noteA = makeNote("a.md", ["see [[Note]]::A1", ""].join("\n"));
