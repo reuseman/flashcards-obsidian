@@ -152,4 +152,16 @@ export class AnkiConnectClient {
       params: { notes: nids },
     });
   }
+
+  /**
+   * AnkiConnect's batch primitive. Each entry is invoked server-side and the
+   * results are returned in order. Used by `uploadMedia` to ship N
+   * `storeMediaFile` calls in a single HTTP round-trip.
+   */
+  multi(actions: AnkiRequest[]): Promise<unknown[]> {
+    return this.invoke<unknown[]>({
+      action: "multi",
+      params: { actions },
+    });
+  }
 }
