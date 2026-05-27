@@ -10,6 +10,7 @@ export default defineConfig(
       "dist/**",
       "main.js",
       "node_modules/**",
+      "test-vault/**",
     ],
   },
   js.configs.recommended,

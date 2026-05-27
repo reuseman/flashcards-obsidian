@@ -25,8 +25,8 @@ live AnkiConnect instance.
 ## Scenarios
 
 Each subfolder under `scenarios/` exercises a specific code path. Open the
-relevant note(s) and run the plugin commands (`Sync flashcards: current note`
-or `Sync flashcards: vault`) from the command palette.
+relevant note(s) and run the plugin commands (`Flashcards: Sync current note`
+or `Flashcards: Sync vault`) from the command palette.
 
 | Folder       | What it tests                                                                 |
 | ------------ | ----------------------------------------------------------------------------- |
