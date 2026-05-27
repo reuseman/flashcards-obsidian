@@ -13,10 +13,12 @@ live AnkiConnect instance.
 1. Run AnkiConnect locally (Anki desktop with the AnkiConnect add-on; the
    "test" profile is recommended so you can wipe it freely).
 2. Build the plugin:
+
    ```sh
    npm run build      # one-shot, or
    npm run dev        # watch mode — recompiles + copies into test-vault on save
    ```
+
    `esbuild.config.mjs` has a postbuild hook that copies `main.js` +
    `manifest.json` into `.obsidian/plugins/flashcards-obsidian/`.
 3. Open `test-vault/` in Obsidian.

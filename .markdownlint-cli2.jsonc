@@ -1,0 +1,32 @@
+{
+  "config": {
+    "default": true,
+    // MD013 line-length: prose docs wrap at varying widths; let the writer
+    // decide rather than fight code blocks and tables.
+    "MD013": false,
+    // MD024 duplicate headings: only flag siblings. Sub-sections often share
+    // names across different parents (e.g. "Pros" / "Cons" under each option).
+    "MD024": { "siblings_only": true },
+    // MD033 inline HTML: Obsidian callouts and admonitions sometimes need raw
+    // HTML for icons/styling; don't fight them.
+    "MD033": false
+  },
+  // Respect .gitignore so agent workflow files (tasks.md, plan.md, agent.md,
+  // CLAUDE.md, .codex/) aren't scanned.
+  "gitignore": true,
+  "ignores": [
+    "node_modules/**",
+    // Test-vault scenarios are flashcard-syntax fixtures, not prose docs;
+    // .obsidian/ is plugin-generated. Same for the v1 example vault.
+    "test-vault/scenarios/**",
+    "test-vault/.obsidian/**",
+    "docs/test-vault/**",
+    "docs/demo.md",
+    // Parser fixtures contain intentionally malformed markdown.
+    "tests/fixtures/**",
+    ".obsidian/**",
+    "main.js",
+    // v1 marketing README, deferred to the v2 rewrite.
+    "README.md"
+  ]
+}

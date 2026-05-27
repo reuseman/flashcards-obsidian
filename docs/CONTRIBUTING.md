@@ -1,10 +1,17 @@
 # Contributing
-Contributions via bug reports, bug fixes, are welcome. If you have ideas about features to be implemented, please open an issue so we can discuss the best way to implement it.
 
-## How to build?
-You need to pull the repository, install the dependencies with `node` and then build with the command `npm run dev`. It will automatically move the files into the `docs/test-vault` and hot reload the plugin.
+Contributions via bug reports and bug fixes are welcome. For new features,
+open an issue first so we can discuss the best way to implement it.
 
-    $ git clone git@github.com:reuseman/flashcards-obsidian.git
-    $ cd flashcards-obsidian
-    ~/flashcards-obsidian$ npm install
-    ~/flashcards-obsidian$ npm run dev
+## How to build
+
+Clone, install, and run the watch build. esbuild copies `main.js` +
+`manifest.json` into `test-vault/.obsidian/plugins/flashcards-obsidian/`
+on every successful rebuild, so reloading Obsidian picks up the change.
+
+```sh
+git clone git@github.com:reuseman/flashcards-obsidian.git
+cd flashcards-obsidian
+npm install
+npm run dev
+```

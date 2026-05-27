@@ -27,7 +27,7 @@ and no file writes.
 
 ### Inline
 
-```
+```text
 Capital of France?::Paris
 ```
 
@@ -38,7 +38,7 @@ The separators are configurable in settings.
 
 ### Cloze
 
-```
+```text
 The mitochondria is the ==powerhouse== of the cell.
 The {1:powerhouse} of the cell is the {1:mitochondria}.
 ```
@@ -49,7 +49,7 @@ multiple spans together on a single card.
 
 ### Fenced block (multi-line)
 
-````
+````markdown
 ```flashcard
 What does CSS stand for?
 ---
@@ -63,7 +63,7 @@ syntax, use a fenced block.
 
 ### Legacy hashtag (v1 compatibility)
 
-```
+```text
 # What is recursion? #card
 A function that calls itself, with a base case to terminate.
 ```
@@ -114,14 +114,14 @@ The note is saved only if Phase A produced changes.
 
 **Phase B — Anki.**
 
-4. Diff parsed cards against the frontmatter map:
+1. Diff parsed cards against the frontmatter map:
    - card present, no entry → **create**
    - entry present, hash mismatch → **update**
    - entry present, card removed from note → **delete**
-5. Bootstrap: create missing note types and decks; extend v1 note types
+2. Bootstrap: create missing note types and decks; extend v1 note types
    in place (adds `Source` field, rewrites templates).
-6. Send create/update/delete to AnkiConnect, sequentially.
-7. On success, write the new nid + hash back to the frontmatter entry.
+3. Send create/update/delete to AnkiConnect, sequentially.
+4. On success, write the new nid + hash back to the frontmatter entry.
 
 Per-op failures don't abort the sync. Failed ops leave their frontmatter
 entries untouched so the next run can retry.
@@ -167,14 +167,14 @@ plugin folder (resets all plugin state).
 | `defaultDeck` | `Default` | Fallback deck if neither frontmatter nor folder picks one. |
 | `folderBasedDecks` | `true` | Map folder path to deck (`/` → `::`). |
 | `defaultTags` | `["obsidian"]` | Tags merged into every card. |
-| `contextStrategy` | `headings` | Heading-context to prepend to card fronts. `headings | none | note-title`. |
+| `contextStrategy` | `headings` | Heading-context to prepend to card fronts. `headings` \| `none` \| `note-title`. |
 | `contextSeparator` | ` > ` | Joiner between heading levels in context. |
 | `inlineSeparator` | `::` | Basic inline card delimiter. |
 | `inlineReverseSeparator` | `:::` | Reversed inline card delimiter. |
 | `explicitSyntax` | `fenced` | Fenced-block code label. |
 | `legacy.enabled` | `true` | Recognise v1 hashtag syntax. |
 | `legacy.hashtagBasic` | `card` | The hashtag used for v1 basic cards (also matches `<basic>-reverse` and `<basic>/reverse`). |
-| `logLevel` | `info` | `debug | info | warn | error`. |
+| `logLevel` | `info` | `debug` \| `info` \| `warn` \| `error`. |
 | `logToFile` | `true` | Append sync events to `sync.log` in the plugin folder. |
 
 ## Logging
