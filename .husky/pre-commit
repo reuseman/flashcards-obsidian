@@ -1,1 +1,2 @@
+bash scripts/check-test-vault-ids.sh
 npx lint-staged

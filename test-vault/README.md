@@ -37,13 +37,39 @@ or `Flashcards: Sync vault`) from the command palette.
 | `v1-only/`   | Legacy `^<13-digit>` anchors only — first sync should show migration modal.   |
 | `mixed/`     | One v1 anchor + one v2 anchor — modal shows count=1.                          |
 
+## Features (automated)
+
+`features/` is a feature-coverage fixture exercised by
+`tests/adapters/anki/features.test.ts`. One note per axis cell; the harness
+extracts and renders each into an Anki payload, snapshotted at
+`tests/adapters/anki/__snapshots__/features.test.ts.snap`.
+
+| Folder          | What it covers                                       |
+| --------------- | ---------------------------------------------------- |
+| `card-types/`   | One note per supported card syntax × kind.           |
+| `content/`      | Wikilinks, images, code, frontmatter (deck, tags).   |
+| `interactions/` | Known-bad combinations of the above (regression set).|
+
+The harness strips written-back `^<id>` anchors before parsing and uses
+synthetic block IDs (`card-N`), so the same files can be opened in Obsidian
+and synced manually without affecting snapshots.
+
+After a manual run:
+
+```sh
+npm run test-vault:reset
+```
+
+A pre-commit hook (`scripts/check-test-vault-ids.sh`) rejects staged
+`test-vault/**.md` diffs that introduce block-id anchors, as a safety net.
+
 ## Resetting between runs
 
 Migration state lives in two places. Both need clearing to re-test the modal:
 
 ```sh
 # Reset markdown fixtures (drops any anchors/frontmatter the plugin wrote)
-git checkout test-vault/scenarios/
+git checkout test-vault/scenarios/ test-vault/features/
 
 # Reset plugin state (clears v1MigrationDecisionMade and any cached settings)
 rm -f test-vault/.obsidian/plugins/flashcards-obsidian/data.json
