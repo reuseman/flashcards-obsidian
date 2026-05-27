@@ -1,15 +1,24 @@
-import type { Flashcard } from "../domain/card.js";
+import type { IdentifiedFlashcard } from "../domain/card.js";
 
-export interface SyncPlan {
-  create: Flashcard[];
-  delete: number[];
-  update: Flashcard[];
+export interface CreateOp {
+  card: IdentifiedFlashcard;
+  hash: string;
 }
 
-export function createEmptySyncPlan(): SyncPlan {
-  return {
-    create: [],
-    delete: [],
-    update: [],
-  };
+export interface UpdateOp {
+  card: IdentifiedFlashcard;
+  newHash: string;
+  nid: number;
+  oldHash: string;
+}
+
+export interface DeleteOp {
+  blockId: string;
+  nid: number;
+}
+
+export interface SyncPlan {
+  create: CreateOp[];
+  delete: DeleteOp[];
+  update: UpdateOp[];
 }
