@@ -1,0 +1,85 @@
+specification {
+  element actor {
+    style {
+      shape person
+    }
+  }
+  element system
+  element layer
+  element component
+  element ext {
+    style {
+      shape storage
+    }
+  }
+}
+
+model {
+  user = actor 'Obsidian user'
+  anki = ext 'Anki (external)'
+
+  plugin = system 'flashcards-obsidian' {
+
+    adapters = layer 'Adapters' {
+      obsidianAdapter = component 'obsidian'
+      ankiAdapter     = component 'anki'
+    }
+
+    application = layer 'Application' {
+      syncVault = component 'sync-vault'
+      syncNote  = component 'sync-note'
+      migration = component 'migration / detect / backfill'
+    }
+
+    core = layer 'Core' {
+      parse  = component 'parse'
+      render = component 'render'
+      edits  = component 'edits'
+      sync_  = component 'sync'
+      domain = component 'domain'
+    }
+  }
+
+  user -> obsidianAdapter 'edits notes, runs sync'
+  obsidianAdapter -> syncVault
+  obsidianAdapter -> syncNote
+  obsidianAdapter -> migration
+
+  syncVault -> parse
+  syncVault -> render
+  syncVault -> sync_
+  syncVault -> edits
+  syncNote  -> parse
+  syncNote  -> render
+  syncNote  -> sync_
+  syncNote  -> edits
+
+  syncVault -> ankiAdapter 'execute plan'
+  syncNote  -> ankiAdapter 'execute plan'
+  ankiAdapter -> anki 'AnkiConnect HTTP'
+
+  parse  -> domain
+  render -> domain
+  edits  -> domain
+  sync_  -> domain
+}
+
+views {
+  view index {
+    title 'System context'
+    include *
+  }
+
+  view layers {
+    title 'Layers'
+    include plugin, plugin.**
+  }
+
+  view pipeline {
+    title 'v2 sync pipeline'
+    include
+      obsidianAdapter,
+      parse, render, sync_, edits,
+      ankiAdapter, anki
+  }
+}

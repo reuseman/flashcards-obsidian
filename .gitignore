@@ -15,6 +15,10 @@ docs/test-vault/.obsidian/plugins/flashcards/manifest.json
 # scripts
 move.sh
 
+# architecture diagrams (generated)
+docs/architecture/likec4/out/
+docs/architecture/graph.svg
+
 # Visual Studio Code
 .vscode/*
 !.vscode/settings.json
