@@ -24,6 +24,8 @@
     "docs/demo.md",
     // Parser fixtures contain intentionally malformed markdown.
     "tests/fixtures/**",
+    // Pinned benchmark fixtures: deterministic inputs, not prose.
+    "tests/perf/_fixtures/*.md",
     ".obsidian/**",
     "main.js",
     // v1 marketing README, deferred to the v2 rewrite.
