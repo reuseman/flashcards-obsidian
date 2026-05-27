@@ -183,7 +183,7 @@ exports[`test-vault/features snapshot coverage > renders content/images.md 1`] =
     "deckName": "content",
     "fields": {
       "Back": "<p>It shows a flow.</p>",
-      "Front": "<p>Describe the diagram ![[diagram.png]]</p>",
+      "Front": "<p>Describe the diagram <img src="45f018d9703bdbe54824e9eb04cf0e54eb6801e8.png"></p>",
       "Source": "<a href="obsidian://open?vault=Vault&file=content%2Fimages.md#%5Ecard-0">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic",
@@ -271,7 +271,7 @@ exports[`test-vault/features snapshot coverage > renders interactions/image-in-r
     "deckName": "interactions",
     "fields": {
       "Back": "<p>The flag of France.</p>",
-      "Front": "<p>![[flag.png]]</p>",
+      "Front": "<img src="760b5ea4a888728b0697120e6a87662fbddfabd0.png">",
       "Source": "<a href="obsidian://open?vault=Vault&file=interactions%2Fimage-in-reversed.md#%5Ecard-0">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic-reversed",

@@ -495,6 +495,105 @@ describe("syncNote — resolveLink threading", () => {
 });
 
 // ===========================================================================
+// Media pipeline integration
+// ===========================================================================
+
+describe("syncNote — media pipeline", () => {
+  it("rewrites resolved media refs in card front before addNote", async () => {
+    const md = ["![[diagram.png]] What?::An answer.", ""].join("\n");
+    const { repository } = makeFakeRepository(md);
+    const { calls, fetch } = makeFakeFetch([
+      ...bootAllV2(ALL_MODELS),
+      ok(["Default"]),
+      ok(11001),
+    ]);
+
+    const result = await syncNote({
+      ankiClient: new AnkiConnectClient({ fetch }),
+      generateBlockId: seededGenerator(["q-aaaa"]),
+      mediaPipeline: async (refs) => ({
+        rewriteMap: Object.fromEntries(
+          refs.map((r) => [
+            r.filename,
+            { kind: r.kind, finalName: `h-${r.filename}` },
+          ]),
+        ),
+        errors: [],
+      }),
+      note: makeNote(md),
+      repository,
+      settings: settingsWith(),
+      vaultName: VAULT,
+    });
+
+    expect(result.status).toBe("ok");
+    expect(result.mediaErrors).toBeUndefined();
+    const addCalls = calls.filter((c) => c.action === "addNote");
+    expect(addCalls).toHaveLength(1);
+    const note = (addCalls[0]!.params as {
+      note: { fields: Record<string, string> };
+    }).note;
+    // rehype-stringify normalises single to double quotes in attribute values.
+    expect(note.fields.Front).toContain('<img src="h-diagram.png">');
+    expect(note.fields.Front).not.toContain("[[diagram.png]]");
+  });
+
+  it("drops cards whose refs failed to resolve and reports media-error", async () => {
+    const md = ["![[missing.png]] What?::A.", ""].join("\n");
+    const { repository } = makeFakeRepository(md);
+    // No addNote in queue — drop must prevent the call.
+    const { calls, fetch } = makeFakeFetch([...bootAllV2(ALL_MODELS)]);
+
+    const result = await syncNote({
+      ankiClient: new AnkiConnectClient({ fetch }),
+      generateBlockId: seededGenerator(["q-aaaa"]),
+      mediaPipeline: async () => ({
+        rewriteMap: {},
+        errors: [{ filename: "missing.png", reason: "not-found" }],
+      }),
+      note: makeNote(md),
+      repository,
+      settings: settingsWith(),
+      vaultName: VAULT,
+    });
+
+    expect(result.status).toBe("ok");
+    expect(result.mediaErrors).toBeDefined();
+    expect(result.mediaErrors).toHaveLength(1);
+    expect(result.mediaErrors![0]!.blockId).toBe("q-aaaa");
+    expect(result.mediaErrors![0]!.errors[0]!.filename).toBe("missing.png");
+    expect(calls.map((c) => c.action)).not.toContain("addNote");
+  });
+
+  it("keeps cards untouched when no mediaPipeline is provided", async () => {
+    const md = ["![[diagram.png]] What?::An answer.", ""].join("\n");
+    const { repository } = makeFakeRepository(md);
+    const { calls, fetch } = makeFakeFetch([
+      ...bootAllV2(ALL_MODELS),
+      ok(["Default"]),
+      ok(12001),
+    ]);
+
+    await syncNote({
+      ankiClient: new AnkiConnectClient({ fetch }),
+      generateBlockId: seededGenerator(["q-aaaa"]),
+      note: makeNote(md),
+      repository,
+      settings: settingsWith(),
+      vaultName: VAULT,
+    });
+
+    const addCalls = calls.filter((c) => c.action === "addNote");
+    expect(addCalls).toHaveLength(1);
+    const note = (addCalls[0]!.params as {
+      note: { fields: Record<string, string> };
+    }).note;
+    // Wikilink to a non-resolvable target falls back to the literal text.
+    expect(note.fields.Front).toContain("diagram.png");
+  });
+});
+
+// ===========================================================================
 // Seeded generator determinism
 // ===========================================================================
 

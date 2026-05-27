@@ -15,13 +15,42 @@ import { insertCardAnchors } from "../core/edits/insert-card-anchors.js";
 import { writeCardFrontmatter } from "../core/edits/write-card-frontmatter.js";
 import { writebackSyncResults } from "../core/edits/writeback-sync-results.js";
 import { extractCardsFromMarkdown } from "../core/parse/extract-cards.js";
+import { extractMedia, type MediaRef } from "../core/render/extract-media.js";
+import {
+  rewriteMedia,
+  type MediaRewriteMap,
+} from "../core/render/rewrite-media.js";
 import { buildSyncPlan } from "../core/sync/build-sync-plan.js";
 import { parseCardFrontmatter } from "../core/sync/parse-card-frontmatter.js";
+
+/**
+ * Outcome of the per-note media phase. `resolved` maps original short
+ * filenames to their content-hashed final name + kind (image|audio); cards
+ * whose refs touch an entry in `errors` are dropped from this run.
+ *
+ * The pipeline is responsible for uploading bytes to Anki — `syncNote` only
+ * cares about the resolution outcome and the resulting rewrite map.
+ */
+export interface MediaPipelineResult {
+  rewriteMap: MediaRewriteMap;
+  errors: Array<{ filename: string; reason: "not-found" | "read-failed" }>;
+}
+
+export type MediaPipeline = (
+  refs: MediaRef[],
+  sourcePath: string,
+) => Promise<MediaPipelineResult>;
+
+export interface CardMediaError {
+  blockId: string;
+  errors: Array<{ filename: string; reason: "not-found" | "read-failed" }>;
+}
 
 export interface SyncNoteInput {
   ankiClient: AnkiConnectClient;
   generateBlockId?: () => string;
   logger?: Logger;
+  mediaPipeline?: MediaPipeline;
   note: MarkdownNote;
   repository: ObsidianMarkdownRepository;
   resolveLink?: (target: string, sourcePath: string) => string | null;
@@ -35,6 +64,7 @@ export interface SyncNoteResult {
   ankiResults?: ExecuteSyncPlanResult;
   error?: string;
   identityWritesApplied: number;
+  mediaErrors?: CardMediaError[];
   notePath: string;
   parsedCardCount: number;
   status: SyncNoteStatus;
@@ -147,6 +177,117 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
     deletes: plan.delete.length,
   });
 
+  // --- Media phase --------------------------------------------------------
+  // Runs only when a `mediaPipeline` is wired in. Pure cores extract refs
+  // from the *original* markdown (card source offsets reference that), the
+  // pipeline resolves+uploads, and we apply `rewriteMedia` to each surviving
+  // card's source text before it enters the renderer. Cards whose refs
+  // collide with `errors` are dropped from create/update; deletes are
+  // unaffected.
+  const mediaErrors: CardMediaError[] = [];
+  let mediaMap: MediaRewriteMap = {};
+  if (input.mediaPipeline) {
+    const allRefs = extractMedia(note.markdown);
+    if (allRefs.length > 0) {
+      const outcome = await input.mediaPipeline(allRefs, note.path);
+      mediaMap = outcome.rewriteMap;
+      const erroredNames = new Set(outcome.errors.map((e) => e.filename));
+
+      const cardHasError = (
+        startOffset: number,
+        endOffset: number,
+      ): Array<{ filename: string; reason: "not-found" | "read-failed" }> => {
+        const hits: Array<{
+          filename: string;
+          reason: "not-found" | "read-failed";
+        }> = [];
+        for (const ref of allRefs) {
+          if (ref.start >= startOffset && ref.end <= endOffset) {
+            if (erroredNames.has(ref.filename)) {
+              const errEntry = outcome.errors.find(
+                (e) => e.filename === ref.filename,
+              );
+              if (errEntry) hits.push(errEntry);
+            }
+          }
+        }
+        return hits;
+      };
+
+      plan.create = plan.create.filter((op) => {
+        const errs = cardHasError(
+          op.card.source.startOffset,
+          op.card.source.endOffset,
+        );
+        if (errs.length > 0) {
+          mediaErrors.push({ blockId: op.card.blockId, errors: errs });
+          logger.warn("card dropped: unresolved media", {
+            blockId: op.card.blockId,
+            errors: errs,
+          });
+          return false;
+        }
+        return true;
+      });
+      plan.update = plan.update.filter((op) => {
+        const errs = cardHasError(
+          op.card.source.startOffset,
+          op.card.source.endOffset,
+        );
+        if (errs.length > 0) {
+          mediaErrors.push({ blockId: op.card.blockId, errors: errs });
+          logger.warn("card dropped: unresolved media", {
+            blockId: op.card.blockId,
+            errors: errs,
+          });
+          return false;
+        }
+        return true;
+      });
+
+      // Apply rewrite to surviving cards. Card.front/answer are extracted
+      // strings that already contain `![[file]]` substrings (for wikilink
+      // images surviving mdast); markdown-image syntax `![](file)` is
+      // already stripped at parse time, so rewriting is a no-op there.
+      const applyRewrite = (s: string): string => rewriteMedia(s, mediaMap);
+      for (const op of plan.create) {
+        op.card = {
+          ...op.card,
+          front: applyRewrite(op.card.front),
+          answer: applyRewrite(op.card.answer),
+        };
+      }
+      for (const op of plan.update) {
+        op.card = {
+          ...op.card,
+          front: applyRewrite(op.card.front),
+          answer: applyRewrite(op.card.answer),
+        };
+      }
+    }
+  }
+
+  // Short-circuit: media phase may have emptied the plan entirely.
+  const stillEmpty =
+    plan.create.length === 0 &&
+    plan.update.length === 0 &&
+    plan.delete.length === 0;
+  if (stillEmpty) {
+    logger.info("syncNote ok (no plan ops after media phase)", {
+      notePath: note.path,
+      identityWritesApplied,
+      mediaErrors: mediaErrors.length,
+    });
+    return {
+      identityWritesApplied,
+      ...(mediaErrors.length > 0 ? { mediaErrors } : {}),
+      notePath: note.path,
+      parsedCardCount: cards.length,
+      status: "ok",
+      writebackEditsApplied: 0,
+    };
+  }
+
   let results: ExecuteSyncPlanResult;
   try {
     results = await executeSyncPlan({
@@ -191,6 +332,7 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
   return {
     ankiResults: results,
     identityWritesApplied,
+    ...(mediaErrors.length > 0 ? { mediaErrors } : {}),
     notePath: note.path,
     parsedCardCount: cards.length,
     status: "ok",
