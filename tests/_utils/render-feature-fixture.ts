@@ -13,7 +13,7 @@ export interface FixtureOptions {
   vaultName?: string;
 }
 
-const ANCHOR_RE = /\s*\^[A-Za-z0-9-]+\s*(?=$|\n)/g;
+const ANCHOR_RE = /(?:[ \t]+\^[A-Za-z0-9-]+)+[ \t]*$/gm;
 
 export function renderFeatureFixture(
   markdown: string,
