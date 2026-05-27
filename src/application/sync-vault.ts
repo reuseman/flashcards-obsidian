@@ -2,6 +2,7 @@ import type { AnkiConnectClient } from "../adapters/anki/anki-connect-client.js"
 import type { ObsidianMarkdownRepository } from "../adapters/obsidian/obsidian-markdown-repository.js";
 import type { FlashcardsSettings } from "../core/config/settings.js";
 import { NoopLogger, type Logger } from "../core/logging/logger.js";
+import { createPerfTrace } from "../core/logging/perf-trace.js";
 import {
   syncNote,
   type CardMediaError,
@@ -56,6 +57,7 @@ export async function syncVault(
     vaultName,
   } = input;
   const logger: Logger = input.logger ?? new NoopLogger();
+  const trace = createPerfTrace(logger, settings.perfTracing === true, "syncVault");
 
   const notes = await repository.getAllMarkdownNotes();
   const total = notes.length;
@@ -79,6 +81,7 @@ export async function syncVault(
         logger,
         ...(mediaPipeline ? { mediaPipeline } : {}),
         note,
+        perfTrace: trace,
         repository,
         ...(resolveLink ? { resolveLink } : {}),
         settings,
@@ -131,6 +134,8 @@ export async function syncVault(
       .map((r) => ({ notePath: r.notePath, error: r.error }));
     logger.warn("syncVault failures", { failures });
   }
+
+  trace.finish();
 
   return {
     failedNotes,

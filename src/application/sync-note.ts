@@ -9,6 +9,7 @@ import type {
 } from "../adapters/obsidian/obsidian-markdown-repository.js";
 import type { FlashcardsSettings } from "../core/config/settings.js";
 import { NoopLogger, type Logger } from "../core/logging/logger.js";
+import { createNoopPerfTrace, type PerfTrace } from "../core/logging/perf-trace.js";
 import { applyTextEdits } from "../core/edits/apply-text-edits.js";
 import { computeCardHash } from "../core/edits/card-hash.js";
 import { insertCardAnchors } from "../core/edits/insert-card-anchors.js";
@@ -52,6 +53,7 @@ export interface SyncNoteInput {
   logger?: Logger;
   mediaPipeline?: MediaPipeline;
   note: MarkdownNote;
+  perfTrace?: PerfTrace;
   repository: ObsidianMarkdownRepository;
   resolveLink?: (target: string, sourcePath: string) => string | null;
   settings: FlashcardsSettings;
@@ -99,14 +101,17 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
     vaultName,
   } = input;
   const logger: Logger = input.logger ?? new NoopLogger();
+  const trace: PerfTrace = input.perfTrace ?? createNoopPerfTrace();
 
   logger.info("syncNote start", { notePath: note.path });
 
   // Phase A — local edits.
-  const { cards } = extractCardsFromMarkdown(note.markdown, {
-    notePath: note.path,
-    settings,
-  });
+  const { cards } = trace.span("extract", () =>
+    extractCardsFromMarkdown(note.markdown, {
+      notePath: note.path,
+      settings,
+    }),
+  );
 
   if (cards.length === 0) {
     logger.debug("syncNote skipped (no flashcards parsed)", { notePath: note.path });
@@ -187,9 +192,11 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
   const mediaErrors: CardMediaError[] = [];
   let mediaMap: MediaRewriteMap = {};
   if (input.mediaPipeline) {
-    const allRefs = extractMedia(note.markdown);
+    const allRefs = trace.span("media.resolve", () => extractMedia(note.markdown));
     if (allRefs.length > 0) {
-      const outcome = await input.mediaPipeline(allRefs, note.path);
+      const outcome = await trace.span("media.upload", async () =>
+        input.mediaPipeline!(allRefs, note.path),
+      );
       mediaMap = outcome.rewriteMap;
       const erroredNames = new Set(outcome.errors.map((e) => e.filename));
 
@@ -290,14 +297,16 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
 
   let results: ExecuteSyncPlanResult;
   try {
-    results = await executeSyncPlan({
-      client: ankiClient,
-      logger,
-      notePath: note.path,
-      plan,
-      ...(resolveLink ? { resolveLink } : {}),
-      vaultName,
-    });
+    results = await trace.span("anki.sync", async () =>
+      executeSyncPlan({
+        client: ankiClient,
+        logger,
+        notePath: note.path,
+        plan,
+        ...(resolveLink ? { resolveLink } : {}),
+        vaultName,
+      }),
+    );
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     logger.error("syncNote failed in Phase B", { notePath: note.path, error: msg });
@@ -311,7 +320,9 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
     };
   }
 
-  const writeback = writebackSyncResults({ markdown: markdownB, results });
+  const writeback = trace.span("writeback", () =>
+    writebackSyncResults({ markdown: markdownB, results }),
+  );
   const markdownC = applyTextEdits(markdownB, writeback.edits);
 
   if (markdownC !== markdownB) {

@@ -472,3 +472,72 @@ describe("syncVault — resolveLink threading", () => {
     }
   });
 });
+
+// ===========================================================================
+
+describe("syncVault — perfTracing flag", () => {
+  it("emits a single [perf] line when settings.perfTracing is true", async () => {
+    const note = makeNote("a.md", ONE_CARD);
+    const { repository } = makeFakeRepo([note]);
+    const { fetch } = makeFakeFetch([
+      ...bootAllV2(ALL_MODELS),
+      ok(["Default"]),
+      ok(1001),
+    ]);
+
+    const perfLines: string[] = [];
+    const logger = {
+      debug: () => {},
+      info: (msg: string) => {
+        if (typeof msg === "string" && msg.startsWith("[perf]")) perfLines.push(msg);
+      },
+      warn: () => {},
+      error: () => {},
+    };
+
+    await syncVault({
+      ankiClient: new AnkiConnectClient({ fetch }),
+      generateBlockId: seededGenerator(["q-aaaa"]),
+      logger,
+      repository,
+      settings: settingsWith({ perfTracing: true }),
+      vaultName: VAULT,
+    });
+
+    expect(perfLines).toHaveLength(1);
+    expect(perfLines[0]).toMatch(/^\[perf\] syncVault /);
+    expect(perfLines[0]).toContain("extract:");
+    expect(perfLines[0]).toContain("anki.sync:");
+  });
+
+  it("emits NO [perf] line when settings.perfTracing is false", async () => {
+    const note = makeNote("a.md", ONE_CARD);
+    const { repository } = makeFakeRepo([note]);
+    const { fetch } = makeFakeFetch([
+      ...bootAllV2(ALL_MODELS),
+      ok(["Default"]),
+      ok(1001),
+    ]);
+
+    const perfLines: string[] = [];
+    const logger = {
+      debug: () => {},
+      info: (msg: string) => {
+        if (typeof msg === "string" && msg.startsWith("[perf]")) perfLines.push(msg);
+      },
+      warn: () => {},
+      error: () => {},
+    };
+
+    await syncVault({
+      ankiClient: new AnkiConnectClient({ fetch }),
+      generateBlockId: seededGenerator(["q-aaaa"]),
+      logger,
+      repository,
+      settings: settingsWith({ perfTracing: false }),
+      vaultName: VAULT,
+    });
+
+    expect(perfLines).toHaveLength(0);
+  });
+});
