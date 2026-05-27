@@ -16,3 +16,5 @@ export interface Flashcard {
   source: CardSource;
   tags: string[];
 }
+
+export type IdentifiedFlashcard = Flashcard & { blockId: string };
