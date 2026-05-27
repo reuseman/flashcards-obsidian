@@ -1,0 +1,10 @@
+# Track only what's needed to reproduce the manual-test setup.
+# Ignore everything by default; explicit allowlist below.
+*
+!.gitignore
+!community-plugins.json
+!plugins/
+plugins/*
+!plugins/flashcards-obsidian/
+plugins/flashcards-obsidian/*
+!plugins/flashcards-obsidian/manifest.json

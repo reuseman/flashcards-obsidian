@@ -11,6 +11,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test-vault:reset": "git checkout HEAD -- test-vault/scenarios/ && rm -f test-vault/.obsidian/plugins/flashcards-obsidian/data.json test-vault/.obsidian/plugins/flashcards-obsidian/sync.log && echo '✓ test-vault reset. Reload Obsidian (Cmd/Ctrl+R) to pick up clean state.'",
     "typecheck": "tsc --noEmit",
     "version": "node version-bump.mjs && git add manifest.json versions.json"
   },
@@ -42,8 +43,11 @@
     "micromark-extension-frontmatter": "^2.0.0",
     "obsidian": "latest",
     "remark-frontmatter": "^5.0.0",
+    "rehype-raw": "^7.0.0",
+    "rehype-stringify": "^10.0.0",
     "remark-gfm": "^4.0.1",
     "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.0",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.0.0"
   }
