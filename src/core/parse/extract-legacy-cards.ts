@@ -123,6 +123,8 @@ export function extractLegacyHashtagCards(
   return cards;
 }
 
+const TRAILING_ANCHOR_RE = /\s*\^(?:q-[abcdefghijkmnpqrstuvwxyz23456789]{4}|\d{13})\s*$/;
+
 function makeCard(
   kind: CardKind,
   front: string,
@@ -132,9 +134,9 @@ function makeCard(
   context: LegacyExtractContext,
 ): Flashcard {
   return {
-    answer,
+    answer: answer.replace(TRAILING_ANCHOR_RE, ""),
     deckName: context.resolvedDeck,
-    front,
+    front: front.replace(TRAILING_ANCHOR_RE, ""),
     kind,
     source: {
       endOffset,

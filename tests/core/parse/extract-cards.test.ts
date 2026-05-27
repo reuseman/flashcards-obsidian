@@ -67,7 +67,60 @@ describe("extractCardsFromMarkdown", () => {
     });
 
     expect(result.cards).toHaveLength(1);
-    expect(result.cards[0]?.front).toContain("{{c1::heart}}");
+    expect(result.cards[0]?.front).toContain("==heart==");
+  });
+
+  test("preserves multiple cloze markers verbatim (no parser numbering)", () => {
+    const result = extractCardsFromMarkdown(
+      "The ==heart== pumps ==blood== through {2:arteries}.",
+      { notePath: "Cloze.md", settings: DEFAULT_SETTINGS },
+    );
+
+    expect(result.cards).toHaveLength(1);
+    const front = result.cards[0]?.front ?? "";
+    expect(front).toContain("==heart==");
+    expect(front).toContain("==blood==");
+    expect(front).toContain("{2:arteries}");
+    expect(front).not.toContain("{{c");
+  });
+
+  test("strips trailing v2 anchor `^q-xxxx` from inline card front/answer", () => {
+    const result = extractCardsFromMarkdown("Question:: Answer ^q-abcd", {
+      notePath: "T.md",
+      settings: DEFAULT_SETTINGS,
+    });
+    expect(result.cards[0]?.front).toBe("Question");
+    expect(result.cards[0]?.answer).toBe("Answer");
+  });
+
+  test("strips trailing v1 13-digit anchor from inline card answer", () => {
+    const result = extractCardsFromMarkdown("Q:: A ^1714056234891", {
+      notePath: "T.md",
+      settings: DEFAULT_SETTINGS,
+    });
+    expect(result.cards[0]?.answer).toBe("A");
+  });
+
+  test("strips trailing v1 anchor from legacy `#card` answer block", () => {
+    const md = "Question #card\nAnswer line one\nAnswer line two ^1714056234891";
+    const result = extractCardsFromMarkdown(md, {
+      notePath: "T.md",
+      settings: DEFAULT_SETTINGS,
+    });
+    expect(result.cards[0]?.answer).toBe("Answer line one\nAnswer line two");
+  });
+
+  test("preserves explicit-number cloze syntax verbatim", () => {
+    const result = extractCardsFromMarkdown(
+      "The {1:heart} pumps {2:blood}.",
+      { notePath: "Cloze.md", settings: DEFAULT_SETTINGS },
+    );
+
+    expect(result.cards).toHaveLength(1);
+    const front = result.cards[0]?.front ?? "";
+    expect(front).toContain("{1:heart}");
+    expect(front).toContain("{2:blood}");
+    expect(front).not.toContain("{{c");
   });
 
   describe("reversed inline cards (:::)", () => {

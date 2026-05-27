@@ -63,7 +63,7 @@ export function extractCardsFromMarkdown(
         return;
       }
 
-      const value = phrasingToVisibleText(node.children).trim();
+      const value = stripTrailingAnchor(phrasingToVisibleText(node.children).trim());
       const inline = parseInlineCard(value, options.settings);
       if (inline) {
         cards.push({
@@ -148,18 +148,22 @@ function parseInlineCard(
 }
 
 function parseClozeCard(line: string): string | null {
-  if (line.includes("==") && /==.+?==/.test(line)) {
-    return line.replace(/==(.+?)==/g, "{{c1::$1}}");
-  }
-
-  if (/\{(?:\d+:)?[^}]+\}/.test(line)) {
-    return line.replace(/\{(?:(\d+):)?([^}]+)\}/g, (_match, group, value) => {
-      const index = group ?? "1";
-      return `{{c${index}::${value}}}`;
-    });
+  if (/==.+?==/.test(line) || /\{(?:\d+:)?[^}]+\}/.test(line)) {
+    return line;
   }
 
   return null;
+}
+
+/**
+ * Removes a trailing identity anchor (`^q-xxxx` v2 or `^<13-digit>` v1) from the
+ * end of a card's visible text. Identity anchors are metadata, not card content;
+ * leaving them in `front`/`answer` would (a) leak into Anki rendering and
+ * (b) destabilise content hashing across pre/post anchor-insertion parses.
+ */
+const TRAILING_ANCHOR_RE = /\s*\^(?:q-[abcdefghijkmnpqrstuvwxyz23456789]{4}|\d{13})\s*$/;
+function stripTrailingAnchor(text: string): string {
+  return text.replace(TRAILING_ANCHOR_RE, "");
 }
 
 function phrasingToVisibleText(children: PhrasingContent[]): string {
