@@ -121,6 +121,37 @@ exports[`test-vault/features snapshot coverage > renders card-types/legacy-hasht
 ]
 `;
 
+exports[`test-vault/features snapshot coverage > renders content/audio.md 1`] = `
+[
+  {
+    "deckName": "content",
+    "fields": {
+      "Back": "<p>A bell.</p>",
+      "Front": "<p>What does this sound like? [sound:d650f6e7fa0f4f12170987cc5c2de3f3c0e4a335.wav]</p>",
+      "Source": "<a href="obsidian://open?vault=Vault&file=content%2Faudio.md#%5Ecard-0">Open in Obsidian</a>",
+    },
+    "modelName": "Obsidian-basic",
+    "tags": [
+      "obsidian",
+      "feature-fixture",
+    ],
+  },
+  {
+    "deckName": "content",
+    "fields": {
+      "Back": "<p>A short beep.</p>",
+      "Front": "<p>Listen carefully [sound:30db0de556da42068033d53fbb07902377d0550c.wav]</p>",
+      "Source": "<a href="obsidian://open?vault=Vault&file=content%2Faudio.md#%5Ecard-1">Open in Obsidian</a>",
+    },
+    "modelName": "Obsidian-basic",
+    "tags": [
+      "obsidian",
+      "feature-fixture",
+    ],
+  },
+]
+`;
+
 exports[`test-vault/features snapshot coverage > renders content/code-blocks.md 1`] = `
 [
   {
@@ -257,6 +288,24 @@ exports[`test-vault/features snapshot coverage > renders content/wikilinks.md 1`
       "Source": "<a href="obsidian://open?vault=Vault&file=content%2Fwikilinks.md#%5Ecard-3">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic",
+    "tags": [
+      "obsidian",
+      "feature-fixture",
+    ],
+  },
+]
+`;
+
+exports[`test-vault/features snapshot coverage > renders interactions/audio-in-cloze.md 1`] = `
+[
+  {
+    "deckName": "interactions",
+    "fields": {
+      "Extra": "",
+      "Source": "<a href="obsidian://open?vault=Vault&file=interactions%2Faudio-in-cloze.md#%5Ecard-0">Open in Obsidian</a>",
+      "Text": "<p>The famous opening of {{c1::Beethoven's 5th [sound:493fdd8f82cb6139db2e5f979a79b393b125dfa0.wav]}} starts here.</p>",
+    },
+    "modelName": "Obsidian-cloze",
     "tags": [
       "obsidian",
       "feature-fixture",
