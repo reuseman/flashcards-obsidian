@@ -36,6 +36,10 @@ docs/architecture/graph.svg
 # Test-vault
 docs/test-vault/.obsidian/workspace
 
+# Perf baselines (per-machine; do not commit)
+.perf-baseline.json
+.perf-current.json
+
 # Agent workflow (kept local, not tracked)
 agent.md
 plan.md
