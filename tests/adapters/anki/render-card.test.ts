@@ -423,3 +423,99 @@ describe("renderCardForAnki — code blocks", () => {
     expect(out.fields.Front).toContain("</pre>");
   });
 });
+
+// ============================================================================
+// I. Wikilink rewriting via optional resolveLink
+// ============================================================================
+
+describe("renderCardForAnki — wikilink rewriting", () => {
+  const identityResolver = (target: string): string => target;
+
+  // Locked: `resolveLink` is an OPTIONAL field on RenderContext (to be added by
+  // the implementor). Until then, cast at the call site so this test file
+  // typechecks cleanly without modifying any src/ file.
+  type CtxWithResolver = typeof CTX & {
+    resolveLink?: (target: string, sourcePath: string) => string | null;
+  };
+  const withResolver = (
+    resolveLink: (target: string, sourcePath: string) => string | null,
+  ): CtxWithResolver => ({ ...CTX, resolveLink });
+
+  it("rewrites a wikilink in the front to an obsidian:// anchor when resolveLink is provided", () => {
+    const out = renderCardForAnki(
+      baseCard({ answer: "A", front: "see [[Note]]" }),
+      withResolver(identityResolver),
+    );
+    expect(out.fields.Front).toContain(
+      '<a href="obsidian://open?vault=MyVault&amp;file=Note">Note</a>',
+    );
+    expect(out.fields.Front).not.toContain("[[Note]]");
+  });
+
+  it("rewrites a wikilink in the answer (back) when resolveLink is provided", () => {
+    const out = renderCardForAnki(
+      baseCard({ answer: "see [[Note]]", front: "Q" }),
+      withResolver(identityResolver),
+    );
+    expect(out.fields.Back).toContain(
+      '<a href="obsidian://open?vault=MyVault&amp;file=Note">Note</a>',
+    );
+    expect(out.fields.Back).not.toContain("[[Note]]");
+  });
+
+  it("leaves wikilinks literal when resolveLink is undefined (no-resolver path preserves current behavior)", () => {
+    const out = renderCardForAnki(
+      baseCard({ answer: "A", front: "see [[Note]]" }),
+      CTX,
+    );
+    expect(out.fields.Front).toContain("[[Note]]");
+    expect(out.fields.Front).not.toContain("obsidian://open");
+  });
+
+  it("rewrites only the wikilinks the resolver resolves; unresolved ones stay literal", () => {
+    const resolveLink = (target: string): string | null =>
+      target === "Known" ? "Known" : null;
+    const out = renderCardForAnki(
+      baseCard({ answer: "A", front: "[[Known]] and [[Unknown]]" }),
+      withResolver(resolveLink),
+    );
+    expect(out.fields.Front).toContain(
+      '<a href="obsidian://open?vault=MyVault&amp;file=Known">Known</a>',
+    );
+    expect(out.fields.Front).toContain("[[Unknown]]");
+    expect(out.fields.Front).not.toContain("[[Known]]");
+  });
+
+  it("cloze card: wikilink inside ==…== produces both the cloze and the rewritten link", () => {
+    const out = renderCardForAnki(
+      baseCard({ answer: "", front: "the ==[[Note]]== thing", kind: "cloze" }),
+      withResolver(identityResolver),
+    );
+    expect(out.fields.Text).toMatch(/\{\{c1::/);
+    expect(out.fields.Text).toContain("obsidian://open?vault=MyVault");
+    expect(out.fields.Text).toContain("file=Note");
+    expect(out.fields.Text).not.toContain("[[Note]]");
+  });
+
+  it("reversed card: wikilink in front is rewritten in Front field", () => {
+    const out = renderCardForAnki(
+      baseCard({ answer: "B", front: "ref [[Note]]", kind: "reversed" }),
+      withResolver(identityResolver),
+    );
+    expect(out.modelName).toBe(ANKI_MODEL_REVERSED);
+    expect(out.fields.Front).toContain(
+      '<a href="obsidian://open?vault=MyVault&amp;file=Note">Note</a>',
+    );
+    expect(out.fields.Front).not.toContain("[[Note]]");
+  });
+
+  it("Source field is unaffected by the rewriter — still the `Open in Obsidian` anchor", () => {
+    const out = renderCardForAnki(
+      baseCard({ answer: "A", front: "[[Note]]", blockId: "q-abcd" }),
+      withResolver(identityResolver),
+    );
+    expect(out.fields.Source).toBe(
+      '<a href="obsidian://open?vault=MyVault&file=Note.md#%5Eq-abcd">Open in Obsidian</a>',
+    );
+  });
+});

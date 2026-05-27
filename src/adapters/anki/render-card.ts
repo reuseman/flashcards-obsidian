@@ -6,6 +6,7 @@ import remarkRehype from "remark-rehype";
 import { unified } from "unified";
 import type { AnkiCreateModelSpec } from "./anki-connect-client.js";
 import type { IdentifiedFlashcard } from "../../../src/core/domain/card.js";
+import { rewriteWikilinks } from "../../core/render/rewrite-wikilinks.js";
 
 // Names match v1 (lowercase) so v2 can extend the existing models in-place
 // instead of creating parallel ones. Anki treats model names case-insensitively
@@ -26,6 +27,7 @@ export interface RenderContext {
   notePath: string;
   tags: string[];
   vaultName: string;
+  resolveLink?: (target: string, sourcePath: string) => string | null;
 }
 
 export interface RenderedFields {
@@ -102,7 +104,7 @@ const processor = unified()
   .use(remarkGfm)
   .use(remarkRehype, { allowDangerousHtml: true })
   .use(rehypeRaw)
-  .use(rehypeStringify);
+  .use(rehypeStringify, { characterReferences: { useNamedReferences: true } });
 
 function md(src: string): string {
   const out = String(processor.processSync(src));
@@ -123,9 +125,19 @@ export function renderCardForAnki(
 ): RenderedCard {
   const source = buildSourceLink(ctx, card.blockId);
 
+  const resolveLink = ctx.resolveLink;
+  const rewrite = (src: string): string =>
+    resolveLink === undefined
+      ? src
+      : rewriteWikilinks(src, {
+          vaultName: ctx.vaultName,
+          sourcePath: ctx.notePath,
+          resolveLink,
+        });
+
   if (card.kind === "cloze") {
-    const text = md(convertCloze(card.front));
-    const extra = card.answer === "" ? "" : md(card.answer);
+    const text = md(convertCloze(rewrite(card.front)));
+    const extra = card.answer === "" ? "" : md(rewrite(card.answer));
     return {
       deckName: ctx.deckName,
       modelName: ANKI_MODEL_CLOZE,
@@ -140,8 +152,8 @@ export function renderCardForAnki(
     deckName: ctx.deckName,
     modelName,
     fields: {
-      Front: md(card.front),
-      Back: md(card.answer),
+      Front: md(rewrite(card.front)),
+      Back: md(rewrite(card.answer)),
       Source: source,
     } as RenderedFields,
     tags: ctx.tags,
