@@ -5,14 +5,13 @@ exports[`test-vault/features snapshot coverage > renders card-types/cloze.md 1`]
   {
     "deckName": "card-types",
     "fields": {
-      "Back": "<p>powerhouse}} of the cell.</p>",
-      "Front": "<p>The mitochondria is the {{c1</p>",
+      "Extra": "",
       "Source": "<a href="obsidian://open?vault=Vault&file=card-types%2Fcloze.md#%5Ecard-0">Open in Obsidian</a>",
+      "Text": "<p>The mitochondria is the {{c1::powerhouse}} of the cell.</p>",
     },
-    "modelName": "Obsidian-basic",
+    "modelName": "Obsidian-cloze",
     "tags": [
       "obsidian",
-      "feature-fixture",
     ],
   },
   {
@@ -20,25 +19,11 @@ exports[`test-vault/features snapshot coverage > renders card-types/cloze.md 1`]
     "fields": {
       "Extra": "",
       "Source": "<a href="obsidian://open?vault=Vault&file=card-types%2Fcloze.md#%5Ecard-1">Open in Obsidian</a>",
-      "Text": "<p>The mitochondria is the {{c1::powerhouse}} of the cell.</p>",
-    },
-    "modelName": "Obsidian-cloze",
-    "tags": [
-      "obsidian",
-      "feature-fixture",
-    ],
-  },
-  {
-    "deckName": "card-types",
-    "fields": {
-      "Extra": "",
-      "Source": "<a href="obsidian://open?vault=Vault&file=card-types%2Fcloze.md#%5Ecard-2">Open in Obsidian</a>",
       "Text": "<p>{{c1::Highlighted cloze}} inside a sentence.</p>",
     },
     "modelName": "Obsidian-cloze",
     "tags": [
       "obsidian",
-      "feature-fixture",
     ],
   },
 ]
@@ -344,21 +329,8 @@ exports[`test-vault/features snapshot coverage > renders interactions/multiple-c
   {
     "deckName": "interactions",
     "fields": {
-      "Back": "<p>mitochondria}} is the powerhouse of the cell.</p>",
-      "Front": "<p>The {{c1</p>",
-      "Source": "<a href="obsidian://open?vault=Vault&file=interactions%2Fmultiple-cards-per-note.md#%5Ecard-3">Open in Obsidian</a>",
-    },
-    "modelName": "Obsidian-basic",
-    "tags": [
-      "obsidian",
-      "feature-fixture",
-    ],
-  },
-  {
-    "deckName": "interactions",
-    "fields": {
       "Extra": "",
-      "Source": "<a href="obsidian://open?vault=Vault&file=interactions%2Fmultiple-cards-per-note.md#%5Ecard-4">Open in Obsidian</a>",
+      "Source": "<a href="obsidian://open?vault=Vault&file=interactions%2Fmultiple-cards-per-note.md#%5Ecard-3">Open in Obsidian</a>",
       "Text": "<p>The {{c1::mitochondria}} is the powerhouse of the cell.</p>",
     },
     "modelName": "Obsidian-cloze",
@@ -375,21 +347,8 @@ exports[`test-vault/features snapshot coverage > renders interactions/wikilink-i
   {
     "deckName": "interactions",
     "fields": {
-      "Back": "<p><a href="obsidian://open?vault=Vault&amp;file=capital">capital</a>}} of France is Paris.</p>",
-      "Front": "<p>The {{c1</p>",
-      "Source": "<a href="obsidian://open?vault=Vault&file=interactions%2Fwikilink-in-cloze.md#%5Ecard-0">Open in Obsidian</a>",
-    },
-    "modelName": "Obsidian-basic",
-    "tags": [
-      "obsidian",
-      "feature-fixture",
-    ],
-  },
-  {
-    "deckName": "interactions",
-    "fields": {
       "Extra": "",
-      "Source": "<a href="obsidian://open?vault=Vault&file=interactions%2Fwikilink-in-cloze.md#%5Ecard-1">Open in Obsidian</a>",
+      "Source": "<a href="obsidian://open?vault=Vault&file=interactions%2Fwikilink-in-cloze.md#%5Ecard-0">Open in Obsidian</a>",
       "Text": "<p>The {{c1::<a href="obsidian://open?vault=Vault&amp;file=capital">capital</a>}} of France is Paris.</p>",
     },
     "modelName": "Obsidian-cloze",
@@ -402,7 +361,7 @@ exports[`test-vault/features snapshot coverage > renders interactions/wikilink-i
     "deckName": "interactions",
     "fields": {
       "Extra": "",
-      "Source": "<a href="obsidian://open?vault=Vault&file=interactions%2Fwikilink-in-cloze.md#%5Ecard-2">Open in Obsidian</a>",
+      "Source": "<a href="obsidian://open?vault=Vault&file=interactions%2Fwikilink-in-cloze.md#%5Ecard-1">Open in Obsidian</a>",
       "Text": "<p>The {{c1::<a href="obsidian://open?vault=Vault&amp;file=capital">capital city</a>}} of Italy is Rome.</p>",
     },
     "modelName": "Obsidian-cloze",

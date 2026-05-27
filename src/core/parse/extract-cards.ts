@@ -124,7 +124,9 @@ function parseInlineCard(
   line: string,
   settings: FlashcardsSettings,
 ): { answer: string; front: string; kind: "basic" | "reversed"; syntax: "inline" } | null {
-  const reverseIndex = line.indexOf(settings.inlineReverseSeparator);
+  const clozeSpans = collectClozeSpans(line);
+
+  const reverseIndex = findSeparator(line, settings.inlineReverseSeparator, clozeSpans);
   if (reverseIndex >= 0) {
     return {
       answer: line.slice(reverseIndex + settings.inlineReverseSeparator.length).trim(),
@@ -134,7 +136,7 @@ function parseInlineCard(
     };
   }
 
-  const basicIndex = line.indexOf(settings.inlineSeparator);
+  const basicIndex = findSeparator(line, settings.inlineSeparator, clozeSpans);
   if (basicIndex >= 0) {
     return {
       answer: line.slice(basicIndex + settings.inlineSeparator.length).trim(),
@@ -145,6 +147,64 @@ function parseInlineCard(
   }
 
   return null;
+}
+
+interface Span {
+  end: number;
+  start: number;
+}
+
+/**
+ * Locates the first occurrence of `separator` in `line` whose match range does
+ * not intersect any cloze span. Without this guard, a `::` inside an Anki
+ * `{{cN::answer}}` cloze would be misread as an inline-card separator,
+ * producing a spurious basic card alongside the (correct) cloze card. (B1)
+ */
+function findSeparator(line: string, separator: string, clozeSpans: Span[]): number {
+  let from = 0;
+  while (from <= line.length) {
+    const idx = line.indexOf(separator, from);
+    if (idx < 0) return -1;
+    if (!intersectsSpan(idx, idx + separator.length, clozeSpans)) return idx;
+    from = idx + 1;
+  }
+  return -1;
+}
+
+function intersectsSpan(start: number, end: number, spans: Span[]): boolean {
+  for (const s of spans) {
+    if (start < s.end && end > s.start) return true;
+  }
+  return false;
+}
+
+/**
+ * Returns the source ranges of cloze constructs claimed by `parseClozeCard`:
+ *   - `==highlight==`
+ *   - `{N:text}` and `{text}`
+ *   - `{{cN::text}}` (Anki-native; matched by the curly-brace pattern via its
+ *     inner `{cN::text}` substring — we widen to the outer `{{...}}` here so
+ *     the entire Anki cloze is excluded from inline-separator scanning).
+ */
+function collectClozeSpans(line: string): Span[] {
+  const spans: Span[] = [];
+
+  for (const m of line.matchAll(/==.+?==/g)) {
+    const idx = m.index ?? 0;
+    spans.push({ end: idx + m[0].length, start: idx });
+  }
+
+  for (const m of line.matchAll(/\{\{c\d+::[^}]+\}\}/g)) {
+    const idx = m.index ?? 0;
+    spans.push({ end: idx + m[0].length, start: idx });
+  }
+
+  for (const m of line.matchAll(/\{(?:\d+:)?[^}]+\}/g)) {
+    const idx = m.index ?? 0;
+    spans.push({ end: idx + m[0].length, start: idx });
+  }
+
+  return spans;
 }
 
 function parseClozeCard(line: string): string | null {

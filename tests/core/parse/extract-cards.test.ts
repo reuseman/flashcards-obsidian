@@ -345,6 +345,28 @@ describe("extractCardsFromMarkdown", () => {
     });
   });
 
+  describe("B1: cloze syntax does not double-extract as inline card", () => {
+    test("{{cN::...}} on its own line yields exactly one cloze card", () => {
+      const result = extractCardsFromMarkdown(
+        "The {{c1::mitochondria}} is the powerhouse of the cell.\n",
+        { notePath: "Cloze.md", settings: DEFAULT_SETTINGS },
+      );
+
+      expect(result.cards).toHaveLength(1);
+      expect(result.cards[0]?.kind).toBe("cloze");
+    });
+
+    test("{{cN::[[wikilink]]}} yields exactly one cloze card", () => {
+      const result = extractCardsFromMarkdown(
+        "The {{c1::[[capital]]}} of France is Paris.\n",
+        { notePath: "Cloze.md", settings: DEFAULT_SETTINGS },
+      );
+
+      expect(result.cards).toHaveLength(1);
+      expect(result.cards[0]?.kind).toBe("cloze");
+    });
+  });
+
   test("parses fenced flashcard blocks", () => {
     const result = extractCardsFromMarkdown(
       [
