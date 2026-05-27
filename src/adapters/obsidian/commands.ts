@@ -4,6 +4,7 @@ import type FlashcardsPlugin from "../../plugin.js";
 import { AnkiConnectClient } from "../anki/anki-connect-client.js";
 import { ObsidianMarkdownRepository } from "./obsidian-markdown-repository.js";
 import { MigrationModal } from "./migration-modal.js";
+import { createWikilinkResolver } from "./wikilink-resolver.js";
 import { backfillV1Vault } from "../../application/backfill-v1-vault.js";
 import { migrationCheck } from "../../application/migration-check.js";
 import { syncNote, type SyncNoteResult } from "../../application/sync-note.js";
@@ -136,6 +137,7 @@ async function dispatch(
   vaultName: string,
   target: Target,
 ): Promise<void> {
+  const resolveLink = createWikilinkResolver(plugin.app.metadataCache);
   try {
     if (target === "current") {
       const note = await repository.getActiveNote();
@@ -151,6 +153,7 @@ async function dispatch(
           logger: plugin.logger,
           note,
           repository,
+          resolveLink,
           settings: plugin.settings,
           vaultName,
         });
@@ -171,6 +174,7 @@ async function dispatch(
             statusBar.setText(`Flashcards: ${current}/${total} — ${name}`);
           },
           repository,
+          resolveLink,
           settings: plugin.settings,
           vaultName,
         });

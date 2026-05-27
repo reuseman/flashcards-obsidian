@@ -365,3 +365,41 @@ describe("syncVault — dependency threading", () => {
     expect(noteB.markdown).toContain("^q-bbbb");
   });
 });
+
+// ===========================================================================
+
+describe("syncVault — resolveLink threading", () => {
+  it("threads resolveLink through to every note's syncNote → addNote Front", async () => {
+    const noteA = makeNote("a.md", ["see [[Note]]::A1", ""].join("\n"));
+    const noteB = makeNote("b.md", ["check [[Note]]::A2", ""].join("\n"));
+    const { repository } = makeFakeRepo([noteA, noteB]);
+    const { calls, fetch } = makeFakeFetch([
+      ...bootAllV2(ALL_MODELS),
+      ok(["Default"]),
+      ok(5001),
+      ...bootAllV2(ALL_MODELS),
+      ok(["Default"]),
+      ok(5002),
+    ]);
+
+    await syncVault({
+      ankiClient: new AnkiConnectClient({ fetch }),
+      generateBlockId: seededGenerator(["q-aaaa", "q-bbbb"]),
+      repository,
+      resolveLink: (target: string) => `${target}.md`,
+      settings: settingsWith(),
+      vaultName: VAULT,
+    });
+
+    const addNoteCalls = calls.filter((c) => c.action === "addNote");
+    expect(addNoteCalls).toHaveLength(2);
+    for (const c of addNoteCalls) {
+      const note = (c.params as { note: { fields: Record<string, string> } })
+        .note;
+      expect(note.fields.Front).toContain(
+        `<a href="obsidian://open?vault=${VAULT}&amp;file=Note.md">Note</a>`,
+      );
+      expect(note.fields.Front).not.toContain("[[Note]]");
+    }
+  });
+});

@@ -10,6 +10,7 @@ export interface SyncVaultInput {
   logger?: Logger;
   onProgress?: (current: number, total: number, notePath: string) => void;
   repository: ObsidianMarkdownRepository;
+  resolveLink?: (target: string, sourcePath: string) => string | null;
   settings: FlashcardsSettings;
   vaultName: string;
 }
@@ -37,6 +38,7 @@ export async function syncVault(
     generateBlockId,
     onProgress,
     repository,
+    resolveLink,
     settings,
     vaultName,
   } = input;
@@ -63,6 +65,7 @@ export async function syncVault(
         logger,
         note,
         repository,
+        ...(resolveLink ? { resolveLink } : {}),
         settings,
         vaultName,
       });

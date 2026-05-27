@@ -889,3 +889,40 @@ describe("executeSyncPlan — integration smoke", () => {
     expect(result.deletes[0]!.status).toBe("ok");
   });
 });
+
+// ---------------------------------------------------------------------------
+// resolveLink threading
+// ---------------------------------------------------------------------------
+
+describe("executeSyncPlan — resolveLink threading", () => {
+  it("rewrites wikilinks in the rendered Front when resolveLink is provided in the input", async () => {
+    const card = makeCard({
+      blockId: "wlk",
+      deckName: "Default",
+      front: "see [[Note]]",
+    });
+    const c = createOp(card);
+    const { calls, fetch } = makeFakeFetch([
+      ...bootAllV2(),
+      ok(["Default"]),
+      ok(2024),
+    ]);
+    const client = makeClient(fetch);
+
+    await executeSyncPlan({
+      client,
+      notePath: NOTE_PATH,
+      plan: emptyPlan({ create: [c] }),
+      resolveLink: (target: string) => `${target}.md`,
+      vaultName: VAULT,
+    });
+
+    const addCall = calls.find((c) => c.action === "addNote")!;
+    const note = (addCall.params as { note: { fields: Record<string, string> } })
+      .note;
+    expect(note.fields.Front).toContain(
+      `<a href="obsidian://open?vault=${VAULT}&amp;file=Note.md">Note</a>`,
+    );
+    expect(note.fields.Front).not.toContain("[[Note]]");
+  });
+});

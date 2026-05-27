@@ -45,6 +45,7 @@ export interface ExecuteSyncPlanInput {
   logger?: Logger;
   notePath: string;
   plan: SyncPlan;
+  resolveLink?: (target: string, sourcePath: string) => string | null;
   vaultName: string;
 }
 
@@ -62,19 +63,21 @@ function renderFor(
   card: IdentifiedFlashcard,
   notePath: string,
   vaultName: string,
+  resolveLink: ((target: string, sourcePath: string) => string | null) | undefined,
 ) {
   return renderCardForAnki(card, {
     deckName: card.deckName ?? "",
     notePath,
     tags: card.tags,
     vaultName,
+    ...(resolveLink ? { resolveLink } : {}),
   });
 }
 
 export async function executeSyncPlan(
   input: ExecuteSyncPlanInput,
 ): Promise<ExecuteSyncPlanResult> {
-  const { client, notePath, plan, vaultName } = input;
+  const { client, notePath, plan, resolveLink, vaultName } = input;
   const logger: Logger = input.logger ?? new NoopLogger();
 
   logger.debug("executeSyncPlan start", {
@@ -152,7 +155,7 @@ export async function executeSyncPlan(
   // 4. CREATE ops.
   for (const op of plan.create) {
     try {
-      const rendered = renderFor(op.card, notePath, vaultName);
+      const rendered = renderFor(op.card, notePath, vaultName, resolveLink);
       const nid = await client.addNote({
         deckName: rendered.deckName,
         modelName: rendered.modelName,
@@ -179,7 +182,7 @@ export async function executeSyncPlan(
   // 5. UPDATE ops.
   for (const op of plan.update) {
     try {
-      const rendered = renderFor(op.card, notePath, vaultName);
+      const rendered = renderFor(op.card, notePath, vaultName, resolveLink);
       await client.updateNoteFields(
         op.nid,
         rendered.fields as unknown as Record<string, string>,

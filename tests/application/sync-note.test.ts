@@ -459,6 +459,42 @@ describe("syncNote — custom defaultDeck", () => {
 });
 
 // ===========================================================================
+// resolveLink threading
+// ===========================================================================
+
+describe("syncNote — resolveLink threading", () => {
+  it("threads resolveLink through to the addNote Front field on first sync", async () => {
+    const md = ["see [[Note]]::A1", ""].join("\n");
+    const { repository } = makeFakeRepository(md);
+    const { calls, fetch } = makeFakeFetch([
+      ...bootAllV2(ALL_MODELS),
+      ok(["Default"]),
+      ok(4242),
+    ]);
+
+    await syncNote({
+      ankiClient: new AnkiConnectClient({ fetch }),
+      generateBlockId: seededGenerator(["q-aaaa"]),
+      note: makeNote(md),
+      repository,
+      resolveLink: (target: string) => `${target}.md`,
+      settings: settingsWith(),
+      vaultName: VAULT,
+    });
+
+    const addCalls = calls.filter((c) => c.action === "addNote");
+    expect(addCalls).toHaveLength(1);
+    const note = (addCalls[0]!.params as {
+      note: { fields: Record<string, string> };
+    }).note;
+    expect(note.fields.Front).toContain(
+      `<a href="obsidian://open?vault=${VAULT}&amp;file=Note.md">Note</a>`,
+    );
+    expect(note.fields.Front).not.toContain("[[Note]]");
+  });
+});
+
+// ===========================================================================
 // Seeded generator determinism
 // ===========================================================================
 

@@ -24,6 +24,7 @@ export interface SyncNoteInput {
   logger?: Logger;
   note: MarkdownNote;
   repository: ObsidianMarkdownRepository;
+  resolveLink?: (target: string, sourcePath: string) => string | null;
   settings: FlashcardsSettings;
   vaultName: string;
 }
@@ -63,6 +64,7 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
     generateBlockId = defaultGenerateBlockId,
     note,
     repository,
+    resolveLink,
     settings,
     vaultName,
   } = input;
@@ -152,6 +154,7 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
       logger,
       notePath: note.path,
       plan,
+      ...(resolveLink ? { resolveLink } : {}),
       vaultName,
     });
   } catch (e) {
