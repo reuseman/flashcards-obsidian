@@ -19,6 +19,7 @@ export interface FlashcardsSettings {
   legacy: LegacySettings;
   logLevel: LogLevelSetting;
   logToFile: boolean;
+  perfTracing: boolean;
   v1MigrationDecisionMade: boolean;
 }
 
@@ -37,6 +38,7 @@ export const DEFAULT_SETTINGS: FlashcardsSettings = {
   },
   logLevel: "info",
   logToFile: true,
+  perfTracing: false,
   v1MigrationDecisionMade: false,
 };
 
