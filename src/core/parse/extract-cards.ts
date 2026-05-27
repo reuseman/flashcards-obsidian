@@ -63,7 +63,9 @@ export function extractCardsFromMarkdown(
         return;
       }
 
-      const value = stripTrailingAnchor(phrasingToVisibleText(node.children).trim());
+      const value = stripTrailingAnchor(
+        phrasingToVisibleText(node.children, markdown).trim(),
+      );
       const inline = parseInlineCard(value, options.settings);
       if (inline) {
         cards.push({
@@ -226,17 +228,20 @@ function stripTrailingAnchor(text: string): string {
   return text.replace(TRAILING_ANCHOR_RE, "");
 }
 
-function phrasingToVisibleText(children: PhrasingContent[]): string {
+function phrasingToVisibleText(children: PhrasingContent[], source: string): string {
   let output = "";
 
   for (const child of children) {
-    output += visibleTextForNode(child);
+    output += visibleTextForNode(child, source);
   }
 
   return output;
 }
 
-function visibleTextForNode(node: PhrasingContent | RootContent | Nodes): string {
+function visibleTextForNode(
+  node: PhrasingContent | RootContent | Nodes,
+  source: string,
+): string {
   switch (node.type) {
     case "text":
       return node.value;
@@ -249,24 +254,42 @@ function visibleTextForNode(node: PhrasingContent | RootContent | Nodes): string
     case "heading":
     case "link":
     case "linkReference":
-      return childText(node);
-    case "footnoteReference":
-    case "html":
+      return childText(node, source);
+    // B5: `image` / `imageReference` previously returned "", which dropped
+    // markdown-form images (`![alt](file)`) from the visible text before the
+    // media rewriter could see them. Slice the original source to preserve
+    // the exact syntax — the wikilink form survives via mdast's plain-text
+    // fallback, but the standard form is a real node here.
     case "image":
     case "imageReference":
+      return sliceFromSource(node, source);
+    case "footnoteReference":
+    case "html":
     case "inlineCode":
       return "";
     default:
-      return hasChildren(node) ? childText(node) : "";
+      return hasChildren(node) ? childText(node, source) : "";
   }
 }
 
-function childText(node: Parent): string {
+function childText(node: Parent, source: string): string {
   let output = "";
   for (const child of node.children as Array<PhrasingContent | RootContent | Nodes>) {
-    output += visibleTextForNode(child);
+    output += visibleTextForNode(child, source);
   }
   return output;
+}
+
+function sliceFromSource(
+  node: PhrasingContent | RootContent | Nodes,
+  source: string,
+): string {
+  const start = node.position?.start.offset;
+  const end = node.position?.end.offset;
+  if (typeof start === "number" && typeof end === "number") {
+    return source.slice(start, end);
+  }
+  return "";
 }
 
 function hasChildren(node: object): node is Parent {

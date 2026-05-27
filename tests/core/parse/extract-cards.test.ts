@@ -389,4 +389,47 @@ describe("extractCardsFromMarkdown", () => {
       kind: "basic",
     });
   });
+
+  // B5: markdown-form images `![alt](file.png)` were stripped from visible
+  // text by `phrasingToVisibleText`, so the downstream media rewriter never
+  // saw them. Wikilink-form `![[file.png]]` survived only because mdast
+  // treats it as plain text. Both forms must reach the renderer verbatim.
+  test("preserves markdown image syntax in inline card answer", () => {
+    const result = extractCardsFromMarkdown(
+      "What does this look like?::Look ![alt](pic.png)",
+      {
+        notePath: "Images.md",
+        settings: DEFAULT_SETTINGS,
+      },
+    );
+
+    expect(result.cards).toHaveLength(1);
+    expect(result.cards[0]?.answer).toContain("![alt](pic.png)");
+  });
+
+  test("preserves wikilink image syntax in inline card answer", () => {
+    const result = extractCardsFromMarkdown(
+      "Describe the diagram ![[diagram.png]]::It shows a flow.",
+      {
+        notePath: "Images.md",
+        settings: DEFAULT_SETTINGS,
+      },
+    );
+
+    expect(result.cards).toHaveLength(1);
+    expect(result.cards[0]?.front).toContain("![[diagram.png]]");
+  });
+
+  test("preserves markdown image with empty alt", () => {
+    const result = extractCardsFromMarkdown(
+      "Q::A ![](pic.png)",
+      {
+        notePath: "Images.md",
+        settings: DEFAULT_SETTINGS,
+      },
+    );
+
+    expect(result.cards).toHaveLength(1);
+    expect(result.cards[0]?.answer).toContain("![](pic.png)");
+  });
 });

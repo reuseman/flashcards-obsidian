@@ -196,7 +196,7 @@ exports[`test-vault/features snapshot coverage > renders content/images.md 1`] =
     "deckName": "content",
     "fields": {
       "Back": "<p>A screenshot.</p>",
-      "Front": "<p>What does this look like?</p>",
+      "Front": "<p>What does this look like? <img src="2c23728f3575235a2550504a24c631e41ca33bb8.png" alt="alt"></p>",
       "Source": "<a href="obsidian://open?vault=Vault&file=content%2Fimages.md#%5Ecard-1">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic",
