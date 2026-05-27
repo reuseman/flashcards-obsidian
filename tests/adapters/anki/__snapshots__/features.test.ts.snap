@@ -12,6 +12,7 @@ exports[`test-vault/features snapshot coverage > renders card-types/cloze.md 1`]
     "modelName": "Obsidian-cloze",
     "tags": [
       "obsidian",
+      "feature-fixture",
     ],
   },
   {
@@ -24,6 +25,7 @@ exports[`test-vault/features snapshot coverage > renders card-types/cloze.md 1`]
     "modelName": "Obsidian-cloze",
     "tags": [
       "obsidian",
+      "feature-fixture",
     ],
   },
 ]
