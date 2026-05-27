@@ -10,6 +10,18 @@ export interface MarkdownNote {
 export class ObsidianMarkdownRepository {
   constructor(private readonly app: App) {}
 
+  async getAllMarkdownNotes(): Promise<MarkdownNote[]> {
+    const files = this.app.vault.getMarkdownFiles();
+    return Promise.all(
+      files.map(async (file) => ({
+        file,
+        markdown: await this.app.vault.read(file),
+        name: file.basename,
+        path: file.path,
+      })),
+    );
+  }
+
   async getActiveNote(): Promise<MarkdownNote | null> {
     const file = this.app.workspace.getActiveFile();
     if (!file) {

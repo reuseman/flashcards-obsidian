@@ -1,5 +1,6 @@
 export type ContextStrategy = "headings" | "none" | "note-title";
 export type ExplicitSyntax = "fenced";
+export type LogLevelSetting = "debug" | "info" | "warn" | "error";
 
 export interface LegacySettings {
   enabled: boolean;
@@ -16,6 +17,9 @@ export interface FlashcardsSettings {
   inlineReverseSeparator: string;
   inlineSeparator: string;
   legacy: LegacySettings;
+  logLevel: LogLevelSetting;
+  logToFile: boolean;
+  v1MigrationDecisionMade: boolean;
 }
 
 export const DEFAULT_SETTINGS: FlashcardsSettings = {
@@ -31,6 +35,9 @@ export const DEFAULT_SETTINGS: FlashcardsSettings = {
     enabled: true,
     hashtagBasic: "card",
   },
+  logLevel: "info",
+  logToFile: true,
+  v1MigrationDecisionMade: false,
 };
 
 export function mergeSettings(
