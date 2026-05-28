@@ -7,6 +7,16 @@ export interface LegacySettings {
   hashtagBasic: string;
 }
 
+export interface RenderPreviewSettings {
+  enabled: boolean;
+  features: {
+    cloze: boolean;
+    anchor: boolean;
+    inlineSeparator: boolean;
+    legacyHashtag: boolean;
+  };
+}
+
 export interface FlashcardsSettings {
   contextSeparator: string;
   contextStrategy: ContextStrategy;
@@ -20,6 +30,7 @@ export interface FlashcardsSettings {
   logLevel: LogLevelSetting;
   logToFile: boolean;
   perfTracing: boolean;
+  renderPreview: RenderPreviewSettings;
   v1MigrationDecisionMade: boolean;
 }
 
@@ -39,6 +50,15 @@ export const DEFAULT_SETTINGS: FlashcardsSettings = {
   logLevel: "info",
   logToFile: true,
   perfTracing: false,
+  renderPreview: {
+    enabled: true,
+    features: {
+      cloze: true,
+      anchor: true,
+      inlineSeparator: false,
+      legacyHashtag: true,
+    },
+  },
   v1MigrationDecisionMade: false,
 };
 
@@ -55,6 +75,14 @@ export function mergeSettings(
     candidate.legacy && typeof candidate.legacy === "object"
       ? (candidate.legacy as Partial<LegacySettings>)
       : undefined;
+  const renderPreviewCandidate =
+    candidate.renderPreview && typeof candidate.renderPreview === "object"
+      ? (candidate.renderPreview as Partial<RenderPreviewSettings>)
+      : undefined;
+  const renderPreviewFeaturesCandidate =
+    renderPreviewCandidate?.features && typeof renderPreviewCandidate.features === "object"
+      ? (renderPreviewCandidate.features as Partial<RenderPreviewSettings["features"]>)
+      : undefined;
 
   return {
     ...defaults,
@@ -65,6 +93,14 @@ export function mergeSettings(
     legacy: {
       ...defaults.legacy,
       ...(legacyCandidate ?? {}),
+    },
+    renderPreview: {
+      ...defaults.renderPreview,
+      ...(renderPreviewCandidate ?? {}),
+      features: {
+        ...defaults.renderPreview.features,
+        ...(renderPreviewFeaturesCandidate ?? {}),
+      },
     },
   };
 }
