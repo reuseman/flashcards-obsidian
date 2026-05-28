@@ -28,6 +28,7 @@ const copyToTestVault = {
         "manifest.json",
         path.join(testVaultPluginDir, "manifest.json"),
       );
+      copyFileSync("styles.css", path.join(testVaultPluginDir, "styles.css"));
     });
   },
 };
