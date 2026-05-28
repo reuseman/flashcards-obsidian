@@ -1,1 +1,53 @@
 /* Intentionally minimal for now. The rewrite will add styles only when needed. */
+
+/* Render-preview: keep ==highlight== and {{cN::body}} visually unified. */
+.markdown-rendered mark,
+.markdown-rendered .ff-cloze {
+  background: #fff3a8;
+  padding: 0 0.1em;
+  border-radius: 2px;
+}
+
+.markdown-rendered .ff-anchor {
+  color: var(--text-faint);
+  cursor: help;
+  margin-left: 0.25em;
+}
+
+.markdown-rendered .ff-sep {
+  color: var(--text-muted);
+  font-weight: 600;
+  margin: 0 0.15em;
+}
+
+.markdown-rendered .ff-legacy-tag {
+  color: var(--text-faint);
+  font-size: 0.9em;
+  border: 1px dashed var(--text-faint);
+  border-radius: 3px;
+  padding: 0 0.25em;
+}
+
+/* Live Preview surfaces inside the CM6 editor. */
+.cm-editor .ff-cloze,
+.cm-editor mark {
+  background: #fff3a8;
+  padding: 0 0.1em;
+  border-radius: 2px;
+}
+.cm-editor .ff-anchor {
+  color: var(--text-faint);
+  margin-left: 0.25em;
+}
+.cm-editor .ff-sep {
+  color: var(--text-muted);
+  font-weight: 600;
+  margin: 0 0.15em;
+}
+.cm-editor .ff-legacy-tag {
+  color: var(--text-faint);
+  font-size: 0.9em;
+  border: 1px dashed var(--text-faint);
+  border-radius: 3px;
+  padding: 0 0.25em;
+}

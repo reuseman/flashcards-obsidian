@@ -21,6 +21,7 @@ import {
   NoopLogger,
   type Logger,
 } from "./core/logging/logger.js";
+import { registerRenderPreview } from "./render-preview/index.js";
 
 export default class FlashcardsPlugin extends Plugin {
   settings: FlashcardsSettings = DEFAULT_SETTINGS;
@@ -44,6 +45,7 @@ export default class FlashcardsPlugin extends Plugin {
     registerPluginCommands(this);
 
     this.registerWorkspaceEvents();
+    registerRenderPreview(this, () => this.settings);
 
     // Initial paint — defer to next tick so workspace is ready.
     this.app.workspace.onLayoutReady(() => {
