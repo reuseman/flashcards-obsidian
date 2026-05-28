@@ -11,7 +11,11 @@ function collectCodeSpans(line: string): { start: number; end: number }[] {
   while (i < line.length) {
     if (line[i] === "`") {
       const close = line.indexOf("`", i + 1);
-      if (close === -1) break;
+      if (close === -1) {
+        // Stray backtick with no closer — skip it and keep scanning.
+        i++;
+        continue;
+      }
       out.push({ start: i, end: close + 1 });
       i = close + 1;
     } else {

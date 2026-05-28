@@ -48,4 +48,12 @@ describe("inline-separator feature", () => {
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({ start: 1, end: 3 });
   });
+
+  test("stray unmatched backtick does not swallow following separators", () => {
+    const out = feat.detect("text ` then Q:: A");
+    expect(out).toHaveLength(1);
+    expect(out[0]!.html).toBe(
+      `<span class="ff-sep" data-kind="basic">→</span>`,
+    );
+  });
 });
