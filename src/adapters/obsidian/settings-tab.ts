@@ -43,5 +43,63 @@ export class FlashcardsSettingTab extends PluginSettingTab {
             });
           }),
       );
+
+    containerEl.createEl("h3", { text: "Reading-mode rendering" });
+    containerEl.createEl("p", {
+      text:
+        "Cosmetic rendering of flashcard syntax in Reading mode and Live " +
+        "Preview. Live Preview toggles take effect after reopening the file.",
+      cls: "setting-item-description",
+    });
+
+    new Setting(containerEl)
+      .setName("Enable render-preview")
+      .setDesc("Master switch.")
+      .addToggle((t) =>
+        t
+          .setValue(this.plugin.settings.renderPreview.enabled)
+          .onChange(async (value) => {
+            await this.plugin.updateSettings({
+              renderPreview: {
+                ...this.plugin.settings.renderPreview,
+                enabled: value,
+              },
+            });
+          }),
+      );
+
+    const featureRow = (
+      key: "cloze" | "anchor" | "inlineSeparator" | "legacyHashtag",
+      name: string,
+      desc: string,
+    ) =>
+      new Setting(containerEl).setName(name).setDesc(desc).addToggle((t) =>
+        t
+          .setValue(this.plugin.settings.renderPreview.features[key])
+          .onChange(async (value) => {
+            await this.plugin.updateSettings({
+              renderPreview: {
+                ...this.plugin.settings.renderPreview,
+                features: {
+                  ...this.plugin.settings.renderPreview.features,
+                  [key]: value,
+                },
+              },
+            });
+          }),
+      );
+
+    featureRow("cloze", "Cloze", "Render {{cN::x}} and {N:x} with cloze styling.");
+    featureRow("anchor", "Sync anchor", "Dim the ^q-XXXX / ^XXXXXXXXXXXXX sync anchors.");
+    featureRow(
+      "inlineSeparator",
+      "Inline separator",
+      "Replace :: and ::: with arrow glyphs. Off by default (visually invasive).",
+    );
+    featureRow(
+      "legacyHashtag",
+      "Legacy hashtag",
+      "Fade legacy #card / #card-reverse tags during v1 migration.",
+    );
   }
 }
