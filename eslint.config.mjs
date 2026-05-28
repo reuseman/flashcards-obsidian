@@ -36,4 +36,20 @@ export default defineConfig(
       ],
     },
   },
+  {
+    files: [
+      "src/render-preview/feature.ts",
+      "src/render-preview/registry.ts",
+      "src/render-preview/dom-utils.ts",
+      "src/render-preview/features/**/*.ts",
+    ],
+    rules: {
+      "no-restricted-imports": ["error", {
+        patterns: [
+          { group: ["obsidian", "obsidian/*"], message: "Pure render-preview modules must not import from obsidian." },
+          { group: ["@codemirror/*"], message: "Pure render-preview modules must not import from CodeMirror." },
+        ],
+      }],
+    },
+  },
 );
