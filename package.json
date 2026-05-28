@@ -49,6 +49,7 @@
     "fast-check": "^4.3.0",
     "globals": "^16.4.0",
     "husky": "^9.1.7",
+    "jsdom": "^29.1.1",
     "likec4": "^1.46.0",
     "lint-staged": "^16.4.0",
     "markdownlint-cli2": "^0.22.1",
