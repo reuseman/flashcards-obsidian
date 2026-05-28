@@ -6,6 +6,7 @@ import { visit } from "unist-util-visit";
 
 import type { FlashcardsSettings } from "../config/settings.js";
 import type { Flashcard } from "../domain/card.js";
+import { collectClozeSpans, intersectsSpan, type Span } from "./cloze-spans.js";
 import { extractLegacyHashtagCards } from "./extract-legacy-cards.js";
 import { parseNoteMetadata } from "./note-metadata.js";
 
@@ -151,11 +152,6 @@ function parseInlineCard(
   return null;
 }
 
-interface Span {
-  end: number;
-  start: number;
-}
-
 /**
  * Locates the first occurrence of `separator` in `line` whose match range does
  * not intersect any cloze span. Without this guard, a `::` inside an Anki
@@ -171,42 +167,6 @@ function findSeparator(line: string, separator: string, clozeSpans: Span[]): num
     from = idx + 1;
   }
   return -1;
-}
-
-function intersectsSpan(start: number, end: number, spans: Span[]): boolean {
-  for (const s of spans) {
-    if (start < s.end && end > s.start) return true;
-  }
-  return false;
-}
-
-/**
- * Returns the source ranges of cloze constructs claimed by `parseClozeCard`:
- *   - `==highlight==`
- *   - `{N:text}` and `{text}`
- *   - `{{cN::text}}` (Anki-native; matched by the curly-brace pattern via its
- *     inner `{cN::text}` substring — we widen to the outer `{{...}}` here so
- *     the entire Anki cloze is excluded from inline-separator scanning).
- */
-function collectClozeSpans(line: string): Span[] {
-  const spans: Span[] = [];
-
-  for (const m of line.matchAll(/==.+?==/g)) {
-    const idx = m.index ?? 0;
-    spans.push({ end: idx + m[0].length, start: idx });
-  }
-
-  for (const m of line.matchAll(/\{\{c\d+::[^}]+\}\}/g)) {
-    const idx = m.index ?? 0;
-    spans.push({ end: idx + m[0].length, start: idx });
-  }
-
-  for (const m of line.matchAll(/\{(?:\d+:)?[^}]+\}/g)) {
-    const idx = m.index ?? 0;
-    spans.push({ end: idx + m[0].length, start: idx });
-  }
-
-  return spans;
 }
 
 function parseClozeCard(line: string): string | null {
