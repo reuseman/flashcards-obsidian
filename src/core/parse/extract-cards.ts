@@ -17,6 +17,7 @@ export interface ExtractCardsOptions {
 
 export interface ExtractCardsResult {
   cards: Flashcard[];
+  warnings: string[];
 }
 
 export function extractCardsFromMarkdown(
@@ -103,15 +104,15 @@ export function extractCardsFromMarkdown(
     }
   });
 
-  const legacyCards = extractLegacyHashtagCards(markdown, tree, options.settings, {
+  const legacy = extractLegacyHashtagCards(markdown, tree, options.settings, {
     defaultTags: options.settings.defaultTags,
     metadataTags: metadata.tags,
     notePath: options.notePath,
     resolvedDeck,
   });
-  cards.push(...legacyCards);
+  cards.push(...legacy.cards);
 
-  return { cards };
+  return { cards, warnings: legacy.warnings };
 }
 
 function mergeTags(defaultTags: string[], metadataTags: string[]): string[] {

@@ -10,6 +10,11 @@ export interface LegacyExtractContext {
   resolvedDeck: string;
 }
 
+export interface LegacyExtractResult {
+  cards: Flashcard[];
+  warnings: string[];
+}
+
 interface LineInfo {
   endOffset: number;
   raw: string;
@@ -19,12 +24,12 @@ interface LineInfo {
 type CardKind = "basic" | "reversed";
 
 interface TagSpec {
-  /** Tags whose presence on a line terminates this kind's answer. */
-  answerTerminators: string[];
   kind: CardKind;
   /** The single tag string to match for question detection. */
   tag: string;
 }
+
+const TERMINATOR_ANCHOR_RE = /^\^(?:|q-[abcdefghijkmnpqrstuvwxyz23456789]{4}|\d{13})$/;
 
 /**
  * Extracts legacy `#card` style flashcards, both basic and reversed.
@@ -35,9 +40,10 @@ interface TagSpec {
  *   1. Separate-line: question line, then the tag alone on the next line.
  *   2. Inline-tag:    question text followed by the tag on the same line.
  *
- * The answer continues until: blank line, next heading, next same-kind tag, or
- * EOF. Termination is per-kind — a basic answer is not terminated by a reverse
- * tag and vice versa.
+ * Answer collection follows the §4.3.2 deterministic model: the answer window is
+ * bounded by the first excluded range, heading, or card-start; within it, a
+ * terminator-anchor line (`^`, `^q-xxxx`, `^<13d>`) switches to multi-paragraph
+ * mode, otherwise the answer stops at the first blank line.
  *
  * Excluded contexts (fenced code, HTML comments, blockquotes) are detected via
  * the mdast tree by collecting their source ranges and skipping any line whose
@@ -48,27 +54,26 @@ export function extractLegacyHashtagCards(
   tree: Root,
   settings: FlashcardsSettings,
   context: LegacyExtractContext,
-): Flashcard[] {
-  if (!settings.legacy.enabled) return [];
+): LegacyExtractResult {
+  if (!settings.legacy.enabled) return { cards: [], warnings: [] };
 
   const basic = `#${settings.legacy.hashtagBasic}`;
   const reverseDash = `${basic}-reverse`;
   const reverseSlash = `${basic}/reverse`;
-  const reverseTags = [reverseDash, reverseSlash];
+  const allTags = [reverseDash, reverseSlash, basic];
 
-  // Order matters: try reverse forms before basic, because `indexOfStandaloneTag`
-  // for `#card` would not match `#card-reverse` (suffix is non-whitespace), but
-  // we still want to keep the kinds independent and ensure each line is at most
-  // one card.
+  // Order matters: try reverse forms before basic, because the basic tag is a
+  // prefix of the reverse forms.
   const specs: TagSpec[] = [
-    { answerTerminators: reverseTags, kind: "reversed", tag: reverseDash },
-    { answerTerminators: reverseTags, kind: "reversed", tag: reverseSlash },
-    { answerTerminators: [basic], kind: "basic", tag: basic },
+    { kind: "reversed", tag: reverseDash },
+    { kind: "reversed", tag: reverseSlash },
+    { kind: "basic", tag: basic },
   ];
 
   const excluded = collectExcludedRanges(tree);
   const lines = splitLines(markdown);
   const cards: Flashcard[] = [];
+  const warnings: string[] = [];
 
   let i = 0;
   while (i < lines.length) {
@@ -85,13 +90,17 @@ export function extractLegacyHashtagCards(
     let matched: { advanceTo: number } | null = null;
 
     for (const spec of specs) {
-      const inlineIdx = indexOfStandaloneTag(lineForMatch, spec.tag);
+      const tailIdx = indexOfTrailingTag(lineForMatch, spec.tag);
 
-      if (inlineIdx >= 0) {
-        const front = lineForMatch.slice(0, inlineIdx).replace(/\s+$/, "");
+      if (tailIdx >= 0) {
+        const front = lineForMatch.slice(0, tailIdx).replace(/\s+$/, "");
         if (front.length > 0) {
-          const answer = collectAnswer(lines, i + 1, spec.answerTerminators, excluded);
-          cards.push(makeCard(spec.kind, front, answer.text, line.startOffset, answer.endOffset, context));
+          const answer = collectAnswer(lines, i + 1, allTags, excluded, line.startOffset);
+          if (answer.empty) {
+            warnings.push(emptyWarning(front));
+          } else {
+            cards.push(makeCard(spec.kind, front, answer.text, line.startOffset, answer.endOffset, context));
+          }
           matched = { advanceTo: answer.nextIndex };
           break;
         }
@@ -103,8 +112,12 @@ export function extractLegacyHashtagCards(
         if (!isExcluded(next.startOffset, excluded) && next.raw.trim() === spec.tag) {
           const front = (headingText ?? line.raw).replace(/\s+$/, "");
           if (front.length > 0) {
-            const answer = collectAnswer(lines, i + 2, spec.answerTerminators, excluded);
-            cards.push(makeCard(spec.kind, front, answer.text, line.startOffset, answer.endOffset, context));
+            const answer = collectAnswer(lines, i + 2, allTags, excluded, line.startOffset);
+            if (answer.empty) {
+              warnings.push(emptyWarning(front));
+            } else {
+              cards.push(makeCard(spec.kind, front, answer.text, line.startOffset, answer.endOffset, context));
+            }
             matched = { advanceTo: answer.nextIndex };
             break;
           }
@@ -120,7 +133,11 @@ export function extractLegacyHashtagCards(
     i++;
   }
 
-  return cards;
+  return { cards, warnings };
+}
+
+function emptyWarning(front: string): string {
+  return `Skipped #card "${front}": empty answer (nothing between the tag and the next blank line, terminator, or boundary).`;
 }
 
 const TRAILING_ANCHOR_RE = /\s*\^(?:q-[abcdefghijkmnpqrstuvwxyz23456789]{4}|\d{13})\s*$/;
@@ -149,50 +166,103 @@ function makeCard(
 }
 
 interface CollectedAnswer {
+  empty: boolean;
   endOffset: number;
   nextIndex: number;
   text: string;
 }
 
+/**
+ * §4.3.2 answer-collection algorithm. `allTags` is the full `#card`-family tag
+ * set used for card-start detection (window bounding), independent of the kind
+ * of the card currently being collected.
+ */
 function collectAnswer(
   lines: LineInfo[],
   startIndex: number,
-  terminators: string[],
+  allTags: string[],
   excluded: Range[],
+  fallbackEndOffset: number,
 ): CollectedAnswer {
-  const collected: string[] = [];
-  let endOffset = startIndex > 0 ? lines[startIndex - 1]!.endOffset : 0;
-  let i = startIndex;
-  while (i < lines.length) {
-    const line = lines[i]!;
+  // Step 1: window upper bound (exclusive).
+  let windowEnd = startIndex;
+  while (windowEnd < lines.length) {
+    const line = lines[windowEnd]!;
     if (isExcluded(line.startOffset, excluded)) break;
-    const trimmed = line.raw.trim();
-    if (trimmed.length === 0) break;
     if (/^#{1,6}\s+/.test(line.raw)) break;
-    if (terminators.some((t) => indexOfStandaloneTag(line.raw, t) >= 0)) break;
+    if (isCardStart(line.raw, allTags)) break;
+    windowEnd++;
+  }
 
+  // Step 2: search for a terminator-anchor line within the window.
+  let terminatorIdx = -1;
+  for (let j = startIndex; j < windowEnd; j++) {
+    if (TERMINATOR_ANCHOR_RE.test(lines[j]!.raw.trim())) {
+      terminatorIdx = j;
+      break;
+    }
+  }
+
+  if (terminatorIdx >= 0) {
+    const body = lines.slice(startIndex, terminatorIdx).map((l) => l.raw).join("\n");
+    const text = body.trim().replace(TRAILING_ANCHOR_RE, "");
+    // Extend the source range to include the terminator line so WI-1 can read
+    // an existing anchor there or replace a bare `^`.
+    const endOffset = lines[terminatorIdx]!.endOffset;
+    return {
+      empty: text.length === 0,
+      endOffset,
+      nextIndex: terminatorIdx + 1,
+      text,
+    };
+  }
+
+  // Single-block mode: stop at the first blank line (or window end).
+  const collected: string[] = [];
+  let endOffset = startIndex > 0 ? lines[startIndex - 1]!.endOffset : fallbackEndOffset;
+  let i = startIndex;
+  while (i < windowEnd) {
+    const line = lines[i]!;
+    if (line.raw.trim().length === 0) break;
     collected.push(line.raw);
     endOffset = line.endOffset;
     i++;
   }
+  const text = collected.join("\n").trim().replace(TRAILING_ANCHOR_RE, "");
   return {
+    empty: text.length === 0,
     endOffset,
     nextIndex: i,
-    text: collected.join("\n").trim(),
+    text,
   };
 }
 
-/** Returns the index of `#tag` as a standalone token, or -1. */
-function indexOfStandaloneTag(line: string, tag: string): number {
+/**
+ * Card-start (§4.3.1): a line whose only non-whitespace token is a `#card`-family
+ * tag, or a line ending with a `#card`-family tag as its last non-whitespace
+ * token with non-empty text before it. A tag with trailing text is prose (R5).
+ */
+function isCardStart(raw: string, tags: string[]): boolean {
+  const heading = /^(#{1,6})\s+(.*)$/.exec(raw);
+  const lineForMatch = heading ? heading[2]! : raw;
+  return tags.some((t) => indexOfTrailingTag(lineForMatch, t) >= 0);
+}
+
+/**
+ * Index of `tag` if it is the last non-whitespace token on the line (standalone
+ * or trailing), else -1. A tag with further non-whitespace text after it is not
+ * matched (R5: it is body content).
+ */
+function indexOfTrailingTag(line: string, tag: string): number {
   let from = 0;
   while (from <= line.length) {
     const idx = line.indexOf(tag, from);
     if (idx < 0) return -1;
     const before = idx === 0 ? "" : line[idx - 1]!;
     const afterPos = idx + tag.length;
-    const after = afterPos >= line.length ? "" : line[afterPos]!;
+    const after = line.slice(afterPos);
     const beforeOk = before === "" || /\s/.test(before);
-    const afterOk = after === "" || /\s/.test(after);
+    const afterOk = after.trim().length === 0;
     if (beforeOk && afterOk) return idx;
     from = idx + 1;
   }

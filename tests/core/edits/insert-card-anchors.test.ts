@@ -156,15 +156,6 @@ describe("insertCardAnchors — anchor placement by card kind", () => {
     );
   });
 
-  test("legacy #card heading with NO answer body → anchor on its OWN line after the heading", () => {
-    // WI-1 generic rule: insert `\n^id` at source.endOffset. For a heading-only
-    // card the end of the block is the end of the heading line, so the anchor
-    // lands on its own line below the heading.
-    const md = "## Heading question #card";
-    const out = run(md, seededGenerator(["q-abcd"]));
-    const applied = applyTextEdits(md, out.edits);
-    expect(applied).toBe(["## Heading question #card", "^q-abcd"].join("\n"));
-  });
 });
 
 describe("insertCardAnchors — blockId format & detection", () => {

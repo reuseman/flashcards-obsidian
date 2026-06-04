@@ -43,7 +43,7 @@ export function insertCardAnchors(
     }
     usedIds.add(candidate);
 
-    edits.push(buildEdit(card, candidate));
+    edits.push(buildEdit(markdown, card, candidate));
     outCards.push({ ...card, blockId: candidate });
   }
 
@@ -93,9 +93,23 @@ function findExistingAnchor(
   return null;
 }
 
-function buildEdit(card: Flashcard, blockId: string): TextEdit {
+function buildEdit(markdown: string, card: Flashcard, blockId: string): TextEdit {
+  // §4.3.3: a `#card` multi-paragraph answer ends its source range on a bare
+  // `^` terminator line — replace that `^` with `^<id>` so identity lives on
+  // the terminator line, not a duplicated anchor below it.
+  const text = markdown.slice(card.source.startOffset, card.source.endOffset);
+  const bareCaret = /(^|\n)\^[ \t]*$/.exec(text);
+  if (bareCaret) {
+    const caretStart = card.source.startOffset + bareCaret.index + bareCaret[1]!.length;
+    return {
+      end: card.source.endOffset,
+      start: caretStart,
+      text: `^${blockId}`,
+    };
+  }
+
   // WI-1: every card's identity anchor lives on its own line, immediately
-  // after the content block, for all syntaxes.
+  // after the content block, for all other cases.
   return {
     end: card.source.endOffset,
     start: card.source.endOffset,
