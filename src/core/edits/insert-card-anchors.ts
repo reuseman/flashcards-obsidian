@@ -43,7 +43,7 @@ export function insertCardAnchors(
     }
     usedIds.add(candidate);
 
-    edits.push(buildEdit(markdown, card, candidate));
+    edits.push(buildEdit(card, candidate));
     outCards.push({ ...card, blockId: candidate });
   }
 
@@ -85,36 +85,21 @@ function findExistingAnchor(
   const v1 = trimmed.match(V1_ANCHOR_AT_END_RE);
   if (v1) return { blockId: v1[0].slice(1) };
 
-  // For fenced cards, look at the line immediately after the closing fence.
-  if (card.source.syntax === "fenced") {
-    const after = markdown.slice(card.source.endOffset);
-    const m = /^\n(\^q-[abcdefghijkmnpqrstuvwxyz23456789]{4}|\^\d{13})\b/.exec(after);
-    if (m) return { blockId: m[1]!.slice(1) };
-  }
+  // Own-line anchor on the line immediately after the content block.
+  const after = markdown.slice(card.source.endOffset);
+  const m = /^\n(\^q-[abcdefghijkmnpqrstuvwxyz23456789]{4}|\^\d{13})\b/.exec(after);
+  if (m) return { blockId: m[1]!.slice(1) };
 
   return null;
 }
 
-function buildEdit(markdown: string, card: Flashcard, blockId: string): TextEdit {
-  if (card.source.syntax === "fenced") {
-    // Insert `\n^q-xxxx` immediately after the closing fence's last char.
-    // Works for both `\`\`\`\n...` (becomes `\`\`\`\n^q-xxxx\n...`) and EOF.
-    return {
-      end: card.source.endOffset,
-      start: card.source.endOffset,
-      text: `\n^${blockId}`,
-    };
-  }
-
-  // inline / cloze / legacy-hashtag: append on the last line of the range,
-  // right-trimming trailing whitespace and prefixing with a single space.
-  const text = markdown.slice(card.source.startOffset, card.source.endOffset);
-  const trimmed = text.replace(/\s+$/, "");
-  const trimEnd = card.source.startOffset + trimmed.length;
+function buildEdit(card: Flashcard, blockId: string): TextEdit {
+  // WI-1: every card's identity anchor lives on its own line, immediately
+  // after the content block, for all syntaxes.
   return {
     end: card.source.endOffset,
-    start: trimEnd,
-    text: ` ^${blockId}`,
+    start: card.source.endOffset,
+    text: `\n^${blockId}`,
   };
 }
 

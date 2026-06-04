@@ -1,6 +1,7 @@
 import { DEFAULT_SETTINGS } from "../../../src/core/config/settings.js";
 import { applyTextEdits } from "../../../src/core/edits/apply-text-edits.js";
 import { insertCardAnchors } from "../../../src/core/edits/insert-card-anchors.js";
+import type { Flashcard } from "../../../src/core/domain/card.js";
 import { extractCardsFromMarkdown } from "../../../src/core/parse/extract-cards.js";
 
 /**
@@ -22,15 +23,19 @@ import { extractCardsFromMarkdown } from "../../../src/core/parse/extract-cards.
  * excluded). Detection regex assumed: /\^q-[abcdefghijkmnpqrstuvwxyz23456789]{4}\b/.
  * v1 anchor regex: /\^\d{13}\b/.
  *
- * Ambiguities locked in this slice (see report for reasoning):
- *  - Legacy `#card` heading shape: anchor goes on the LAST line of the
- *    answer block; if there is no answer block (heading with no body),
- *    anchor goes at end of the heading line itself. Tested below.
- *  - Fenced block at EOF without trailing newline: the new-line-after-fence
- *    edit prepends a `\n` before the anchor. Tested below.
- *  - Cloze paragraph with trailing whitespace on the last line: anchor is
- *    appended after a single space, preserving original trailing whitespace
- *    is NOT required (we right-trim before joining). Tested below.
+ * WI-1 (§4.2 of the card-syntax-anchor-model design): every card's identity
+ * anchor lives on its OWN line, immediately after the card's content block,
+ * for ALL four syntaxes. The write edit is `"\n^" + blockId` inserted at
+ * `source.endOffset` (start === end === endOffset). This was already the
+ * fenced behaviour; inline / cloze / legacy-hashtag now match it (the old
+ * inline-append ` ^id` branch is removed).
+ *
+ * Read rule: `findExistingAnchor` MUST detect an anchor that is either
+ *  (1) on its own line immediately after the content block (the line right
+ *      after `source.endOffset`), OR
+ *  (2) at the end of the card's source range (legacy inline placement, for
+ *      back-compatible reading of not-yet-migrated notes).
+ * Both v2 (`^q-xxxx`) and v1 (`^<13 digits>`) forms in both positions.
  */
 
 function seededGenerator(ids: string[]): () => string {
@@ -55,33 +60,33 @@ function run(markdown: string, generate: () => string, notePath = "Note.md") {
 }
 
 describe("insertCardAnchors — anchor placement by card kind", () => {
-  test("inline paragraph card → anchor appended to same line with a space", () => {
+  test("inline paragraph card → anchor on its OWN line after the content", () => {
     const md = "Question:: Answer";
     const out = run(md, seededGenerator(["q-abcd"]));
     const applied = applyTextEdits(md, out.edits);
-    expect(applied).toBe("Question:: Answer ^q-abcd");
+    expect(applied).toBe(["Question:: Answer", "^q-abcd"].join("\n"));
   });
 
-  test("inline list-item card → anchor on same list-item line", () => {
+  test("inline list-item card → anchor on its OWN line after the item", () => {
     const md = "- Question:: Answer";
     const out = run(md, seededGenerator(["q-abcd"]));
     const applied = applyTextEdits(md, out.edits);
-    expect(applied).toBe("- Question:: Answer ^q-abcd");
+    expect(applied).toBe(["- Question:: Answer", "^q-abcd"].join("\n"));
   });
 
-  test("single-line cloze → anchor at end of line", () => {
+  test("single-line cloze → anchor on its OWN line after the content", () => {
     const md = "The ==heart== pumps blood.";
     const out = run(md, seededGenerator(["q-abcd"]));
     const applied = applyTextEdits(md, out.edits);
-    expect(applied).toBe("The ==heart== pumps blood. ^q-abcd");
+    expect(applied).toBe(["The ==heart== pumps blood.", "^q-abcd"].join("\n"));
   });
 
-  test("multi-line cloze paragraph → anchor at end of last line", () => {
+  test("multi-line cloze paragraph → anchor on its OWN line after the block", () => {
     const md = ["The ==heart== pumps", "blood through the body."].join("\n");
     const out = run(md, seededGenerator(["q-abcd"]));
     const applied = applyTextEdits(md, out.edits);
     expect(applied).toBe(
-      ["The ==heart== pumps", "blood through the body. ^q-abcd"].join("\n"),
+      ["The ==heart== pumps", "blood through the body.", "^q-abcd"].join("\n"),
     );
   });
 
@@ -119,40 +124,46 @@ describe("insertCardAnchors — anchor placement by card kind", () => {
     );
   });
 
-  test("legacy #card inline-tag with answer → anchor on answer's last line", () => {
+  test("legacy #card inline-tag with answer → anchor on its OWN line after the answer block", () => {
     const md = ["Question #card", "Answer line one", "Answer line two"].join("\n");
     const out = run(md, seededGenerator(["q-abcd"]));
     const applied = applyTextEdits(md, out.edits);
     expect(applied).toBe(
-      ["Question #card", "Answer line one", "Answer line two ^q-abcd"].join("\n"),
+      ["Question #card", "Answer line one", "Answer line two", "^q-abcd"].join("\n"),
     );
   });
 
-  test("legacy #card separate-line shape with answer → anchor on answer's last line", () => {
+  test("legacy #card single-block with answer → anchor on its OWN line after the answer", () => {
+    const md = ["Question #card", "Answer"].join("\n");
+    const out = run(md, seededGenerator(["q-abcd"]));
+    const applied = applyTextEdits(md, out.edits);
+    expect(applied).toBe(["Question #card", "Answer", "^q-abcd"].join("\n"));
+  });
+
+  test("legacy #card separate-line shape with answer → anchor on its OWN line after the answer", () => {
     const md = ["Question", "#card", "Answer"].join("\n");
     const out = run(md, seededGenerator(["q-abcd"]));
     const applied = applyTextEdits(md, out.edits);
-    expect(applied).toBe(["Question", "#card", "Answer ^q-abcd"].join("\n"));
+    expect(applied).toBe(["Question", "#card", "Answer", "^q-abcd"].join("\n"));
   });
 
-  test("legacy #card heading with answer body → anchor on answer's last line", () => {
+  test("legacy #card heading with answer body → anchor on its OWN line after the body", () => {
     const md = ["## Heading question #card", "answer body"].join("\n");
     const out = run(md, seededGenerator(["q-abcd"]));
     const applied = applyTextEdits(md, out.edits);
     expect(applied).toBe(
-      ["## Heading question #card", "answer body ^q-abcd"].join("\n"),
+      ["## Heading question #card", "answer body", "^q-abcd"].join("\n"),
     );
   });
 
-  test("legacy #card heading with NO answer body → anchor at end of heading line", () => {
-    // Locked decision: anchor appended on the heading line itself, separated
-    // by a space. Markdown ATX headings tolerate trailing block-refs in
-    // Obsidian; this avoids inserting a blank-line body where the user had
-    // none.
+  test("legacy #card heading with NO answer body → anchor on its OWN line after the heading", () => {
+    // WI-1 generic rule: insert `\n^id` at source.endOffset. For a heading-only
+    // card the end of the block is the end of the heading line, so the anchor
+    // lands on its own line below the heading.
     const md = "## Heading question #card";
     const out = run(md, seededGenerator(["q-abcd"]));
     const applied = applyTextEdits(md, out.edits);
-    expect(applied).toBe("## Heading question #card ^q-abcd");
+    expect(applied).toBe(["## Heading question #card", "^q-abcd"].join("\n"));
   });
 });
 
@@ -198,7 +209,7 @@ describe("insertCardAnchors — collision-free generation within a note", () => 
     // Generator first proposes a colliding id, then a fresh one.
     const out = run(md, seededGenerator(["q-abcd", "q-efgh"]));
     const applied = applyTextEdits(md, out.edits);
-    expect(applied).toContain("Question:: Answer ^q-efgh");
+    expect(applied).toContain("Question:: Answer\n^q-efgh");
     expect(out.cards[0]).toMatchObject({ blockId: "q-efgh" });
   });
 
@@ -208,8 +219,8 @@ describe("insertCardAnchors — collision-free generation within a note", () => 
     const ids = out.cards.map((c: { blockId?: string }) => c.blockId);
     expect(new Set(ids).size).toBe(ids.length);
     const applied = applyTextEdits(md, out.edits);
-    expect(applied).toContain("Q1:: A1 ^q-abcd");
-    expect(applied).toContain("Q2:: A2 ^q-efgh");
+    expect(applied).toContain("Q1:: A1\n^q-abcd");
+    expect(applied).toContain("Q2:: A2\n^q-efgh");
   });
 });
 
@@ -278,12 +289,132 @@ describe("insertCardAnchors — leaves unrelated text alone", () => {
     const out = run(md, seededGenerator(["q-abcd"]));
     const applied = applyTextEdits(md, out.edits);
     expect(applied).toContain("Just a note paragraph ^note1");
-    expect(applied).toContain("Question:: Answer ^q-abcd");
+    expect(applied).toContain("Question:: Answer\n^q-abcd");
   });
 
   test("no cards → no edits", () => {
     const md = "Just prose. No cards here.";
     const out = run(md, seededGenerator([]));
     expect(out.edits).toEqual([]);
+  });
+});
+
+// WI-1 read rule (§4.2): findExistingAnchor must detect an anchor either on
+// its own line immediately after the content block OR at the end of the
+// card's source range (legacy trailing). These fixtures place the anchor on
+// the line *after* source.endOffset so the own-line case is exercised
+// independently of parser range quirks.
+
+function inlineCardAt(
+  markdown: string,
+  startOffset: number,
+  endOffset: number,
+): Flashcard {
+  return {
+    answer: "Answer",
+    front: "Question",
+    kind: "basic",
+    source: { endOffset, line: 1, startOffset, syntax: "inline" },
+    tags: [],
+  };
+}
+
+describe("insertCardAnchors — WI-1 read rule: own-line anchor detection", () => {
+  test("detects a v2 `^q-xxxx` anchor on its OWN line right after the content block → no edit, no new id", () => {
+    const md = ["Question:: Answer", "^q-abcd"].join("\n");
+    const endOffset = md.indexOf("\n^q-abcd"); // end of the content block
+    const card = inlineCardAt(md, 0, endOffset);
+    const out = insertCardAnchors({
+      cards: [card],
+      generateBlockId: seededGenerator(["q-zzzz"]),
+      markdown: md,
+    });
+    expect(out.edits).toEqual([]);
+    expect(out.cards[0]).toMatchObject({ blockId: "q-abcd" });
+  });
+
+  test("detects a v1 `^<13 digits>` anchor on its OWN line right after the content block → no edit", () => {
+    const md = ["Question:: Answer", "^1700000000000"].join("\n");
+    const endOffset = md.indexOf("\n^1700000000000");
+    const card = inlineCardAt(md, 0, endOffset);
+    const out = insertCardAnchors({
+      cards: [card],
+      generateBlockId: seededGenerator(["q-zzzz"]),
+      markdown: md,
+    });
+    expect(out.edits).toEqual([]);
+    expect(out.cards[0]).toMatchObject({ blockId: "1700000000000" });
+  });
+
+  test("still detects a legacy trailing `^q-xxxx` at the end of the source range → no edit (back-compat read)", () => {
+    const md = "Question:: Answer ^q-abcd";
+    const card = inlineCardAt(md, 0, md.length);
+    const out = insertCardAnchors({
+      cards: [card],
+      generateBlockId: seededGenerator(["q-zzzz"]),
+      markdown: md,
+    });
+    expect(out.edits).toEqual([]);
+    expect(out.cards[0]).toMatchObject({ blockId: "q-abcd" });
+  });
+
+  test("still detects a legacy trailing v1 `^<13 digits>` at the end of the source range → no edit (back-compat read)", () => {
+    const md = "Question:: Answer ^1700000000000";
+    const card = inlineCardAt(md, 0, md.length);
+    const out = insertCardAnchors({
+      cards: [card],
+      generateBlockId: seededGenerator(["q-zzzz"]),
+      markdown: md,
+    });
+    expect(out.edits).toEqual([]);
+    expect(out.cards[0]).toMatchObject({ blockId: "1700000000000" });
+  });
+});
+
+describe("insertCardAnchors — WI-1 idempotency on own-line anchors", () => {
+  test("inline card already carrying an own-line anchor yields zero edits", () => {
+    const md = ["Question:: Answer", "^q-abcd"].join("\n");
+    const endOffset = md.indexOf("\n^q-abcd");
+    const card = inlineCardAt(md, 0, endOffset);
+    const out = insertCardAnchors({
+      cards: [card],
+      generateBlockId: seededGenerator(["q-zzzz"]),
+      markdown: md,
+    });
+    expect(out.edits).toEqual([]);
+  });
+
+  test("legacy #card with an own-line anchor after the answer block yields zero edits", () => {
+    const md = ["Question #card", "Answer", "^q-abcd"].join("\n");
+    const endOffset = md.indexOf("\n^q-abcd");
+    const card: Flashcard = {
+      answer: "Answer",
+      front: "Question",
+      kind: "basic",
+      source: { endOffset, line: 1, startOffset: 0, syntax: "legacy-hashtag" },
+      tags: [],
+    };
+    const out = insertCardAnchors({
+      cards: [card],
+      generateBlockId: seededGenerator(["q-zzzz"]),
+      markdown: md,
+    });
+    expect(out.edits).toEqual([]);
+  });
+});
+
+describe("insertCardAnchors — WI-1 invariant I1: existing id never regenerated", () => {
+  test("returned blockId equals the existing own-line id, not the freshly generated one", () => {
+    const md = ["Question:: Answer", "^q-abcd"].join("\n");
+    const endOffset = md.indexOf("\n^q-abcd");
+    const card = inlineCardAt(md, 0, endOffset);
+    const out = insertCardAnchors({
+      cards: [card],
+      // The generator would hand out a different id; it must never be used.
+      generateBlockId: seededGenerator(["q-zzzz"]),
+      markdown: md,
+    });
+    expect(out.cards[0]?.blockId).toBe("q-abcd");
+    expect(out.cards[0]?.blockId).not.toBe("q-zzzz");
   });
 });

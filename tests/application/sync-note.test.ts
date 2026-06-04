@@ -309,7 +309,9 @@ describe("syncNote — card removed", () => {
     });
     const synced = currentMarkdown();
     // Drop the second card entirely (anchor + entry left dangling for diff).
-    const withoutSecond = synced.replace(/\nQ2::A2 \^q-bbbb\n/, "\n");
+    // WI-1: identity anchors are own-line, so the second card's block is
+    // `Q2::A2\n^q-bbbb` rather than the legacy inline `Q2::A2 ^q-bbbb`.
+    const withoutSecond = synced.replace(/\nQ2::A2\n\^q-bbbb\n/, "\n");
 
     const { calls, fetch } = makeFakeFetch([
       ...bootAllV2(ALL_MODELS),
