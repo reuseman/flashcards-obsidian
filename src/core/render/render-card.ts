@@ -31,6 +31,11 @@ export interface RenderContext {
 }
 
 export interface RenderedFields {
+  // Anki note fields are a string→string map; these named fields are the
+  // ones this renderer always produces. The index signature lets a
+  // RenderedFields flow into the AnkiConnect `Record<string, string>` field
+  // map without an unsafe cast.
+  [field: string]: string;
   Front: string;
   Back: string;
   Text: string;

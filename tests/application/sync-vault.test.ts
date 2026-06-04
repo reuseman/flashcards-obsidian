@@ -9,10 +9,8 @@ import {
 } from "../../src/core/render/render-card.js";
 import { DEFAULT_SETTINGS } from "../../src/core/config/settings.js";
 import type { FlashcardsSettings } from "../../src/core/config/settings.js";
-import type {
-  MarkdownNote,
-  ObsidianMarkdownRepository,
-} from "../../src/adapters/obsidian/obsidian-markdown-repository.js";
+import type { MarkdownNote } from "../../src/application/ports.js";
+import type { ObsidianMarkdownRepository } from "../../src/adapters/obsidian/obsidian-markdown-repository.js";
 import { bootAllV2, makeFakeFetch, ok } from "../_utils/fake-fetch.js";
 
 /**

@@ -7,7 +7,7 @@ import { insertCardAnchors } from "../../core/edits/insert-card-anchors.js";
 import { extractCardsFromMarkdown } from "../../core/parse/extract-cards.js";
 import { buildSyncPlan } from "../../core/sync/build-sync-plan.js";
 import { parseCardFrontmatter } from "../../core/sync/parse-card-frontmatter.js";
-import type { ObsidianMarkdownRepository } from "./obsidian-markdown-repository.js";
+import type { MarkdownRepository } from "../../application/ports.js";
 
 const NO_CARDS = "Note: no cards";
 const IN_SYNC = "Note: in sync";
@@ -65,7 +65,7 @@ export function computeActiveNoteStatus(
  * for vault-modify events on large ones.
  */
 export async function computePendingV1Count(
-  repository: ObsidianMarkdownRepository,
+  repository: MarkdownRepository,
 ): Promise<number> {
   const notes = await repository.getAllMarkdownNotes();
   let total = 0;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { migrationCheck } from "../../src/application/migration-check.js";
-import type { MarkdownNote } from "../../src/adapters/obsidian/obsidian-markdown-repository.js";
+import type { MarkdownNote } from "../../src/application/ports.js";
 
 /**
  * Phase 7 slice 7b — pure module `migration-check.ts`.

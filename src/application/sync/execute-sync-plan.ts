@@ -120,7 +120,7 @@ export async function executeSyncPlan(
       const nid = await client.addNote({
         deckName: rendered.deckName,
         modelName: rendered.modelName,
-        fields: rendered.fields as unknown as Record<string, string>,
+        fields: rendered.fields,
         tags: rendered.tags,
       });
       // AnkiConnect raises an error string on duplicates rather than returning
@@ -144,10 +144,7 @@ export async function executeSyncPlan(
   for (const op of plan.update) {
     try {
       const rendered = renderFor(op.card, notePath, vaultName, resolveLink);
-      await client.updateNoteFields(
-        op.nid,
-        rendered.fields as unknown as Record<string, string>,
-      );
+      await client.updateNoteFields(op.nid, rendered.fields);
       logger.debug("UPDATE ok", { blockId: op.card.blockId, nid: op.nid });
       result.updates.push({ op, status: "ok" });
     } catch (e) {

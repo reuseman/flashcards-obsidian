@@ -4,8 +4,6 @@ import type {
   MarkdownRepository,
 } from "../../application/ports.js";
 
-export type { MarkdownNote };
-
 export class ObsidianMarkdownRepository implements MarkdownRepository {
   constructor(private readonly app: App) {}
 
