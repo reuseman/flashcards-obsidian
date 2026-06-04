@@ -18,6 +18,7 @@ export interface RenderPreviewSettings {
 }
 
 export interface FlashcardsSettings {
+  confirmBeforeDelete: boolean;
   contextSeparator: string;
   contextStrategy: ContextStrategy;
   defaultDeck: string;
@@ -35,6 +36,7 @@ export interface FlashcardsSettings {
 }
 
 export const DEFAULT_SETTINGS: FlashcardsSettings = {
+  confirmBeforeDelete: true,
   contextSeparator: " > ",
   contextStrategy: "headings",
   defaultDeck: "Default",

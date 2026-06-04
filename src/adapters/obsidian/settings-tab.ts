@@ -44,6 +44,20 @@ export class FlashcardsSettingTab extends PluginSettingTab {
           }),
       );
 
+    new Setting(containerEl)
+      .setName("Confirm before deleting")
+      .setDesc(
+        "Ask before deleting Anki cards that no longer appear in a note. " +
+          "When off, deletions happen silently during sync.",
+      )
+      .addToggle((t) =>
+        t
+          .setValue(this.plugin.settings.confirmBeforeDelete)
+          .onChange(async (value) => {
+            await this.plugin.updateSettings({ confirmBeforeDelete: value });
+          }),
+      );
+
     containerEl.createEl("h3", { text: "Reading-mode rendering" });
     containerEl.createEl("p", {
       text:

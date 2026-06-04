@@ -21,6 +21,7 @@ import {
 } from "../core/render/rewrite-media.js";
 import { buildSyncPlan } from "../core/sync/build-sync-plan.js";
 import { parseCardFrontmatter } from "../core/sync/parse-card-frontmatter.js";
+import type { PendingDeletion } from "../core/sync/sync-plan.js";
 
 /**
  * Outcome of the per-note media phase. `resolved` maps original short
@@ -47,6 +48,7 @@ export interface CardMediaError {
 
 export interface SyncNoteInput {
   ankiClient: AnkiGateway;
+  confirmDeletions?: (pending: PendingDeletion[]) => Promise<boolean>;
   generateBlockId?: () => string;
   logger?: Logger;
   mediaPipeline?: MediaPipeline;
@@ -153,6 +155,36 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
     computeHash: computeCardHash,
     frontmatter,
   });
+
+  // Delete-safety gate (spec §4.5). A sync must never SILENTLY delete an Anki
+  // card. Creates and updates always proceed regardless of the decision.
+  if (plan.delete.length >= 1) {
+    const noteDeck =
+      insert.cards.find((c) => c.deckName !== undefined)?.deckName ??
+      settings.defaultDeck;
+    const pending: PendingDeletion[] = plan.delete.map((op) => ({
+      blockId: op.blockId,
+      deckName: noteDeck,
+      nid: op.nid,
+    }));
+    for (const d of pending) {
+      logger.info("syncNote pending deletion", {
+        notePath: note.path,
+        blockId: d.blockId,
+        nid: d.nid,
+        deckName: d.deckName,
+      });
+    }
+
+    if (settings.confirmBeforeDelete) {
+      const confirmed = input.confirmDeletions
+        ? await input.confirmDeletions(pending)
+        : false; // safe default: no confirmer wired ⇒ skip deletes.
+      if (!confirmed) {
+        plan.delete = [];
+      }
+    }
+  }
 
   const empty =
     plan.create.length === 0 &&

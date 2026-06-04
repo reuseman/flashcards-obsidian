@@ -5,6 +5,7 @@ import { AnkiConnectClient } from "../anki/anki-connect-client.js";
 import { uploadMedia } from "../anki/upload-media.js";
 import { ObsidianMarkdownRepository } from "./obsidian-markdown-repository.js";
 import { MigrationModal } from "./migration-modal.js";
+import { createDeleteConfirmer } from "./delete-confirm-modal.js";
 import { buildMediaRewriteMap, resolveMedia } from "./media-resolver.js";
 import { createWikilinkResolver } from "./wikilink-resolver.js";
 import { backfillV1Vault } from "../../application/backfill-v1-vault.js";
@@ -162,6 +163,9 @@ async function dispatch(
 ): Promise<void> {
   const resolveLink = createWikilinkResolver(plugin.app.metadataCache);
   const mediaPipeline = createMediaPipeline(plugin, ankiClient);
+  const confirmDeletions = plugin.settings.confirmBeforeDelete
+    ? createDeleteConfirmer(plugin.app, ankiClient)
+    : undefined;
   try {
     if (target === "current") {
       const note = await repository.getActiveNote();
@@ -174,6 +178,7 @@ async function dispatch(
       try {
         result = await syncNote({
           ankiClient,
+          ...(confirmDeletions ? { confirmDeletions } : {}),
           logger: plugin.logger,
           mediaPipeline,
           note,
@@ -193,6 +198,7 @@ async function dispatch(
       try {
         result = await syncVault({
           ankiClient,
+          ...(confirmDeletions ? { confirmDeletions } : {}),
           logger: plugin.logger,
           mediaPipeline,
           onProgress: (current, total, notePath) => {

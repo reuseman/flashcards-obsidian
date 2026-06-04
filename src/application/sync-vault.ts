@@ -1,5 +1,6 @@
 import type { AnkiGateway, MarkdownRepository } from "./ports.js";
 import type { FlashcardsSettings } from "../core/config/settings.js";
+import type { PendingDeletion } from "../core/sync/sync-plan.js";
 import { NoopLogger, type Logger } from "../core/logging/logger.js";
 import { createPerfTrace } from "../core/logging/perf-trace.js";
 import {
@@ -11,6 +12,7 @@ import {
 
 export interface SyncVaultInput {
   ankiClient: AnkiGateway;
+  confirmDeletions?: (pending: PendingDeletion[]) => Promise<boolean>;
   generateBlockId?: () => string;
   logger?: Logger;
   mediaPipeline?: MediaPipeline;
@@ -47,6 +49,7 @@ export async function syncVault(
 ): Promise<SyncVaultResult> {
   const {
     ankiClient,
+    confirmDeletions,
     generateBlockId,
     mediaPipeline,
     onProgress,
@@ -76,6 +79,7 @@ export async function syncVault(
     try {
       result = await syncNote({
         ankiClient,
+        ...(confirmDeletions ? { confirmDeletions } : {}),
         ...(generateBlockId ? { generateBlockId } : {}),
         logger,
         ...(mediaPipeline ? { mediaPipeline } : {}),

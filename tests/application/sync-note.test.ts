@@ -322,7 +322,11 @@ describe("syncNote — card removed", () => {
       ankiClient: new AnkiConnectClient({ fetch }),
       note: makeNote(withoutSecond),
       repository,
-      settings: settingsWith(),
+      // WI-4 (spec §4.5): confirmBeforeDelete defaults true and, with no
+      // confirmer wired, pending deletions are SKIPPED. This test exercises
+      // the delete-flows path, so it explicitly opts into deletion. The
+      // gating/confirmer behaviour is covered by delete-safety.test.ts.
+      settings: settingsWith({ confirmBeforeDelete: false }),
       vaultName: VAULT,
     });
 
