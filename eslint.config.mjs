@@ -11,6 +11,11 @@ export default defineConfig(
       "main.js",
       "node_modules/**",
       "test-vault/**",
+      // generated likec4 site bundles (see arch:likec4:build); gitignored,
+      // but flat config does not honor .gitignore
+      "docs/architecture/likec4/out/**",
+      // CommonJS tooling config, not part of the typed src/ program
+      "*.cjs",
     ],
   },
   js.configs.recommended,
