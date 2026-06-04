@@ -5,8 +5,8 @@ import {
   ANKI_MODEL_CLOZE,
   ANKI_MODEL_REVERSED,
   getAnkiModelSpecs,
-} from "../../../src/adapters/anki/render-card.js";
-import { executeSyncPlan } from "../../../src/adapters/anki/execute-sync-plan.js";
+} from "../../../src/core/render/render-card.js";
+import { executeSyncPlan } from "../../../src/application/sync/execute-sync-plan.js";
 import type {
   CreateOp,
   DeleteOp,

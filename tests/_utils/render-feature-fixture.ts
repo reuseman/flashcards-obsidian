@@ -4,7 +4,7 @@ import { extractCardsFromMarkdown } from "../../src/core/parse/extract-cards.js"
 import {
   type RenderedCard,
   renderCardForAnki,
-} from "../../src/adapters/anki/render-card.js";
+} from "../../src/core/render/render-card.js";
 import type { IdentifiedFlashcard } from "../../src/core/domain/card.js";
 import { extractMedia } from "../../src/core/render/extract-media.js";
 import {

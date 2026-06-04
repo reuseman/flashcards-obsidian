@@ -1,7 +1,7 @@
 import type {
   CreateOpResult,
   ExecuteSyncPlanResult,
-} from "../../adapters/anki/execute-sync-plan.js";
+} from "../sync/sync-execution.js";
 import { parseNoteMetadata } from "../parse/note-metadata.js";
 import type { TextEdit } from "./apply-text-edits.js";
 

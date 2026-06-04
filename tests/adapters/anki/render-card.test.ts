@@ -6,7 +6,7 @@ import {
   ANKI_MODEL_REVERSED,
   getAnkiModelSpecs,
   renderCardForAnki,
-} from "../../../src/adapters/anki/render-card.js";
+} from "../../../src/core/render/render-card.js";
 
 /**
  * Phase 6 slice 6b — card-to-Anki rendering (pure function + model specs).

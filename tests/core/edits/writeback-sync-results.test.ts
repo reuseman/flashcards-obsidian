@@ -5,7 +5,7 @@ import type {
   CreateOpResult,
   UpdateOpResult,
   DeleteOpResult,
-} from "../../../src/adapters/anki/execute-sync-plan.js";
+} from "../../../src/core/sync/sync-execution.js";
 import type {
   Flashcard,
   IdentifiedFlashcard,

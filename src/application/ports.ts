@@ -10,6 +10,13 @@
  * satisfy the `application-no-adapters` / `application-no-obsidian` arch rules.
  */
 
+import type { Logger } from "../core/logging/logger.js";
+import type { SyncPlan } from "../core/sync/sync-plan.js";
+import type {
+  AnkiAddNoteParams,
+  AnkiCreateModelSpec,
+} from "../core/sync/anki-contract.js";
+
 // --- Markdown repository ---------------------------------------------------
 
 /**
@@ -34,27 +41,6 @@ export interface MarkdownRepository {
 // --- Anki gateway ----------------------------------------------------------
 
 /**
- * Plain DTO shapes describing the AnkiConnect wire contract. Defined here (not
- * in the adapter) so the gateway port has no adapter dependency; the concrete
- * `AnkiConnectClient` and `render-card` import these back from the port.
- */
-export interface AnkiCreateModelSpec {
-  modelName: string;
-  inOrderFields: string[];
-  cardTemplates: Array<{ Name?: string; Front: string; Back: string }>;
-  isCloze?: boolean;
-  css?: string;
-}
-
-export interface AnkiAddNoteParams {
-  deckName: string;
-  modelName: string;
-  fields: Record<string, string>;
-  tags?: string[];
-  options?: { allowDuplicate?: boolean; duplicateScope?: string };
-}
-
-/**
  * The subset of AnkiConnect operations consumed by `executeSyncPlan`. Method
  * signatures mirror `AnkiConnectClient` exactly so the concrete client can
  * `implements AnkiGateway` without adaptation.
@@ -77,4 +63,22 @@ export interface AnkiGateway {
   addNote(note: AnkiAddNoteParams): Promise<number | null>;
   updateNoteFields(nid: number, fields: Record<string, string>): Promise<void>;
   deleteNotes(nids: number[]): Promise<void>;
+}
+
+// --- Sync execution port ---------------------------------------------------
+
+/**
+ * Input to a sync-plan executor. References `AnkiGateway` (above), so it lives
+ * in the application layer rather than in `core/`. The pure executor
+ * `application/sync/execute-sync-plan.ts` consumes this type; the application
+ * use cases (`syncNote`/`syncVault`) import that executor directly — same
+ * layer, no injection, no `application-no-adapters` violation.
+ */
+export interface ExecuteSyncPlanInput {
+  client: AnkiGateway;
+  logger?: Logger;
+  notePath: string;
+  plan: SyncPlan;
+  resolveLink?: (target: string, sourcePath: string) => string | null;
+  vaultName: string;
 }

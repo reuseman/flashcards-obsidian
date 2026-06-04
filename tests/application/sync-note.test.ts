@@ -6,7 +6,7 @@ import {
   ANKI_MODEL_BASIC,
   ANKI_MODEL_CLOZE,
   ANKI_MODEL_REVERSED,
-} from "../../src/adapters/anki/render-card.js";
+} from "../../src/core/render/render-card.js";
 import { DEFAULT_SETTINGS } from "../../src/core/config/settings.js";
 import type { FlashcardsSettings } from "../../src/core/config/settings.js";
 import type {

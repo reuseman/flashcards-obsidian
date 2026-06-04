@@ -1,6 +1,6 @@
 import { bench } from "vitest";
 
-import { renderCardForAnki, type RenderContext } from "../../src/adapters/anki/render-card.js";
+import { renderCardForAnki, type RenderContext } from "../../src/core/render/render-card.js";
 import type { IdentifiedFlashcard } from "../../src/core/domain/card.js";
 
 const ctx: RenderContext = {

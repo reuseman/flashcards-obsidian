@@ -1,53 +1,14 @@
-import type { AnkiGateway } from "../../application/ports.js";
+import type { ExecuteSyncPlanInput } from "../ports.js";
 import {
   ANKI_MODEL_BASIC,
   ANKI_MODEL_CLOZE,
   ANKI_MODEL_REVERSED,
   getAnkiModelSpecs,
   renderCardForAnki,
-} from "./render-card.js";
-import type {
-  CreateOp,
-  DeleteOp,
-  SyncPlan,
-  UpdateOp,
-} from "../../core/sync/sync-plan.js";
+} from "../../core/render/render-card.js";
+import type { ExecuteSyncPlanResult } from "../../core/sync/sync-execution.js";
 import type { IdentifiedFlashcard } from "../../core/domain/card.js";
 import { NoopLogger, type Logger } from "../../core/logging/logger.js";
-
-export interface CreateOpResult {
-  op: CreateOp;
-  status: "ok" | "failed";
-  nid?: number;
-  error?: string;
-}
-
-export interface UpdateOpResult {
-  op: UpdateOp;
-  status: "ok" | "failed";
-  error?: string;
-}
-
-export interface DeleteOpResult {
-  op: DeleteOp;
-  status: "ok" | "failed";
-  error?: string;
-}
-
-export interface ExecuteSyncPlanResult {
-  creates: CreateOpResult[];
-  updates: UpdateOpResult[];
-  deletes: DeleteOpResult[];
-}
-
-export interface ExecuteSyncPlanInput {
-  client: AnkiGateway;
-  logger?: Logger;
-  notePath: string;
-  plan: SyncPlan;
-  resolveLink?: (target: string, sourcePath: string) => string | null;
-  vaultName: string;
-}
 
 const REQUIRED_MODELS = [
   ANKI_MODEL_BASIC,

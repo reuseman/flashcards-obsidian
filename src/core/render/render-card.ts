@@ -4,9 +4,9 @@ import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import { unified } from "unified";
-import type { AnkiCreateModelSpec } from "./anki-connect-client.js";
-import type { IdentifiedFlashcard } from "../../../src/core/domain/card.js";
-import { rewriteWikilinks } from "../../core/render/rewrite-wikilinks.js";
+import type { AnkiCreateModelSpec } from "../sync/anki-contract.js";
+import type { IdentifiedFlashcard } from "../domain/card.js";
+import { rewriteWikilinks } from "./rewrite-wikilinks.js";
 
 // Names match v1 (lowercase) so v2 can extend the existing models in-place
 // instead of creating parallel ones. Anki treats model names case-insensitively

@@ -1,10 +1,8 @@
+import type { AnkiGateway } from "../../application/ports.js";
 import type {
   AnkiAddNoteParams,
   AnkiCreateModelSpec,
-  AnkiGateway,
-} from "../../application/ports.js";
-
-export type { AnkiAddNoteParams, AnkiCreateModelSpec };
+} from "../../core/sync/anki-contract.js";
 
 const ANKI_CONNECT_VERSION = 6;
 const DEFAULT_ENDPOINT = "http://127.0.0.1:8765";

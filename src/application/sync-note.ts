@@ -1,7 +1,5 @@
-import {
-  executeSyncPlan,
-  type ExecuteSyncPlanResult,
-} from "../adapters/anki/execute-sync-plan.js";
+import { executeSyncPlan } from "./sync/execute-sync-plan.js";
+import type { ExecuteSyncPlanResult } from "../core/sync/sync-execution.js";
 import type {
   AnkiGateway,
   MarkdownNote,
