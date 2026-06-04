@@ -3,6 +3,7 @@ import { Notice, Plugin, TFile, debounce } from "obsidian";
 import { registerPluginCommands } from "./adapters/obsidian/commands.js";
 import { ObsidianFileLogger } from "./adapters/obsidian/file-logger.js";
 import { ObsidianMarkdownRepository } from "./adapters/obsidian/obsidian-markdown-repository.js";
+import type { PluginHost } from "./adapters/obsidian/plugin-host.js";
 import { FlashcardsSettingTab } from "./adapters/obsidian/settings-tab.js";
 import {
   computeActiveNoteStatus,
@@ -23,7 +24,7 @@ import {
 } from "./core/logging/logger.js";
 import { registerRenderPreview } from "./render-preview/index.js";
 
-export default class FlashcardsPlugin extends Plugin {
+export default class FlashcardsPlugin extends Plugin implements PluginHost {
   settings: FlashcardsSettings = DEFAULT_SETTINGS;
   logger: Logger = new NoopLogger();
   syncInFlight = false;

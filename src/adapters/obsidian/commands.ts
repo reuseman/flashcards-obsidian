@@ -1,6 +1,6 @@
 import { Notice } from "obsidian";
 
-import type FlashcardsPlugin from "../../plugin.js";
+import type { PluginHost } from "./plugin-host.js";
 import { AnkiConnectClient } from "../anki/anki-connect-client.js";
 import { uploadMedia } from "../anki/upload-media.js";
 import { ObsidianMarkdownRepository } from "./obsidian-markdown-repository.js";
@@ -21,7 +21,7 @@ import {
 
 type Target = "current" | "vault";
 
-export function registerPluginCommands(plugin: FlashcardsPlugin): void {
+export function registerPluginCommands(plugin: PluginHost): void {
   plugin.addCommand({
     checkCallback: (checking) => {
       const activeFile = plugin.app.workspace.getActiveFile();
@@ -43,7 +43,7 @@ export function registerPluginCommands(plugin: FlashcardsPlugin): void {
 }
 
 async function runWithMigrationCheck(
-  plugin: FlashcardsPlugin,
+  plugin: PluginHost,
   target: Target,
 ): Promise<void> {
   if (plugin.syncInFlight) {
@@ -137,7 +137,7 @@ async function runWithMigrationCheck(
 }
 
 function createMediaPipeline(
-  plugin: FlashcardsPlugin,
+  plugin: PluginHost,
   ankiClient: AnkiConnectClient,
 ): MediaPipeline {
   return async (refs, sourcePath) => {
@@ -154,7 +154,7 @@ function createMediaPipeline(
 }
 
 async function dispatch(
-  plugin: FlashcardsPlugin,
+  plugin: PluginHost,
   repository: ObsidianMarkdownRepository,
   ankiClient: AnkiConnectClient,
   vaultName: string,

@@ -1,9 +1,9 @@
 import { PluginSettingTab, Setting } from "obsidian";
 
-import type FlashcardsPlugin from "../../plugin.js";
+import type { PluginHost } from "./plugin-host.js";
 
 export class FlashcardsSettingTab extends PluginSettingTab {
-  constructor(app: FlashcardsPlugin["app"], private readonly plugin: FlashcardsPlugin) {
+  constructor(app: PluginHost["app"], private readonly plugin: PluginHost) {
     super(app, plugin);
   }
 
