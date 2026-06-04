@@ -27,7 +27,7 @@ import { extractCardsFromMarkdown } from "../../../src/core/parse/extract-cards.
  * anchor lives on its OWN line, immediately after the card's content block,
  * for ALL four syntaxes. The write edit is `"\n^" + blockId` inserted at
  * `source.endOffset` (start === end === endOffset). This was already the
- * fenced behaviour; inline / cloze / legacy-hashtag now match it (the old
+ * fenced behaviour; inline / cloze / hashtag now match it (the old
  * inline-append ` ^id` branch is removed).
  *
  * Read rule: `findExistingAnchor` MUST detect an anchor that is either
@@ -124,7 +124,7 @@ describe("insertCardAnchors — anchor placement by card kind", () => {
     );
   });
 
-  test("legacy #card inline-tag with answer → anchor on its OWN line after the answer block", () => {
+  test("hashtag #card inline-tag with answer → anchor on its OWN line after the answer block", () => {
     const md = ["Question #card", "Answer line one", "Answer line two"].join("\n");
     const out = run(md, seededGenerator(["q-abcd"]));
     const applied = applyTextEdits(md, out.edits);
@@ -133,21 +133,21 @@ describe("insertCardAnchors — anchor placement by card kind", () => {
     );
   });
 
-  test("legacy #card single-block with answer → anchor on its OWN line after the answer", () => {
+  test("hashtag #card single-block with answer → anchor on its OWN line after the answer", () => {
     const md = ["Question #card", "Answer"].join("\n");
     const out = run(md, seededGenerator(["q-abcd"]));
     const applied = applyTextEdits(md, out.edits);
     expect(applied).toBe(["Question #card", "Answer", "^q-abcd"].join("\n"));
   });
 
-  test("legacy #card separate-line shape with answer → anchor on its OWN line after the answer", () => {
+  test("hashtag #card separate-line shape with answer → anchor on its OWN line after the answer", () => {
     const md = ["Question", "#card", "Answer"].join("\n");
     const out = run(md, seededGenerator(["q-abcd"]));
     const applied = applyTextEdits(md, out.edits);
     expect(applied).toBe(["Question", "#card", "Answer", "^q-abcd"].join("\n"));
   });
 
-  test("legacy #card heading with answer body → anchor on its OWN line after the body", () => {
+  test("hashtag #card heading with answer body → anchor on its OWN line after the body", () => {
     const md = ["## Heading question #card", "answer body"].join("\n");
     const out = run(md, seededGenerator(["q-abcd"]));
     const applied = applyTextEdits(md, out.edits);
@@ -375,14 +375,14 @@ describe("insertCardAnchors — WI-1 idempotency on own-line anchors", () => {
     expect(out.edits).toEqual([]);
   });
 
-  test("legacy #card with an own-line anchor after the answer block yields zero edits", () => {
+  test("hashtag #card with an own-line anchor after the answer block yields zero edits", () => {
     const md = ["Question #card", "Answer", "^q-abcd"].join("\n");
     const endOffset = md.indexOf("\n^q-abcd");
     const card: Flashcard = {
       answer: "Answer",
       front: "Question",
       kind: "basic",
-      source: { endOffset, line: 1, startOffset: 0, syntax: "legacy-hashtag" },
+      source: { endOffset, line: 1, startOffset: 0, syntax: "hashtag" },
       tags: [],
     };
     const out = insertCardAnchors({

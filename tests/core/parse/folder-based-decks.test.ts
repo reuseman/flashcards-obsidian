@@ -171,7 +171,7 @@ describe("folder-based deck resolution", () => {
       });
     });
 
-    test("legacy #card hashtag picks up folder deck", () => {
+    test("hashtag #card picks up folder deck", () => {
       const result = extractCardsFromMarkdown("Question\n#card\nAnswer", {
         notePath: "Bio/Cells/note.md",
         settings: folderOn,
@@ -179,7 +179,7 @@ describe("folder-based deck resolution", () => {
       expect(result.cards).toHaveLength(1);
       expect(result.cards[0]).toMatchObject({
         deckName: "Bio::Cells",
-        source: { syntax: "legacy-hashtag" },
+        source: { syntax: "hashtag" },
       });
     });
   });

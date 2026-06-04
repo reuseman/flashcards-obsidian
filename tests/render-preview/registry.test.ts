@@ -8,7 +8,7 @@ describe("buildRegistry", () => {
     expect(features.map((f) => f.id)).toEqual([
       "cloze",
       "anchor",
-      "legacy-hashtag",
+      "hashtag",
     ]);
   });
 
@@ -27,7 +27,7 @@ describe("buildRegistry", () => {
       "cloze",
       "anchor",
       "inline-separator",
-      "legacy-hashtag",
+      "hashtag",
     ]);
   });
 
@@ -48,11 +48,11 @@ describe("buildRegistry", () => {
           cloze: false,
           anchor: true,
           inlineSeparator: false,
-          legacyHashtag: true,
+          hashtag: true,
         },
       },
     });
-    expect(features.map((f) => f.id)).toEqual(["anchor", "legacy-hashtag"]);
+    expect(features.map((f) => f.id)).toEqual(["anchor", "hashtag"]);
   });
 
   test("cloze precedes anchor for first-feature-wins", () => {

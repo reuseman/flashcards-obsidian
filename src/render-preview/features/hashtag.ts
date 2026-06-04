@@ -6,11 +6,11 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-export const createLegacyHashtag: FeatureFactory = (
+export const createHashtag: FeatureFactory = (
   settings: FlashcardsSettings,
 ): Feature => {
-  const enabled = settings.legacy.enabled;
-  const basic = settings.legacy.hashtagBasic;
+  const enabled = settings.hashtag.enabled;
+  const basic = settings.hashtag.basicTag;
   const escBasic = escapeRegex(basic);
   const re = new RegExp(
     `#${escBasic}(?:-reverse|/reverse)?(?![\\w-])`,
@@ -18,7 +18,7 @@ export const createLegacyHashtag: FeatureFactory = (
   );
 
   return {
-    id: "legacy-hashtag",
+    id: "hashtag",
     scope: "text",
     detect(source: string): Match[] {
       if (!enabled) return [];
@@ -28,7 +28,7 @@ export const createLegacyHashtag: FeatureFactory = (
         matches.push({
           start: idx,
           end: idx + m[0].length,
-          html: `<span class="ff-legacy-tag" title="Legacy v1 syntax">${escapeHtml(m[0])}</span>`,
+          html: `<span class="ff-hashtag-tag" title="Hashtag (#card) syntax">${escapeHtml(m[0])}</span>`,
         });
       }
       return matches;

@@ -101,7 +101,7 @@ describe("extractCardsFromMarkdown", () => {
     expect(result.cards[0]?.answer).toBe("A");
   });
 
-  test("strips trailing v1 anchor from legacy `#card` answer block", () => {
+  test("strips trailing v1 anchor from hashtag `#card` answer block", () => {
     const md = "Question #card\nAnswer line one\nAnswer line two ^1714056234891";
     const result = extractCardsFromMarkdown(md, {
       notePath: "T.md",
@@ -217,11 +217,11 @@ describe("extractCardsFromMarkdown", () => {
     });
   });
 
-  describe("legacy #card basic", () => {
+  describe("hashtag #card basic", () => {
     test("multi-line answer with separate-line tag", () => {
       const result = extractCardsFromMarkdown(
         "Question\n#card\nLine 1\nLine 2",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
 
       expect(result.cards).toHaveLength(1);
@@ -229,14 +229,14 @@ describe("extractCardsFromMarkdown", () => {
         answer: "Line 1\nLine 2",
         front: "Question",
         kind: "basic",
-        source: { syntax: "legacy-hashtag" },
+        source: { syntax: "hashtag" },
       });
     });
 
     test("answer terminates at blank line", () => {
       const result = extractCardsFromMarkdown(
         "Question\n#card\nAnswer\n\nNot the answer",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
 
       expect(result.cards).toHaveLength(1);
@@ -246,7 +246,7 @@ describe("extractCardsFromMarkdown", () => {
     test("answer terminates at next heading", () => {
       const result = extractCardsFromMarkdown(
         "Question\n#card\nAnswer\n## Next",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
 
       expect(result.cards).toHaveLength(1);
@@ -256,7 +256,7 @@ describe("extractCardsFromMarkdown", () => {
     test("answer terminates at next #card", () => {
       const result = extractCardsFromMarkdown(
         "Q1\n#card\nA1\nQ2 #card\nA2",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
 
       expect(result.cards).toHaveLength(2);
@@ -267,7 +267,7 @@ describe("extractCardsFromMarkdown", () => {
     test("inline-tag strips #card token from front (no trailing space)", () => {
       const result = extractCardsFromMarkdown(
         "Question #card\nAnswer",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
 
       expect(result.cards).toHaveLength(1);
@@ -278,7 +278,7 @@ describe("extractCardsFromMarkdown", () => {
     test("heading inline-tag", () => {
       const result = extractCardsFromMarkdown(
         "## Question #card\nAnswer",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
 
       expect(result.cards).toHaveLength(1);
@@ -288,31 +288,31 @@ describe("extractCardsFromMarkdown", () => {
       });
     });
 
-    test("disabled via legacy.enabled = false", () => {
+    test("disabled via hashtag.enabled = false", () => {
       const result = extractCardsFromMarkdown(
         "Question\n#card\nAnswer",
         {
-          notePath: "Legacy.md",
-          settings: { ...DEFAULT_SETTINGS, legacy: { ...DEFAULT_SETTINGS.legacy, enabled: false } },
+          notePath: "Hashtag.md",
+          settings: { ...DEFAULT_SETTINGS, hashtag: { ...DEFAULT_SETTINGS.hashtag, enabled: false } },
         },
       );
 
       expect(result.cards).toHaveLength(0);
     });
 
-    test("custom hashtag via legacy.hashtagBasic", () => {
-      const settings = { ...DEFAULT_SETTINGS, legacy: { ...DEFAULT_SETTINGS.legacy, hashtagBasic: "flash" } };
+    test("custom hashtag via hashtag.basicTag", () => {
+      const settings = { ...DEFAULT_SETTINGS, hashtag: { ...DEFAULT_SETTINGS.hashtag, basicTag: "flash" } };
 
       const matching = extractCardsFromMarkdown(
         "Question\n#flash\nAnswer",
-        { notePath: "Legacy.md", settings },
+        { notePath: "Hashtag.md", settings },
       );
       expect(matching.cards).toHaveLength(1);
       expect(matching.cards[0]).toMatchObject({ front: "Question", answer: "Answer" });
 
       const notMatching = extractCardsFromMarkdown(
         "Question\n#card\nAnswer",
-        { notePath: "Legacy.md", settings },
+        { notePath: "Hashtag.md", settings },
       );
       expect(notMatching.cards).toHaveLength(0);
     });
@@ -320,7 +320,7 @@ describe("extractCardsFromMarkdown", () => {
     test("does not parse inside fenced code blocks", () => {
       const result = extractCardsFromMarkdown(
         "```md\nQuestion\n#card\nAnswer\n```",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
 
       expect(result.cards).toHaveLength(0);
@@ -329,7 +329,7 @@ describe("extractCardsFromMarkdown", () => {
     test("does not parse inside HTML comments", () => {
       const result = extractCardsFromMarkdown(
         "<!-- Question\n#card\nAnswer -->",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
 
       expect(result.cards).toHaveLength(0);
@@ -338,7 +338,7 @@ describe("extractCardsFromMarkdown", () => {
     test("does not parse inside blockquotes", () => {
       const result = extractCardsFromMarkdown(
         "> Question\n> #card\n> Answer",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
 
       expect(result.cards).toHaveLength(0);

@@ -4,7 +4,7 @@ export type FeatureId =
   | "cloze"
   | "anchor"
   | "inline-separator"
-  | "legacy-hashtag";
+  | "hashtag";
 
 export interface Match {
   start: number;

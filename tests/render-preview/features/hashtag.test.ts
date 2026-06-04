@@ -1,12 +1,12 @@
 import { describe, expect, test } from "vitest";
 import { DEFAULT_SETTINGS } from "../../../src/core/config/settings.js";
-import { createLegacyHashtag } from "../../../src/render-preview/features/legacy-hashtag.js";
+import { createHashtag } from "../../../src/render-preview/features/hashtag.js";
 
-const feat = createLegacyHashtag(DEFAULT_SETTINGS);
+const feat = createHashtag(DEFAULT_SETTINGS);
 
-describe("legacy-hashtag feature", () => {
+describe("hashtag feature", () => {
   test("id and scope", () => {
-    expect(feat.id).toBe("legacy-hashtag");
+    expect(feat.id).toBe("hashtag");
     expect(feat.scope).toBe("text");
   });
 
@@ -15,7 +15,7 @@ describe("legacy-hashtag feature", () => {
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({ start: 14, end: 19 });
     expect(out[0]!.html).toBe(
-      `<span class="ff-legacy-tag" title="Legacy v1 syntax">#card</span>`,
+      `<span class="ff-hashtag-tag" title="Hashtag (#card) syntax">#card</span>`,
     );
   });
 
@@ -32,18 +32,18 @@ describe("legacy-hashtag feature", () => {
     expect(feat.detect("x #cardiology y")).toEqual([]);
   });
 
-  test("disabled when settings.legacy.enabled is false", () => {
-    const off = createLegacyHashtag({
+  test("disabled when settings.hashtag.enabled is false", () => {
+    const off = createHashtag({
       ...DEFAULT_SETTINGS,
-      legacy: { enabled: false, hashtagBasic: "card" },
+      hashtag: { enabled: false, basicTag: "card" },
     });
     expect(off.detect("x #card y")).toEqual([]);
   });
 
-  test("respects custom hashtagBasic", () => {
-    const custom = createLegacyHashtag({
+  test("respects custom basicTag", () => {
+    const custom = createHashtag({
       ...DEFAULT_SETTINGS,
-      legacy: { enabled: true, hashtagBasic: "flash" },
+      hashtag: { enabled: true, basicTag: "flash" },
     });
     expect(custom.detect("q #flash")).toHaveLength(1);
     expect(custom.detect("q #card")).toEqual([]);

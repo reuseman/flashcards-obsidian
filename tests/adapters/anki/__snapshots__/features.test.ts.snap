@@ -67,6 +67,24 @@ exports[`test-vault/features snapshot coverage > renders card-types/fenced-rever
 ]
 `;
 
+exports[`test-vault/features snapshot coverage > renders card-types/hashtag.md 1`] = `
+[
+  {
+    "deckName": "card-types",
+    "fields": {
+      "Back": "<p>100 degrees Celsius.</p>",
+      "Front": "<p>What is the boiling point of water at sea level?</p>",
+      "Source": "<a href="obsidian://open?vault=Vault&file=card-types%2Fhashtag.md#%5Ecard-0">Open in Obsidian</a>",
+    },
+    "modelName": "Obsidian-basic",
+    "tags": [
+      "obsidian",
+      "feature-fixture",
+    ],
+  },
+]
+`;
+
 exports[`test-vault/features snapshot coverage > renders card-types/inline-basic.md 1`] = `
 [
   {
@@ -95,24 +113,6 @@ exports[`test-vault/features snapshot coverage > renders card-types/inline-rever
       "Source": "<a href="obsidian://open?vault=Vault&file=card-types%2Finline-reversed.md#%5Ecard-0">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic-reversed",
-    "tags": [
-      "obsidian",
-      "feature-fixture",
-    ],
-  },
-]
-`;
-
-exports[`test-vault/features snapshot coverage > renders card-types/legacy-hashtag.md 1`] = `
-[
-  {
-    "deckName": "card-types",
-    "fields": {
-      "Back": "<p>100 degrees Celsius.</p>",
-      "Front": "<p>What is the boiling point of water at sea level?</p>",
-      "Source": "<a href="obsidian://open?vault=Vault&file=card-types%2Flegacy-hashtag.md#%5Ecard-0">Open in Obsidian</a>",
-    },
-    "modelName": "Obsidian-basic",
     "tags": [
       "obsidian",
       "feature-fixture",

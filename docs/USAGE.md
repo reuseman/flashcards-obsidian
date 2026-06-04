@@ -82,7 +82,7 @@ not begin with a reserved key.
 If `front:` or `back:` is missing or empty, no card is produced and a
 warning is logged.
 
-### Legacy hashtag (v1 compatibility)
+### Hashtag (`#card`)
 
 ```text
 # What is recursion? #card
@@ -93,8 +93,8 @@ Recognised at headings (h1–h6) and paragraphs. `#card` is basic,
 `#card-reverse` or `#card/reverse` is reversed. The hashtag can sit inline
 (end of the question line) or on its own line below.
 
-Configurable via `legacy.hashtagBasic` (default `card`). Set
-`legacy.enabled: false` to disable v1 recognition entirely.
+Configurable via `hashtag.basicTag` (default `card`). Set
+`hashtag.enabled: false` to disable hashtag recognition entirely.
 
 ### What is *not* parsed
 
@@ -193,8 +193,8 @@ plugin folder (resets all plugin state).
 | `inlineSeparator` | `::` | Basic inline card delimiter. |
 | `inlineReverseSeparator` | `:::` | Reversed inline card delimiter. |
 | `explicitSyntax` | `fenced` | Fenced-block code label. |
-| `legacy.enabled` | `true` | Recognise v1 hashtag syntax. |
-| `legacy.hashtagBasic` | `card` | The hashtag used for v1 basic cards (also matches `<basic>-reverse` and `<basic>/reverse`). |
+| `hashtag.enabled` | `true` | Recognise hashtag (`#card`) syntax. |
+| `hashtag.basicTag` | `card` | The hashtag used for basic cards (also matches `<basic>-reverse` and `<basic>/reverse`). |
 | `logLevel` | `info` | `debug` \| `info` \| `warn` \| `error`. |
 | `logToFile` | `true` | Append sync events to `sync.log` in the plugin folder. |
 

@@ -83,7 +83,7 @@ export class FlashcardsSettingTab extends PluginSettingTab {
       );
 
     const featureRow = (
-      key: "cloze" | "anchor" | "inlineSeparator" | "legacyHashtag",
+      key: "cloze" | "anchor" | "inlineSeparator" | "hashtag",
       name: string,
       desc: string,
     ) =>
@@ -111,9 +111,9 @@ export class FlashcardsSettingTab extends PluginSettingTab {
       "Replace :: and ::: with arrow glyphs. Off by default (visually invasive).",
     );
     featureRow(
-      "legacyHashtag",
-      "Legacy hashtag",
-      "Fade legacy #card / #card-reverse tags during v1 migration.",
+      "hashtag",
+      "Hashtag (#card)",
+      "Style #card / #card-reverse hashtag tags in the preview.",
     );
   }
 }

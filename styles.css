@@ -20,7 +20,7 @@
   margin: 0 0.15em;
 }
 
-.markdown-rendered .ff-legacy-tag {
+.markdown-rendered .ff-hashtag-tag {
   color: var(--text-faint);
   font-size: 0.9em;
   border: 1px dashed var(--text-faint);
@@ -44,7 +44,7 @@
   font-weight: 600;
   margin: 0 0.15em;
 }
-.cm-editor .ff-legacy-tag {
+.cm-editor .ff-hashtag-tag {
   color: var(--text-faint);
   font-size: 0.9em;
   border: 1px dashed var(--text-faint);

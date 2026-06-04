@@ -43,18 +43,18 @@ const EXPECTED: Record<string, Expected> = {
   "reverse-heading-h6-inline-tag.md": { front: "Question", answer: "Answer", kind: "reversed" },
 };
 
-describe("legacy hashtag compatibility fixtures", () => {
+describe("hashtag compatibility fixtures", () => {
   const fixturesDir = path.join(
     __dirname,
     "..",
     "fixtures",
     "compatibility",
     "v1",
-    "legacy-hashtag",
+    "hashtag",
   );
 
   test.each(loadFixtures(fixturesDir))(
-    "parses legacy hashtag fixture %s as a single card",
+    "parses hashtag fixture %s as a single card",
     (fixtureName, markdown) => {
       const expected = EXPECTED[fixtureName];
       if (!expected) {
@@ -71,7 +71,7 @@ describe("legacy hashtag compatibility fixtures", () => {
         answer: expected.answer,
         front: expected.front,
         kind: expected.kind,
-        source: { syntax: "legacy-hashtag" },
+        source: { syntax: "hashtag" },
       });
     },
   );

@@ -7,7 +7,7 @@ import { visit } from "unist-util-visit";
 import type { FlashcardsSettings } from "../config/settings.js";
 import type { Flashcard } from "../domain/card.js";
 import { collectClozeSpans, intersectsSpan, type Span } from "./cloze-spans.js";
-import { extractLegacyHashtagCards } from "./extract-legacy-cards.js";
+import { extractHashtagCards } from "./extract-hashtag-cards.js";
 import { parseNoteMetadata } from "./note-metadata.js";
 
 export interface ExtractCardsOptions {
@@ -112,14 +112,14 @@ export function extractCardsFromMarkdown(
     }
   });
 
-  const legacy = extractLegacyHashtagCards(markdown, tree, options.settings, {
+  const hashtag = extractHashtagCards(markdown, tree, options.settings, {
     defaultTags: options.settings.defaultTags,
     metadataTags: metadata.tags,
     notePath: options.notePath,
     resolvedDeck,
   });
-  cards.push(...legacy.cards);
-  warnings.push(...legacy.warnings);
+  cards.push(...hashtag.cards);
+  warnings.push(...hashtag.warnings);
 
   return { cards, warnings };
 }

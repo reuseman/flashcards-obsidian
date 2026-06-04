@@ -3,14 +3,14 @@ import type { Root } from "mdast";
 import type { FlashcardsSettings } from "../config/settings.js";
 import type { Flashcard } from "../domain/card.js";
 
-export interface LegacyExtractContext {
+export interface HashtagExtractContext {
   defaultTags: string[];
   metadataTags: string[];
   notePath: string;
   resolvedDeck: string;
 }
 
-export interface LegacyExtractResult {
+export interface HashtagExtractResult {
   cards: Flashcard[];
   warnings: string[];
 }
@@ -32,9 +32,9 @@ interface TagSpec {
 const TERMINATOR_ANCHOR_RE = /^\^(?:|q-[abcdefghijkmnpqrstuvwxyz23456789]{4}|\d{13})$/;
 
 /**
- * Extracts legacy `#card` style flashcards, both basic and reversed.
+ * Extracts `#card` hashtag style flashcards, both basic and reversed.
  *
- * Reverse forms are `#{hashtagBasic}-reverse` and `#{hashtagBasic}/reverse`.
+ * Reverse forms are `#{basicTag}-reverse` and `#{basicTag}/reverse`.
  *
  * Two shapes are recognised per tag:
  *   1. Separate-line: question line, then the tag alone on the next line.
@@ -49,15 +49,15 @@ const TERMINATOR_ANCHOR_RE = /^\^(?:|q-[abcdefghijkmnpqrstuvwxyz23456789]{4}|\d{
  * the mdast tree by collecting their source ranges and skipping any line whose
  * start offset falls inside one.
  */
-export function extractLegacyHashtagCards(
+export function extractHashtagCards(
   markdown: string,
   tree: Root,
   settings: FlashcardsSettings,
-  context: LegacyExtractContext,
-): LegacyExtractResult {
-  if (!settings.legacy.enabled) return { cards: [], warnings: [] };
+  context: HashtagExtractContext,
+): HashtagExtractResult {
+  if (!settings.hashtag.enabled) return { cards: [], warnings: [] };
 
-  const basic = `#${settings.legacy.hashtagBasic}`;
+  const basic = `#${settings.hashtag.basicTag}`;
   const reverseDash = `${basic}-reverse`;
   const reverseSlash = `${basic}/reverse`;
   const allTags = [reverseDash, reverseSlash, basic];
@@ -148,7 +148,7 @@ function makeCard(
   answer: string,
   startOffset: number,
   endOffset: number,
-  context: LegacyExtractContext,
+  context: HashtagExtractContext,
 ): Flashcard {
   return {
     answer: answer.replace(TRAILING_ANCHOR_RE, ""),
@@ -159,7 +159,7 @@ function makeCard(
       endOffset,
       line: 1,
       startOffset,
-      syntax: "legacy-hashtag",
+      syntax: "hashtag",
     },
     tags: [...new Set([...context.defaultTags, ...context.metadataTags])],
   };

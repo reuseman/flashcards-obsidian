@@ -2,8 +2,8 @@ import type { FlashcardsSettings } from "../core/config/settings.js";
 import type { Feature } from "./feature.js";
 import { anchor } from "./features/anchor.js";
 import { cloze } from "./features/cloze.js";
+import { createHashtag } from "./features/hashtag.js";
 import { createInlineSeparator } from "./features/inline-separator.js";
-import { createLegacyHashtag } from "./features/legacy-hashtag.js";
 
 /**
  * Build the active feature list for the given settings. Order is precedence:
@@ -17,6 +17,6 @@ export function buildRegistry(settings: FlashcardsSettings): Feature[] {
   if (rp.features.cloze) out.push(cloze);
   if (rp.features.anchor) out.push(anchor);
   if (rp.features.inlineSeparator) out.push(createInlineSeparator(settings));
-  if (rp.features.legacyHashtag) out.push(createLegacyHashtag(settings));
+  if (rp.features.hashtag) out.push(createHashtag(settings));
   return out;
 }

@@ -5,7 +5,7 @@ import { extractCardsFromMarkdown } from "../../../src/core/parse/extract-cards.
 
 function extract(markdown: string) {
   return extractCardsFromMarkdown(markdown, {
-    notePath: "Legacy.md",
+    notePath: "Hashtag.md",
     settings: DEFAULT_SETTINGS,
   });
 }
@@ -134,7 +134,7 @@ describe("WI-2 #card deterministic answer model", () => {
 
       const result = extract(md);
 
-      const card = result.cards.find((c) => c.source.syntax === "legacy-hashtag");
+      const card = result.cards.find((c) => c.source.syntax === "hashtag");
       expect(card?.answer).toBe("Some answer.");
       expect(card?.answer).not.toContain("const sneaky");
     });

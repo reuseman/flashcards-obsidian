@@ -2,9 +2,9 @@ export type ContextStrategy = "headings" | "none" | "note-title";
 export type ExplicitSyntax = "fenced";
 export type LogLevelSetting = "debug" | "info" | "warn" | "error";
 
-export interface LegacySettings {
+export interface HashtagSettings {
   enabled: boolean;
-  hashtagBasic: string;
+  basicTag: string;
 }
 
 export interface RenderPreviewSettings {
@@ -13,7 +13,7 @@ export interface RenderPreviewSettings {
     cloze: boolean;
     anchor: boolean;
     inlineSeparator: boolean;
-    legacyHashtag: boolean;
+    hashtag: boolean;
   };
 }
 
@@ -25,9 +25,9 @@ export interface FlashcardsSettings {
   defaultTags: string[];
   explicitSyntax: ExplicitSyntax;
   folderBasedDecks: boolean;
+  hashtag: HashtagSettings;
   inlineReverseSeparator: string;
   inlineSeparator: string;
-  legacy: LegacySettings;
   logLevel: LogLevelSetting;
   logToFile: boolean;
   perfTracing: boolean;
@@ -43,12 +43,12 @@ export const DEFAULT_SETTINGS: FlashcardsSettings = {
   defaultTags: ["obsidian"],
   explicitSyntax: "fenced",
   folderBasedDecks: true,
+  hashtag: {
+    enabled: true,
+    basicTag: "card",
+  },
   inlineReverseSeparator: ":::",
   inlineSeparator: "::",
-  legacy: {
-    enabled: true,
-    hashtagBasic: "card",
-  },
   logLevel: "info",
   logToFile: true,
   perfTracing: false,
@@ -58,7 +58,7 @@ export const DEFAULT_SETTINGS: FlashcardsSettings = {
       cloze: true,
       anchor: true,
       inlineSeparator: false,
-      legacyHashtag: true,
+      hashtag: true,
     },
   },
   v1MigrationDecisionMade: false,
@@ -72,36 +72,75 @@ export function mergeSettings(
     return defaults;
   }
 
-  const candidate = data as Partial<FlashcardsSettings>;
-  const legacyCandidate =
-    candidate.legacy && typeof candidate.legacy === "object"
-      ? (candidate.legacy as Partial<LegacySettings>)
+  const candidate = data as Partial<FlashcardsSettings> & {
+    // Back-compat: pre-rename persisted shape used `legacy` / `hashtagBasic` /
+    // `legacyHashtag`. Old key takes effect only when the new key is absent.
+    legacy?: { enabled?: boolean; hashtagBasic?: string; basicTag?: string };
+  };
+  const newHashtagCandidate =
+    candidate.hashtag && typeof candidate.hashtag === "object"
+      ? (candidate.hashtag as Partial<HashtagSettings>)
       : undefined;
+  const oldLegacyCandidate =
+    candidate.legacy && typeof candidate.legacy === "object"
+      ? candidate.legacy
+      : undefined;
+  const oldHashtagMapped: Partial<HashtagSettings> | undefined = oldLegacyCandidate
+    ? {
+        ...(typeof oldLegacyCandidate.enabled === "boolean"
+          ? { enabled: oldLegacyCandidate.enabled }
+          : {}),
+        ...(typeof oldLegacyCandidate.hashtagBasic === "string"
+          ? { basicTag: oldLegacyCandidate.hashtagBasic }
+          : {}),
+      }
+    : undefined;
+
   const renderPreviewCandidate =
     candidate.renderPreview && typeof candidate.renderPreview === "object"
       ? (candidate.renderPreview as Partial<RenderPreviewSettings>)
       : undefined;
   const renderPreviewFeaturesCandidate =
     renderPreviewCandidate?.features && typeof renderPreviewCandidate.features === "object"
-      ? (renderPreviewCandidate.features as Partial<RenderPreviewSettings["features"]>)
+      ? (renderPreviewCandidate.features as Partial<RenderPreviewSettings["features"]> & {
+          legacyHashtag?: boolean;
+        })
       : undefined;
+  const oldHashtagFeatureMapped: { hashtag?: boolean } =
+    renderPreviewFeaturesCandidate &&
+    typeof renderPreviewFeaturesCandidate.legacyHashtag === "boolean"
+      ? { hashtag: renderPreviewFeaturesCandidate.legacyHashtag }
+      : {};
+  const newFeaturesCandidate = renderPreviewFeaturesCandidate
+    ? { ...renderPreviewFeaturesCandidate }
+    : undefined;
+  if (newFeaturesCandidate) {
+    delete (newFeaturesCandidate as { legacyHashtag?: unknown }).legacyHashtag;
+  }
+
+  const mergedCandidate = { ...candidate };
+  delete (mergedCandidate as { legacy?: unknown }).legacy;
 
   return {
     ...defaults,
-    ...candidate,
+    ...mergedCandidate,
     defaultTags: Array.isArray(candidate.defaultTags)
       ? candidate.defaultTags.filter((value): value is string => typeof value === "string")
       : defaults.defaultTags,
-    legacy: {
-      ...defaults.legacy,
-      ...(legacyCandidate ?? {}),
+    hashtag: {
+      ...defaults.hashtag,
+      // Old shape applies first; the new `hashtag` key (if present) wins.
+      ...(oldHashtagMapped ?? {}),
+      ...(newHashtagCandidate ?? {}),
     },
     renderPreview: {
       ...defaults.renderPreview,
       ...(renderPreviewCandidate ?? {}),
       features: {
         ...defaults.renderPreview.features,
-        ...(renderPreviewFeaturesCandidate ?? {}),
+        // Old `legacyHashtag` applies first; new `hashtag` feature key wins.
+        ...oldHashtagFeatureMapped,
+        ...(newFeaturesCandidate ?? {}),
       },
     },
   };

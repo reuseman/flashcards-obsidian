@@ -1,12 +1,12 @@
 import { DEFAULT_SETTINGS } from "../../../src/core/config/settings.js";
 import { extractCardsFromMarkdown } from "../../../src/core/parse/extract-cards.js";
 
-describe("legacy #card-reverse", () => {
+describe("hashtag #card-reverse", () => {
   describe("paragraph shapes", () => {
     test("inline-tag on a paragraph yields a reversed card", () => {
       const result = extractCardsFromMarkdown(
         "Question #card-reverse\nAnswer",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
 
       expect(result.cards).toHaveLength(1);
@@ -14,14 +14,14 @@ describe("legacy #card-reverse", () => {
         answer: "Answer",
         front: "Question",
         kind: "reversed",
-        source: { syntax: "legacy-hashtag" },
+        source: { syntax: "hashtag" },
       });
     });
 
     test("separate-line tag on a paragraph yields a reversed card", () => {
       const result = extractCardsFromMarkdown(
         "Question\n#card-reverse\nAnswer",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
 
       expect(result.cards).toHaveLength(1);
@@ -29,7 +29,7 @@ describe("legacy #card-reverse", () => {
         answer: "Answer",
         front: "Question",
         kind: "reversed",
-        source: { syntax: "legacy-hashtag" },
+        source: { syntax: "hashtag" },
       });
     });
   });
@@ -38,7 +38,7 @@ describe("legacy #card-reverse", () => {
     test("inline-tag on a heading uses heading text as front", () => {
       const result = extractCardsFromMarkdown(
         "## Question #card-reverse\nAnswer",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
 
       expect(result.cards).toHaveLength(1);
@@ -46,14 +46,14 @@ describe("legacy #card-reverse", () => {
         answer: "Answer",
         front: "Question",
         kind: "reversed",
-        source: { syntax: "legacy-hashtag" },
+        source: { syntax: "hashtag" },
       });
     });
 
     test("separate-line tag after a heading uses heading text as front", () => {
       const result = extractCardsFromMarkdown(
         "### Question\n#card-reverse\nAnswer",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
 
       expect(result.cards).toHaveLength(1);
@@ -69,7 +69,7 @@ describe("legacy #card-reverse", () => {
     test("inline-tag with slash form yields a reversed card", () => {
       const result = extractCardsFromMarkdown(
         "Question #card/reverse\nAnswer",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
 
       expect(result.cards).toHaveLength(1);
@@ -77,14 +77,14 @@ describe("legacy #card-reverse", () => {
         answer: "Answer",
         front: "Question",
         kind: "reversed",
-        source: { syntax: "legacy-hashtag" },
+        source: { syntax: "hashtag" },
       });
     });
 
     test("separate-line with slash form yields a reversed card", () => {
       const result = extractCardsFromMarkdown(
         "Question\n#card/reverse\nAnswer",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
 
       expect(result.cards).toHaveLength(1);
@@ -100,7 +100,7 @@ describe("legacy #card-reverse", () => {
     test("does not parse inside fenced code blocks", () => {
       const result = extractCardsFromMarkdown(
         "```md\nQuestion\n#card-reverse\nAnswer\n```",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
       expect(result.cards).toHaveLength(0);
     });
@@ -108,7 +108,7 @@ describe("legacy #card-reverse", () => {
     test("does not parse inside HTML comments", () => {
       const result = extractCardsFromMarkdown(
         "<!-- Question\n#card-reverse\nAnswer -->",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
       expect(result.cards).toHaveLength(0);
     });
@@ -116,7 +116,7 @@ describe("legacy #card-reverse", () => {
     test("does not parse inside blockquotes", () => {
       const result = extractCardsFromMarkdown(
         "> Question\n> #card-reverse\n> Answer",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
       expect(result.cards).toHaveLength(0);
     });
@@ -126,7 +126,7 @@ describe("legacy #card-reverse", () => {
     test("answer terminates at blank line", () => {
       const result = extractCardsFromMarkdown(
         "Question\n#card-reverse\nAnswer\n\nNot the answer",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
       expect(result.cards).toHaveLength(1);
       expect(result.cards[0]?.answer).toBe("Answer");
@@ -136,7 +136,7 @@ describe("legacy #card-reverse", () => {
     test("answer terminates at next heading", () => {
       const result = extractCardsFromMarkdown(
         "Question\n#card-reverse\nAnswer\n## Next",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
       expect(result.cards).toHaveLength(1);
       expect(result.cards[0]?.answer).toBe("Answer");
@@ -145,7 +145,7 @@ describe("legacy #card-reverse", () => {
     test("answer terminates at next reverse-tag occurrence", () => {
       const result = extractCardsFromMarkdown(
         "Q1\n#card-reverse\nA1\nQ2 #card-reverse\nA2",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
       expect(result.cards).toHaveLength(2);
       expect(result.cards[0]).toMatchObject({ front: "Q1", answer: "A1", kind: "reversed" });
@@ -155,7 +155,7 @@ describe("legacy #card-reverse", () => {
     test("answer terminates at EOF and joins multi-line answer with newline", () => {
       const result = extractCardsFromMarkdown(
         "Question\n#card-reverse\nLine 1\nLine 2",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
       expect(result.cards).toHaveLength(1);
       expect(result.cards[0]).toMatchObject({
@@ -167,23 +167,23 @@ describe("legacy #card-reverse", () => {
   });
 
   describe("settings", () => {
-    test("disabled via legacy.enabled = false yields no reverse cards", () => {
+    test("disabled via hashtag.enabled = false yields no reverse cards", () => {
       const result = extractCardsFromMarkdown(
         "Question\n#card-reverse\nAnswer",
         {
-          notePath: "Legacy.md",
-          settings: { ...DEFAULT_SETTINGS, legacy: { ...DEFAULT_SETTINGS.legacy, enabled: false } },
+          notePath: "Hashtag.md",
+          settings: { ...DEFAULT_SETTINGS, hashtag: { ...DEFAULT_SETTINGS.hashtag, enabled: false } },
         },
       );
       expect(result.cards).toHaveLength(0);
     });
 
-    test("custom hashtagBasic = 'flash' matches #flash-reverse and not #card-reverse", () => {
-      const settings = { ...DEFAULT_SETTINGS, legacy: { ...DEFAULT_SETTINGS.legacy, hashtagBasic: "flash" } };
+    test("custom basicTag = 'flash' matches #flash-reverse and not #card-reverse", () => {
+      const settings = { ...DEFAULT_SETTINGS, hashtag: { ...DEFAULT_SETTINGS.hashtag, basicTag: "flash" } };
 
       const matching = extractCardsFromMarkdown(
         "Question\n#flash-reverse\nAnswer",
-        { notePath: "Legacy.md", settings },
+        { notePath: "Hashtag.md", settings },
       );
       expect(matching.cards).toHaveLength(1);
       expect(matching.cards[0]).toMatchObject({
@@ -194,7 +194,7 @@ describe("legacy #card-reverse", () => {
 
       const matchingSlash = extractCardsFromMarkdown(
         "Question\n#flash/reverse\nAnswer",
-        { notePath: "Legacy.md", settings },
+        { notePath: "Hashtag.md", settings },
       );
       expect(matchingSlash.cards).toHaveLength(1);
       expect(matchingSlash.cards[0]).toMatchObject({
@@ -205,7 +205,7 @@ describe("legacy #card-reverse", () => {
 
       const notMatching = extractCardsFromMarkdown(
         "Question\n#card-reverse\nAnswer",
-        { notePath: "Legacy.md", settings },
+        { notePath: "Hashtag.md", settings },
       );
       expect(notMatching.cards).toHaveLength(0);
     });
@@ -215,20 +215,20 @@ describe("legacy #card-reverse", () => {
     test("basic and reverse cards coexist in one note", () => {
       const result = extractCardsFromMarkdown(
         "Q1\n#card\nA1\n\nQ2\n#card-reverse\nA2",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
 
       expect(result.cards).toHaveLength(2);
       const basic = result.cards.find((c) => c.kind === "basic");
       const reversed = result.cards.find((c) => c.kind === "reversed");
-      expect(basic).toMatchObject({ front: "Q1", answer: "A1", source: { syntax: "legacy-hashtag" } });
-      expect(reversed).toMatchObject({ front: "Q2", answer: "A2", source: { syntax: "legacy-hashtag" } });
+      expect(basic).toMatchObject({ front: "Q1", answer: "A1", source: { syntax: "hashtag" } });
+      expect(reversed).toMatchObject({ front: "Q2", answer: "A2", source: { syntax: "hashtag" } });
     });
 
     test("#card-reverse is not mistaken for a basic #card via substring match", () => {
       const result = extractCardsFromMarkdown(
         "Question\n#card-reverse\nAnswer",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
 
       expect(result.cards).toHaveLength(1);
@@ -238,7 +238,7 @@ describe("legacy #card-reverse", () => {
     test("#card/reverse is not mistaken for a basic #card via substring match", () => {
       const result = extractCardsFromMarkdown(
         "Question\n#card/reverse\nAnswer",
-        { notePath: "Legacy.md", settings: DEFAULT_SETTINGS },
+        { notePath: "Hashtag.md", settings: DEFAULT_SETTINGS },
       );
 
       expect(result.cards).toHaveLength(1);

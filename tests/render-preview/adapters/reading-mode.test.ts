@@ -29,9 +29,9 @@ describe("reading-mode adapter", () => {
     expect(el.textContent).not.toContain("^q-abcd");
   });
 
-  test("legacy-hashtag rendered when enabled", () => {
+  test("hashtag rendered when enabled", () => {
     const out = render("<p>note #card</p>");
-    expect(out).toContain(`class="ff-legacy-tag"`);
+    expect(out).toContain(`class="ff-hashtag-tag"`);
   });
 
   test("first-feature-wins: cloze containing anchor-shaped text", () => {
