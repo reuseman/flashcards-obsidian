@@ -10,7 +10,7 @@
     "arch:likec4": "likec4 serve docs/architecture/likec4",
     "arch:likec4:build": "likec4 build -o docs/architecture/likec4/out docs/architecture/likec4",
     "build": "tsc --noEmit && node esbuild.config.mjs production",
-    "check": "npm run lint && npm run lint:md && npm run test && npm run build",
+    "check": "npm run lint && npm run lint:md && npm run arch:check && npm run test && npm run build",
     "coverage": "vitest run --coverage",
     "dev": "node esbuild.config.mjs",
     "lint": "eslint .",
