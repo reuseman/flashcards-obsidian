@@ -25,6 +25,7 @@ export function extractCardsFromMarkdown(
   options: ExtractCardsOptions,
 ): ExtractCardsResult {
   const cards: Flashcard[] = [];
+  const warnings: string[] = [];
   const metadata = parseNoteMetadata(markdown);
   const resolvedDeck = resolveDeckName(
     options.notePath,
@@ -38,17 +39,24 @@ export function extractCardsFromMarkdown(
 
   visit(tree, (node, _index, parent) => {
     if (node.type === "code" && node.lang === "flashcard") {
-      const value = node.value ?? "";
-      const front = findField(value, "front");
-      const back = findField(value, "back");
-      const type = findField(value, "type");
+      const fields = parseFencedFields(node.value ?? "");
+      const front = fields.front ?? "";
+      const back = fields.back ?? "";
 
-      if (front && back) {
+      if (!front) {
+        warnings.push(
+          "Fenced flashcard block missing required `front:` field; skipped.",
+        );
+      } else if (!back) {
+        warnings.push(
+          "Fenced flashcard block missing required `back:` field; skipped.",
+        );
+      } else {
         cards.push({
           answer: back,
           deckName: resolvedDeck,
           front,
-          kind: type === "reversed" ? "reversed" : "basic",
+          kind: fields.type === "reversed" ? "reversed" : "basic",
           source: {
             endOffset: node.position?.end.offset ?? 0,
             line: node.position?.start.line ?? 1,
@@ -111,17 +119,55 @@ export function extractCardsFromMarkdown(
     resolvedDeck,
   });
   cards.push(...legacy.cards);
+  warnings.push(...legacy.warnings);
 
-  return { cards, warnings: legacy.warnings };
+  return { cards, warnings };
 }
 
 function mergeTags(defaultTags: string[], metadataTags: string[]): string[] {
   return [...new Set([...defaultTags, ...metadataTags])];
 }
 
-function findField(block: string, name: string): string | null {
-  const match = block.match(new RegExp(`^${name}:\\s*(.+)$`, "m"));
-  return match?.[1]?.trim() ?? null;
+interface FencedFields {
+  back?: string;
+  front?: string;
+  type?: string;
+}
+
+const FENCED_KEY_RE = /^(front|back|type):(.*)$/;
+
+/**
+ * A field value spans the text after `key:` plus every following line until the
+ * next key line or the end of the block, joined with `\n` and trimmed as a
+ * whole. A continuation line that itself starts with a reserved key opens that
+ * key instead of being treated as content (documented limitation, spec §4.4).
+ */
+function parseFencedFields(block: string): FencedFields {
+  const fields: FencedFields = {};
+  const lines = block.split("\n");
+
+  let currentKey: keyof FencedFields | null = null;
+  let buffer: string[] = [];
+
+  const flush = (): void => {
+    if (currentKey !== null) {
+      fields[currentKey] = buffer.join("\n").trim();
+    }
+  };
+
+  for (const line of lines) {
+    const match = FENCED_KEY_RE.exec(line);
+    if (match) {
+      flush();
+      currentKey = match[1] as keyof FencedFields;
+      buffer = [match[2] ?? ""];
+    } else if (currentKey !== null) {
+      buffer.push(line);
+    }
+  }
+  flush();
+
+  return fields;
 }
 
 function parseInlineCard(

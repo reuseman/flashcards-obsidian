@@ -390,6 +390,130 @@ describe("extractCardsFromMarkdown", () => {
     });
   });
 
+  describe("WI-3: fenced block multi-line field values", () => {
+    test("captures a multi-line back: value joining continuation lines with \\n", () => {
+      const result = extractCardsFromMarkdown(
+        [
+          "```flashcard",
+          "front: What is the CAP theorem?",
+          "back: A distributed store provides at most two of:",
+          "Consistency, Availability, Partition-tolerance.",
+          "Under a partition you choose C or A.",
+          "type: basic",
+          "```",
+        ].join("\n"),
+        { notePath: "Cap.md", settings: DEFAULT_SETTINGS },
+      );
+
+      expect(result.cards).toHaveLength(1);
+      expect(result.cards[0]).toMatchObject({
+        front: "What is the CAP theorem?",
+        answer:
+          "A distributed store provides at most two of:\nConsistency, Availability, Partition-tolerance.\nUnder a partition you choose C or A.",
+        kind: "basic",
+      });
+    });
+
+    test("captures a multi-line front: value joining continuation lines with \\n", () => {
+      const result = extractCardsFromMarkdown(
+        [
+          "```flashcard",
+          "front: Given the following snippet,",
+          "what is the output and why?",
+          "back: It prints 42.",
+          "```",
+        ].join("\n"),
+        { notePath: "Front.md", settings: DEFAULT_SETTINGS },
+      );
+
+      expect(result.cards).toHaveLength(1);
+      expect(result.cards[0]).toMatchObject({
+        front: "Given the following snippet,\nwhat is the output and why?",
+        answer: "It prints 42.",
+        kind: "basic",
+      });
+    });
+
+    test("parses fields independent of key order (back before front before type)", () => {
+      const result = extractCardsFromMarkdown(
+        [
+          "```flashcard",
+          "back: Paris",
+          "front: Capital of France?",
+          "type: reversed",
+          "```",
+        ].join("\n"),
+        { notePath: "Order.md", settings: DEFAULT_SETTINGS },
+      );
+
+      expect(result.cards).toHaveLength(1);
+      expect(result.cards[0]).toMatchObject({
+        front: "Capital of France?",
+        answer: "Paris",
+        kind: "reversed",
+      });
+    });
+
+    test("treats a continuation line that begins with a reserved key as a new key, not back content", () => {
+      const result = extractCardsFromMarkdown(
+        [
+          "```flashcard",
+          "front: Q",
+          "back: first line of back",
+          "type: reversed",
+          "```",
+        ].join("\n"),
+        { notePath: "Reserved.md", settings: DEFAULT_SETTINGS },
+      );
+
+      expect(result.cards).toHaveLength(1);
+      expect(result.cards[0]?.answer).toBe("first line of back");
+      expect(result.cards[0]?.answer).not.toContain("type:");
+      expect(result.cards[0]?.kind).toBe("reversed");
+    });
+
+    test("preserves a blank line inside a field value verbatim, trimming only the whole value", () => {
+      const result = extractCardsFromMarkdown(
+        [
+          "```flashcard",
+          "front: Q",
+          "back: para one",
+          "",
+          "para two",
+          "```",
+        ].join("\n"),
+        { notePath: "Blank.md", settings: DEFAULT_SETTINGS },
+      );
+
+      expect(result.cards).toHaveLength(1);
+      expect(result.cards[0]?.answer).toBe("para one\n\npara two");
+    });
+
+    test("produces no card and a warning when back: is missing", () => {
+      const result = extractCardsFromMarkdown(
+        ["```flashcard", "front: Only a front", "```"].join("\n"),
+        { notePath: "NoBack.md", settings: DEFAULT_SETTINGS },
+      );
+
+      expect(result.cards).toHaveLength(0);
+      expect(result.warnings.some((w) => /back|required|missing/i.test(w))).toBe(
+        true,
+      );
+    });
+
+    test("produces no card and a warning when front: is missing", () => {
+      const result = extractCardsFromMarkdown(
+        ["```flashcard", "back: Only a back", "```"].join("\n"),
+        { notePath: "NoFront.md", settings: DEFAULT_SETTINGS },
+      );
+
+      expect(result.cards).toHaveLength(0);
+      expect(result.warnings.some((w) => /front|required|missing/i.test(w))).toBe(
+        true,
+      );
+    });
+  });
+
   // B5: markdown-form images `![alt](file.png)` were stripped from visible
   // text by `phrasingToVisibleText`, so the downstream media rewriter never
   // saw them. Wikilink-form `![[file.png]]` survived only because mdast

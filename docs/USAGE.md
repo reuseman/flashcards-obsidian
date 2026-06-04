@@ -57,8 +57,30 @@ back: Cascading Style Sheets, a stylesheet language for HTML and XML.
 ````
 
 `front:` and `back:` are required fields; an optional `type: reversed`
-produces a reversed card (default is basic). Each field is read from a
-single line.
+produces a reversed card (default is basic). Keys may appear in any order.
+
+Field values may span multiple lines: a value is the text after `key:`
+plus every following line, up to the next key line or the closing fence,
+joined with newlines. Blank lines inside a value are preserved; only the
+whole value is trimmed.
+
+````markdown
+```flashcard
+front: What is the CAP theorem?
+back: A distributed store provides at most two of:
+Consistency, Availability, Partition-tolerance.
+Under a partition you choose C or A.
+type: basic
+```
+````
+
+**Reserved-key caveat:** a continuation line that itself begins with
+`front:`, `back:`, or `type:` starts that key instead of being read as
+content. To include such a line verbatim in a value, reword it so it does
+not begin with a reserved key.
+
+If `front:` or `back:` is missing or empty, no card is produced and a
+warning is logged.
 
 ### Legacy hashtag (v1 compatibility)
 
