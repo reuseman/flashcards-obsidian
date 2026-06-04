@@ -1,13 +1,12 @@
 import type { App, TFile } from "obsidian";
+import type {
+  MarkdownNote,
+  MarkdownRepository,
+} from "../../application/ports.js";
 
-export interface MarkdownNote {
-  markdown: string;
-  name: string;
-  path: string;
-  file: TFile;
-}
+export type { MarkdownNote };
 
-export class ObsidianMarkdownRepository {
+export class ObsidianMarkdownRepository implements MarkdownRepository {
   constructor(private readonly app: App) {}
 
   async getAllMarkdownNotes(): Promise<MarkdownNote[]> {
@@ -37,6 +36,8 @@ export class ObsidianMarkdownRepository {
   }
 
   async saveNote(note: MarkdownNote, markdown: string): Promise<void> {
-    await this.app.vault.modify(note.file, markdown);
+    // `note.file` is typed `unknown` at the port boundary; it is always a
+    // `TFile` produced by the read methods above.
+    await this.app.vault.modify(note.file as TFile, markdown);
   }
 }

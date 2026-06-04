@@ -1,3 +1,11 @@
+import type {
+  AnkiAddNoteParams,
+  AnkiCreateModelSpec,
+  AnkiGateway,
+} from "../../application/ports.js";
+
+export type { AnkiAddNoteParams, AnkiCreateModelSpec };
+
 const ANKI_CONNECT_VERSION = 6;
 const DEFAULT_ENDPOINT = "http://127.0.0.1:8765";
 
@@ -17,23 +25,7 @@ export interface AnkiResponse<TResult> {
   result: TResult;
 }
 
-export interface AnkiCreateModelSpec {
-  modelName: string;
-  inOrderFields: string[];
-  cardTemplates: Array<{ Name?: string; Front: string; Back: string }>;
-  isCloze?: boolean;
-  css?: string;
-}
-
-export interface AnkiAddNoteParams {
-  deckName: string;
-  modelName: string;
-  fields: Record<string, string>;
-  tags?: string[];
-  options?: { allowDuplicate?: boolean; duplicateScope?: string };
-}
-
-export class AnkiConnectClient {
+export class AnkiConnectClient implements AnkiGateway {
   private readonly endpoint: string;
   private readonly apiKey: string | undefined;
   private readonly fetchImpl: typeof fetch;

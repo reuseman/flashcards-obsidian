@@ -1,10 +1,10 @@
-import type { ObsidianMarkdownRepository } from "../adapters/obsidian/obsidian-markdown-repository.js";
+import type { MarkdownRepository } from "./ports.js";
 import type { FlashcardsSettings } from "../core/config/settings.js";
 import { applyTextEdits } from "../core/edits/apply-text-edits.js";
 import { backfillV1Anchors } from "./backfill-v1-anchors.js";
 
 export interface BackfillV1VaultInput {
-  repository: ObsidianMarkdownRepository;
+  repository: MarkdownRepository;
   settings: FlashcardsSettings;
 }
 

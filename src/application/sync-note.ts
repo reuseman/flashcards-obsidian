@@ -1,12 +1,12 @@
-import type { AnkiConnectClient } from "../adapters/anki/anki-connect-client.js";
 import {
   executeSyncPlan,
   type ExecuteSyncPlanResult,
 } from "../adapters/anki/execute-sync-plan.js";
 import type {
+  AnkiGateway,
   MarkdownNote,
-  ObsidianMarkdownRepository,
-} from "../adapters/obsidian/obsidian-markdown-repository.js";
+  MarkdownRepository,
+} from "./ports.js";
 import type { FlashcardsSettings } from "../core/config/settings.js";
 import { NoopLogger, type Logger } from "../core/logging/logger.js";
 import { createNoopPerfTrace, type PerfTrace } from "../core/logging/perf-trace.js";
@@ -48,13 +48,13 @@ export interface CardMediaError {
 }
 
 export interface SyncNoteInput {
-  ankiClient: AnkiConnectClient;
+  ankiClient: AnkiGateway;
   generateBlockId?: () => string;
   logger?: Logger;
   mediaPipeline?: MediaPipeline;
   note: MarkdownNote;
   perfTrace?: PerfTrace;
-  repository: ObsidianMarkdownRepository;
+  repository: MarkdownRepository;
   resolveLink?: (target: string, sourcePath: string) => string | null;
   settings: FlashcardsSettings;
   vaultName: string;

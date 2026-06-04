@@ -1,4 +1,4 @@
-import type { MarkdownNote } from "../adapters/obsidian/obsidian-markdown-repository.js";
+import type { MarkdownNote } from "./ports.js";
 import { detectV1Migration } from "./detect-v1-migration.js";
 
 export interface MigrationCheckInput {

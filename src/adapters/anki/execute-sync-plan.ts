@@ -1,4 +1,4 @@
-import type { AnkiConnectClient } from "./anki-connect-client.js";
+import type { AnkiGateway } from "../../application/ports.js";
 import {
   ANKI_MODEL_BASIC,
   ANKI_MODEL_CLOZE,
@@ -41,7 +41,7 @@ export interface ExecuteSyncPlanResult {
 }
 
 export interface ExecuteSyncPlanInput {
-  client: AnkiConnectClient;
+  client: AnkiGateway;
   logger?: Logger;
   notePath: string;
   plan: SyncPlan;

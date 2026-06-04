@@ -1,5 +1,4 @@
-import type { AnkiConnectClient } from "../adapters/anki/anki-connect-client.js";
-import type { ObsidianMarkdownRepository } from "../adapters/obsidian/obsidian-markdown-repository.js";
+import type { AnkiGateway, MarkdownRepository } from "./ports.js";
 import type { FlashcardsSettings } from "../core/config/settings.js";
 import { NoopLogger, type Logger } from "../core/logging/logger.js";
 import { createPerfTrace } from "../core/logging/perf-trace.js";
@@ -11,12 +10,12 @@ import {
 } from "./sync-note.js";
 
 export interface SyncVaultInput {
-  ankiClient: AnkiConnectClient;
+  ankiClient: AnkiGateway;
   generateBlockId?: () => string;
   logger?: Logger;
   mediaPipeline?: MediaPipeline;
   onProgress?: (current: number, total: number, notePath: string) => void;
-  repository: ObsidianMarkdownRepository;
+  repository: MarkdownRepository;
   resolveLink?: (target: string, sourcePath: string) => string | null;
   settings: FlashcardsSettings;
   vaultName: string;
