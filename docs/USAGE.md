@@ -51,15 +51,14 @@ multiple spans together on a single card.
 
 ````markdown
 ```flashcard
-What does CSS stand for?
----
-Cascading Style Sheets — a stylesheet language used to describe the
-presentation of HTML and XML documents.
+front: What does CSS stand for?
+back: Cascading Style Sheets, a stylesheet language for HTML and XML.
 ```
 ````
 
-The `---` separates front from back. Anywhere `\n` would be lost in inline
-syntax, use a fenced block.
+`front:` and `back:` are required fields; an optional `type: reversed`
+produces a reversed card (default is basic). Each field is read from a
+single line.
 
 ### Legacy hashtag (v1 compatibility)
 
