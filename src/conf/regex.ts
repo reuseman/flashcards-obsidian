@@ -34,12 +34,12 @@ export class Regex {
 
     // Supported images https://publish.obsidian.md/help/How+to/Embed+files
     this.wikiImageLinks =
-      /!\[\[(.*\.(?:png|jpg|jpeg|gif|bmp|svg|tiff)).*?\]\]/gim;
+      /!\[\[(.*\.(?:png|jpg|jpeg|gif|bmp|svg|tiff|webp)).*?\]\]/gim;
     this.markdownImageLinks =
-      /!\[\]\((.*\.(?:png|jpg|jpeg|gif|bmp|svg|tiff)).*?\)/gim;
+      /!\[\]\((.*\.(?:png|jpg|jpeg|gif|bmp|svg|tiff|webp)).*?\)/gim;
 
     this.wikiAudioLinks =
-      /!\[\[(.*\.(?:mp3|webm|wav|m4a|ogg|3gp|flac)).*?\]\]/gim;
+      /!\[\[(.*\.(?:mp3|webm|wav|m4a|ogg|3gp|flac|opus)).*?\]\]/gim;
 
     // https://regex101.com/r/eqnJeW/1
     this.obsidianCodeBlock = /(?:```(?:.*?\n?)+?```)(?:\n|$)/gim;
@@ -96,6 +96,6 @@ export class Regex {
     this.singleClozeHighlight = /((?:==)(.+?)(?:==))/g;
 
     // Matches any embedded block but the one with an used extension from the wikilinks
-    this.embedBlock = /!\[\[(.*?)(?<!\.(?:png|jpg|jpeg|gif|bmp|svg|tiff|mp3|webm|wav|m4a|ogg|3gp|flac))\]\]/g;
+    this.embedBlock = /!\[\[(.*?)(?<!\.(?:png|jpg|jpeg|gif|bmp|svg|tiff|webp|mp3|webm|wav|m4a|ogg|3gp|flac))\]\]/g;
   }
 }
