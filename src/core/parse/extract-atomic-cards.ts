@@ -143,6 +143,12 @@ function parseTestValue(rawFrontmatter: string): TestValue {
   const line = lines[keyIndex]!;
   const afterColon = line.slice("test:".length).trim();
 
+  if (afterColon.startsWith("{")) return { kind: "invalid" };
+
+  if (afterColon.startsWith("[")) {
+    return parseFlowList(afterColon.slice(1));
+  }
+
   if (afterColon.length > 0) {
     const scalar = parseScalarToken(afterColon);
     if (!scalar.ok) return { kind: "invalid" };
@@ -155,11 +161,15 @@ function parseTestValue(rawFrontmatter: string): TestValue {
   for (let i = keyIndex + 1; i < lines.length; i++) {
     const raw = lines[i]!;
     if (raw.trim().length === 0) continue;
-    if (!/^\s/.test(raw)) break;
 
     const trimmedLine = raw.trim();
-    if (trimmedLine.startsWith("- ")) {
-      const token = parseScalarToken(trimmedLine.slice(2));
+    const isListItem = trimmedLine === "-" || trimmedLine.startsWith("- ");
+    if (!/^\s/.test(raw) && !isListItem) break;
+
+    if (isListItem) {
+      const token = parseScalarToken(
+        trimmedLine.startsWith("- ") ? trimmedLine.slice(2) : "",
+      );
       if (!token.ok) return { kind: "invalid" };
       items.push(token.value);
     } else {
@@ -169,6 +179,67 @@ function parseTestValue(rawFrontmatter: string): TestValue {
 
   if (sawMap || items.length === 0) return { kind: "invalid" };
   return { kind: "items", items };
+}
+
+/**
+ * Parses the content after `test: [` up to its matching `]`. Nested flow
+ * lists/maps and unterminated sequences are rejected — this grammar only
+ * recognizes a single flat flow list of scalars (same idiom as `tags:`).
+ */
+function parseFlowList(rest: string): TestValue {
+  const closeIndex = findFlowListClose(rest);
+  if (closeIndex < 0) return { kind: "invalid" };
+
+  const content = rest.slice(0, closeIndex);
+  const items: string[] = [];
+  for (const itemStr of splitFlowItems(content)) {
+    const token = parseScalarToken(itemStr);
+    if (!token.ok) return { kind: "invalid" };
+    items.push(token.value);
+  }
+
+  if (items.length === 0) return { kind: "invalid" };
+  return { kind: "items", items };
+}
+
+function findFlowListClose(s: string): number {
+  let inQuote: string | null = null;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i]!;
+    if (inQuote) {
+      if (ch === inQuote) inQuote = null;
+    } else if (ch === '"' || ch === "'") {
+      inQuote = ch;
+    } else if (ch === "]") {
+      return i;
+    } else if (ch === "[" || ch === "{") {
+      return -1;
+    }
+  }
+  return -1;
+}
+
+function splitFlowItems(content: string): string[] {
+  const items: string[] = [];
+  let current = "";
+  let inQuote: string | null = null;
+
+  for (const ch of content) {
+    if (inQuote) {
+      current += ch;
+      if (ch === inQuote) inQuote = null;
+    } else if (ch === '"' || ch === "'") {
+      inQuote = ch;
+      current += ch;
+    } else if (ch === ",") {
+      items.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  items.push(current);
+  return items;
 }
 
 function parseScalarToken(raw: string): { ok: true; value: string } | { ok: false } {
@@ -182,10 +253,17 @@ function parseScalarToken(raw: string): { ok: true; value: string } | { ok: fals
     return { ok: true, value: trimmed.slice(1, -1) };
   }
 
+  // Bare (unquoted) scalars cannot contain " #" in YAML — anything from
+  // there on is a comment, not part of the value.
+  const commentIndex = trimmed.indexOf(" #");
+  const unquoted =
+    commentIndex >= 0 ? trimmed.slice(0, commentIndex).trim() : trimmed;
+  if (unquoted.length === 0) return { ok: false };
+
   // Bare numbers and booleans are invalid `test` items — YAML would type
   // them as number/boolean, never a string.
-  if (/^-?\d+(?:\.\d+)?$/.test(trimmed)) return { ok: false };
-  if (/^(?:true|false|True|False|TRUE|FALSE)$/.test(trimmed)) return { ok: false };
+  if (/^-?\d+(?:\.\d+)?$/.test(unquoted)) return { ok: false };
+  if (/^(?:true|false|True|False|TRUE|FALSE)$/.test(unquoted)) return { ok: false };
 
-  return { ok: true, value: trimmed };
+  return { ok: true, value: unquoted };
 }
