@@ -149,7 +149,10 @@ function buildCard(
 function hasDerivedFrontCollision(cards: Flashcard[]): boolean {
   const seen = new Set<string>();
   for (const card of cards) {
-    const key = `${card.kind} ${card.front}`;
+    // Tuple-encoded key: collision-safe for any kind/front values without
+    // relying on a separator character being absent from the parts (a
+    // previous literal-NUL separator also made git treat this file as binary).
+    const key = JSON.stringify([card.kind, card.front]);
     if (seen.has(key)) return true;
     seen.add(key);
   }
