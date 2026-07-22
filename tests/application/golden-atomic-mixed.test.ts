@@ -142,8 +142,7 @@ function stripFrontmatter(markdown: string): string {
 // Golden gate — currently red; unskip in WI-10 (see file header).
 // ===========================================================================
 
-// unskip in WI-10 — acceptance gate for the atomic syntax
-describe.skip("golden atomic mixed note — WI-13 acceptance gate", () => {
+describe("golden atomic mixed note — WI-13 acceptance gate", () => {
   it("parses exactly the atomic + fenced + hashtag card set, no legacy inline/cloze doubles", () => {
     const { cards } = extractCardsFromMarkdown(FIXTURE, {
       notePath: NOTE_PATH,

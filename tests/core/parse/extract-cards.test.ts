@@ -596,4 +596,171 @@ describe("extractCardsFromMarkdown", () => {
     expect(result.cards).toHaveLength(1);
     expect(result.cards[0]?.answer).toContain("![](pic.png)");
   });
+
+  describe("WI-10: double-detection suppression on `test:`-keyed notes", () => {
+    function atomicNote(frontmatterLines: string[], body: string[]): string {
+      return ["---", ...frontmatterLines, "---", "", ...body].join("\n");
+    }
+
+    const VALID_TEST_FRONTMATTER = ["test:", "  - title"];
+
+    test("valid `test:` key suppresses inline and legacy cloze body scans while atomic cards still parse", () => {
+      const md = atomicNote(VALID_TEST_FRONTMATTER, [
+        "The ==heart== pumps blood through the body.",
+        "",
+        "Some prose with a separator: Capital of France::Paris.",
+      ]);
+
+      const result = extractCardsFromMarkdown(md, {
+        notePath: "Atomic.md",
+        settings: DEFAULT_SETTINGS,
+      });
+
+      const legacy = result.cards.filter((c) => {
+        const syntax = c.source.syntax as string;
+        return syntax === "inline" || syntax === "cloze";
+      });
+      expect(legacy).toEqual([]);
+
+      const atomicCards = result.cards.filter(
+        (c) => (c.source.syntax as string) === "atomic",
+      );
+      expect(atomicCards).toHaveLength(1);
+    });
+
+    test("atomic-cloze first paragraph yields exactly one card, not an atomic + legacy-cloze double", () => {
+      const md = atomicNote(["test:", "  - cloze"], [
+        "The ==heart== pumps blood through the body.",
+      ]);
+
+      const result = extractCardsFromMarkdown(md, {
+        notePath: "Atomic.md",
+        settings: DEFAULT_SETTINGS,
+      });
+
+      expect(result.cards).toHaveLength(1);
+      expect(result.cards[0]?.source.syntax as string).toBe("atomic");
+    });
+
+    test("invalid `test:` value (key presence, not validity) still suppresses inline/cloze and yields zero atomic cards", () => {
+      const md = atomicNote(["test: true"], [
+        "The ==heart== pumps blood through the body.",
+        "",
+        "Some prose with a separator: Capital of France::Paris.",
+      ]);
+
+      const result = extractCardsFromMarkdown(md, {
+        notePath: "Atomic.md",
+        settings: DEFAULT_SETTINGS,
+      });
+
+      expect(result.cards).toEqual([]);
+    });
+
+    test("fenced ```flashcard block still parses inside a `test:`-keyed note", () => {
+      const md = atomicNote(VALID_TEST_FRONTMATTER, [
+        "Some prose with a separator: Capital of France::Paris.",
+        "",
+        "```flashcard",
+        "front: What is ATP?",
+        "back: Adenosine triphosphate",
+        "```",
+      ]);
+
+      const result = extractCardsFromMarkdown(md, {
+        notePath: "Atomic.md",
+        settings: DEFAULT_SETTINGS,
+      });
+
+      const fenced = result.cards.find(
+        (c) => (c.source.syntax as string) === "fenced",
+      );
+      expect(fenced?.front).toBe("What is ATP?");
+      expect(fenced?.answer).toBe("Adenosine triphosphate");
+    });
+
+    test("#card hashtag still parses inside a `test:`-keyed note", () => {
+      const md = atomicNote(VALID_TEST_FRONTMATTER, [
+        "Some prose with a separator: Capital of France::Paris.",
+        "",
+        "What is UDP? #card",
+        "Connectionless, unreliable datagram transport.",
+      ]);
+
+      const result = extractCardsFromMarkdown(md, {
+        notePath: "Atomic.md",
+        settings: DEFAULT_SETTINGS,
+      });
+
+      const hashtag = result.cards.find(
+        (c) => (c.source.syntax as string) === "hashtag",
+      );
+      expect(hashtag?.front).toBe("What is UDP?");
+      expect(hashtag?.answer).toBe(
+        "Connectionless, unreliable datagram transport.",
+      );
+    });
+
+    test("note without a `test:` key keeps today's behaviour — inline and cloze both parse", () => {
+      const md = [
+        "Question:: Answer",
+        "",
+        "The ==heart== pumps blood through the body.",
+      ].join("\n\n");
+
+      const result = extractCardsFromMarkdown(md, {
+        notePath: "Plain.md",
+        settings: DEFAULT_SETTINGS,
+      });
+
+      expect(result.cards.some((c) => c.kind === "basic")).toBe(true);
+      expect(result.cards.some((c) => c.kind === "cloze")).toBe(true);
+    });
+
+    test("atomic.enabled = false voids suppression even with `test:` present — legacy inline/cloze parse, no atomic cards", () => {
+      const settings = {
+        ...DEFAULT_SETTINGS,
+        atomic: { ...DEFAULT_SETTINGS.atomic, enabled: false },
+      };
+      const md = atomicNote(VALID_TEST_FRONTMATTER, [
+        "The ==heart== pumps blood through the body.",
+        "",
+        "Some prose with a separator: Capital of France::Paris.",
+      ]);
+
+      const result = extractCardsFromMarkdown(md, {
+        notePath: "Atomic.md",
+        settings,
+      });
+
+      const atomicCards = result.cards.filter(
+        (c) => (c.source.syntax as string) === "atomic",
+      );
+      expect(atomicCards).toEqual([]);
+
+      expect(result.cards.some((c) => (c.source.syntax as string) === "cloze")).toBe(true);
+      expect(result.cards.some((c) => (c.source.syntax as string) === "inline")).toBe(true);
+    });
+
+    test("suppression does not leak across notes — a second keyless note in the same settings still gets inline/cloze", () => {
+      const settings = DEFAULT_SETTINGS;
+      const keyedNote = atomicNote(VALID_TEST_FRONTMATTER, [
+        "The ==heart== pumps blood through the body.",
+      ]);
+      const keylessNote = [
+        "Question:: Answer",
+        "",
+        "The ==heart== pumps blood through the body.",
+      ].join("\n\n");
+
+      extractCardsFromMarkdown(keyedNote, { notePath: "Atomic.md", settings });
+      const second = extractCardsFromMarkdown(keylessNote, {
+        notePath: "Plain.md",
+        settings,
+      });
+
+      expect(second.cards.some((c) => c.kind === "basic")).toBe(true);
+      expect(second.cards.some((c) => c.kind === "cloze")).toBe(true);
+    });
+  });
 });
