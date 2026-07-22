@@ -206,7 +206,7 @@ describe("syncNote — WI-11: declined rebind falls back to ordinary delete-safe
       {
         blockId: oldBlockId,
         deckName: "Default",
-        newFront: TITLE,
+        newFront: NEW_CUE,
         nid: oldNid,
       },
     ]);
