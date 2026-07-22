@@ -370,4 +370,120 @@ describe("extractCardsFromMarkdown — atomic `test:` grammar (WI-8)", () => {
       expect(atomicCards(result)).toHaveLength(0);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // WI-8 fix — edge YAML forms (reviewer findings): flow sequences, flush
+  // block lists, trailing comments, and rejection of unrecognized forms.
+  // -------------------------------------------------------------------------
+
+  describe("flow sequence `test: [a, b]` (same idiom as `tags:`)", () => {
+    it("`test: [title, \"applied Q\"]` parses as a two-item list: title card + authored-cue card", () => {
+      const CUE = "applied Q";
+      const md = note([`test: [title, "${CUE}"]`], [FIRST_PARAGRAPH]);
+      const cards = atomicCards(extract(md));
+
+      expect(cards).toHaveLength(2);
+      const titleCard = cards.find((c) => c.front === NOTE_TITLE);
+      const cueCard = cards.find((c) => c.front === CUE);
+      expect(titleCard).toMatchObject({ answer: FIRST_PARAGRAPH, kind: "basic" });
+      expect(cueCard).toMatchObject({
+        answer: `${NOTE_TITLE}\n\n${FIRST_PARAGRAPH}`,
+        kind: "basic",
+      });
+    });
+
+    it("unquoted flow-list items are parsed individually, not as one literal string", () => {
+      const md = note(["test: [title, reversed]"], [FIRST_PARAGRAPH]);
+      const cards = atomicCards(extract(md));
+
+      expect(cards).toHaveLength(2);
+      const titleCard = cards.find((c) => c.kind === "basic");
+      const reversedCard = cards.find((c) => c.kind === "reversed");
+      expect(titleCard).toMatchObject({ answer: FIRST_PARAGRAPH, front: NOTE_TITLE });
+      expect(reversedCard).toMatchObject({ answer: FIRST_PARAGRAPH, front: NOTE_TITLE });
+    });
+  });
+
+  describe("flush block lists `test:` / `- item` at column 0", () => {
+    it("a `- title` item with no leading indentation parses identically to the indented form", () => {
+      const md = note(["test:", "- title"], [FIRST_PARAGRAPH]);
+      const cards = atomicCards(extract(md));
+
+      expect(cards).toHaveLength(1);
+      expect(cards[0]).toMatchObject({
+        answer: FIRST_PARAGRAPH,
+        front: NOTE_TITLE,
+        kind: "basic",
+      });
+    });
+
+    it("a flush multi-item list (`- title` / `- cloze` at column 0) produces both cards", () => {
+      const withSpan = "Chlorophyll is a ==pigment== that absorbs light.";
+      const md = note(["test:", "- title", "- cloze"], [withSpan]);
+      const cards = atomicCards(extract(md));
+
+      expect(cards).toHaveLength(2);
+      const titleCard = cards.find((c) => c.kind === "basic");
+      const clozeCard = cards.find((c) => c.kind === "cloze");
+      expect(titleCard).toMatchObject({ front: NOTE_TITLE, answer: withSpan });
+      expect(clozeCard).toMatchObject({ front: withSpan, answer: NOTE_TITLE });
+    });
+  });
+
+  describe("trailing YAML comments", () => {
+    it("`test: title # remember this` strips the comment and parses the reserved word `title`", () => {
+      const md = note(["test: title # remember this"], [FIRST_PARAGRAPH]);
+      const cards = atomicCards(extract(md));
+
+      expect(cards).toHaveLength(1);
+      expect(cards[0]).toMatchObject({
+        answer: FIRST_PARAGRAPH,
+        front: NOTE_TITLE,
+        kind: "basic",
+      });
+    });
+
+    it('a quoted `test: "title # x"` keeps the comment marker as a literal authored cue', () => {
+      const CUE = "title # x";
+      const md = note([`test: "${CUE}"`], [FIRST_PARAGRAPH]);
+      const cards = atomicCards(extract(md));
+
+      expect(cards).toHaveLength(1);
+      expect(cards[0]).toMatchObject({
+        answer: `${NOTE_TITLE}\n\n${FIRST_PARAGRAPH}`,
+        front: CUE,
+        kind: "basic",
+      });
+    });
+  });
+
+  describe("unrecognized YAML forms fall through to invalid, never a garbage card", () => {
+    it("an unterminated flow sequence `test: [title` produces zero atomic cards", () => {
+      const md = note(["test: [title"], [FIRST_PARAGRAPH]);
+      const cards = atomicCards(extract(md));
+
+      expect(cards).toHaveLength(0);
+      expect(cards.some((c) => c.front.includes("["))).toBe(false);
+    });
+
+    it("an inline flow map `test: {front: x}` produces zero atomic cards", () => {
+      const md = note(["test: {front: x}"], [FIRST_PARAGRAPH]);
+      const cards = atomicCards(extract(md));
+
+      expect(cards).toHaveLength(0);
+      expect(cards.some((c) => c.front.includes("{"))).toBe(false);
+    });
+
+    it("no atomic card front ever contains a literal `[` or `{` across unrecognized forms", () => {
+      const forms = ["test: [title", "test: {front: x}", "test: [title, unterminated"];
+      for (const form of forms) {
+        const md = note([form], [FIRST_PARAGRAPH]);
+        const cards = atomicCards(extract(md));
+        for (const c of cards) {
+          expect(c.front).not.toContain("[");
+          expect(c.front).not.toContain("{");
+        }
+      }
+    });
+  });
 });
