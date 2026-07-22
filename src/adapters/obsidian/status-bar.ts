@@ -1,12 +1,8 @@
 import { setIcon } from "obsidian";
 
 import { detectV1Migration } from "../../application/detect-v1-migration.js";
+import { previewSyncPlan } from "../../application/preview-sync-plan.js";
 import type { FlashcardsSettings } from "../../core/config/settings.js";
-import { computeCardHash } from "../../core/edits/card-hash.js";
-import { insertCardAnchors } from "../../core/edits/insert-card-anchors.js";
-import { extractCardsFromMarkdown } from "../../core/parse/extract-cards.js";
-import { buildSyncPlan } from "../../core/sync/build-sync-plan.js";
-import { parseCardFrontmatter } from "../../core/sync/parse-card-frontmatter.js";
 import type { MarkdownRepository } from "../../application/ports.js";
 
 const NO_CARDS = "Note: no cards";
@@ -29,24 +25,17 @@ export function computeActiveNoteStatus(
   notePath: string,
   settings: FlashcardsSettings,
 ): string {
-  const { cards } = extractCardsFromMarkdown(markdown, { notePath, settings });
-  if (cards.length === 0) return NO_CARDS;
-
   let counter = 0;
-  const insert = insertCardAnchors({
-    cards,
+  const preview = previewSyncPlan({
     generateBlockId: () => `q-tmp${counter++}`,
     markdown,
+    notePath,
+    settings,
   });
-  const frontmatter = parseCardFrontmatter(markdown);
-  const plan = buildSyncPlan({
-    cards: insert.cards,
-    computeHash: computeCardHash,
-    frontmatter,
-  });
+  if (preview.cards.length === 0) return NO_CARDS;
 
-  const newCount = plan.create.length;
-  const modCount = plan.update.length;
+  const newCount = preview.create;
+  const modCount = preview.update;
   const legacyCount = detectV1Migration({ markdown }).unmigrated;
 
   if (newCount === 0 && modCount === 0 && legacyCount === 0) return IN_SYNC;

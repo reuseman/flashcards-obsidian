@@ -9,19 +9,18 @@ import type { FlashcardsSettings } from "../core/config/settings.js";
 import { NoopLogger, type Logger } from "../core/logging/logger.js";
 import { createNoopPerfTrace, type PerfTrace } from "../core/logging/perf-trace.js";
 import { applyTextEdits } from "../core/edits/apply-text-edits.js";
-import { computeCardHash, computeCueHash } from "../core/edits/card-hash.js";
-import { insertCardAnchors } from "../core/edits/insert-card-anchors.js";
 import { writeCardFrontmatter } from "../core/edits/write-card-frontmatter.js";
 import { writebackSyncResults } from "../core/edits/writeback-sync-results.js";
-import { extractCardsFromMarkdown } from "../core/parse/extract-cards.js";
 import { extractMedia, type MediaRef } from "../core/render/extract-media.js";
 import {
   rewriteMedia,
   type MediaRewriteMap,
 } from "../core/render/rewrite-media.js";
-import { buildSyncPlan } from "../core/sync/build-sync-plan.js";
-import { parseCardFrontmatter } from "../core/sync/parse-card-frontmatter.js";
 import type { PendingDeletion } from "../core/sync/sync-plan.js";
+import {
+  defaultGenerateBlockId,
+  previewSyncPlan,
+} from "./preview-sync-plan.js";
 
 /**
  * Outcome of the per-note media phase. `resolved` maps original short
@@ -73,23 +72,6 @@ export interface SyncNoteResult {
   writebackEditsApplied: number;
 }
 
-const BLOCK_ID_ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";
-
-/**
- * Default v2 blockId generator: 4 chars from the Crockford-style alphabet
- * (omits `l, o, 0, 1`). Uses Math.random — sufficient for collision
- * resistance within a single note, and avoids `crypto.getRandomValues`
- * test-environment fragility.
- */
-function defaultGenerateBlockId(): string {
-  let out = "q-";
-  for (let i = 0; i < 4; i++) {
-    const idx = Math.floor(Math.random() * BLOCK_ID_ALPHABET.length);
-    out += BLOCK_ID_ALPHABET[idx];
-  }
-  return out;
-}
-
 export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
   const {
     ankiClient,
@@ -106,12 +88,15 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
   logger.info("syncNote start", { notePath: note.path });
 
   // Phase A — local edits.
-  const { cards } = trace.span("extract", () =>
-    extractCardsFromMarkdown(note.markdown, {
+  const preview = trace.span("extract", () =>
+    previewSyncPlan({
+      generateBlockId,
+      markdown: note.markdown,
       notePath: note.path,
       settings,
     }),
   );
+  const { cards, identifiedCards, insertEdits } = preview;
 
   if (cards.length === 0) {
     logger.debug("syncNote skipped (no flashcards parsed)", { notePath: note.path });
@@ -129,28 +114,7 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
     parsedCardCount: cards.length,
   });
 
-  const insert = insertCardAnchors({
-    cards,
-    generateBlockId,
-    markdown: note.markdown,
-  });
-  const markdownA = applyTextEdits(note.markdown, insert.edits);
-
-  // WI-9 (I3/I4): atomic cards carry no body anchor, so their identity is
-  // resolved by cue match against the note's existing `flashcards:` map —
-  // before plan building, so a matched card inherits the entry's blockId
-  // (and therefore its `nid`, preserving scheduling).
-  const existingCueEntries = new Map(
-    parseCardFrontmatter(note.markdown)
-      .entries.filter((e) => e.cue !== undefined)
-      .map((e) => [e.cue!, e]),
-  );
-  const identifiedCards = insert.cards.map((card) => {
-    if (card.source.syntax !== "atomic") return card;
-    const cue = computeCueHash(card.kind, card.front);
-    const match = existingCueEntries.get(cue);
-    return match ? { ...card, blockId: match.blockId } : card;
-  });
+  const markdownA = applyTextEdits(note.markdown, insertEdits);
 
   const writeFm = writeCardFrontmatter({
     cards: identifiedCards,
@@ -158,19 +122,18 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
   });
   const markdownB = applyTextEdits(markdownA, writeFm.edits);
 
-  const identityWritesApplied = insert.edits.length + writeFm.edits.length;
+  const identityWritesApplied = insertEdits.length + writeFm.edits.length;
 
   if (markdownB !== note.markdown) {
     await repository.saveNote(note, markdownB);
   }
 
-  // Phase B — diff and sync.
-  const frontmatter = parseCardFrontmatter(markdownB);
-  const plan = buildSyncPlan({
-    cards: identifiedCards,
-    computeHash: computeCardHash,
-    frontmatter,
-  });
+  // Phase B — diff and sync. `preview.plan` was built against the frontmatter
+  // read from `note.markdown` (pre-writeback); this is equivalent to reading
+  // it from `markdownB` because `writeCardFrontmatter` only ever appends
+  // nid-less entries, and `buildSyncPlan` treats "no entry" and "entry
+  // without nid" identically (both CREATE).
+  const plan = preview.plan;
 
   // Delete-safety gate (spec §4.5). A sync must never SILENTLY delete an Anki
   // card. Creates and updates always proceed regardless of the decision.
