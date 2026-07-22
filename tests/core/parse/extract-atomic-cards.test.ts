@@ -486,4 +486,35 @@ describe("extractCardsFromMarkdown — atomic `test:` grammar (WI-8)", () => {
       }
     });
   });
+
+  // -------------------------------------------------------------------------
+  // WI-9 fix (review finding #2) — derived-front cue collisions. The
+  // existing duplicate-item rule only compares raw `test:` list items
+  // (string equality), so `[title, "Photosynthesis"]` slips through as two
+  // distinct items even though both derive the SAME front text ("Photosynthesis")
+  // and the SAME kind ("basic") — i.e. the same cue hash. This must be
+  // rejected exactly like a literal duplicate: whole key invalid.
+  // -------------------------------------------------------------------------
+
+  describe("derived-front cue collisions invalidate the whole key (WI-9 fix)", () => {
+    it("an authored cue exactly equal to the note title collides with the reserved `title` item — zero atomic cards", () => {
+      const md = note(["test:", "  - title", `  - "${NOTE_TITLE}"`], [FIRST_PARAGRAPH]);
+      expect(atomicCards(extract(md))).toHaveLength(0);
+    });
+
+    it("an authored cue merely similar to (but not equal to) the note title does not collide — two cards", () => {
+      const CUE = `${NOTE_TITLE} overview`;
+      const md = note(["test:", "  - title", `  - "${CUE}"`], [FIRST_PARAGRAPH]);
+      const cards = atomicCards(extract(md));
+
+      expect(cards).toHaveLength(2);
+      const titleCard = cards.find((c) => c.front === NOTE_TITLE);
+      const cueCard = cards.find((c) => c.front === CUE);
+      expect(titleCard).toMatchObject({ answer: FIRST_PARAGRAPH, kind: "basic" });
+      expect(cueCard).toMatchObject({
+        answer: `${NOTE_TITLE}\n\n${FIRST_PARAGRAPH}`,
+        kind: "basic",
+      });
+    });
+  });
 });
