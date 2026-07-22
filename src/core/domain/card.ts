@@ -1,5 +1,5 @@
 export type CardKind = "basic" | "cloze" | "reversed";
-export type CardSyntax = "inline" | "cloze" | "hashtag" | "fenced";
+export type CardSyntax = "inline" | "cloze" | "hashtag" | "fenced" | "atomic";
 
 export interface CardSource {
   endOffset: number;

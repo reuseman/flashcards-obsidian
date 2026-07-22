@@ -7,6 +7,7 @@ import { visit } from "unist-util-visit";
 import type { FlashcardsSettings } from "../config/settings.js";
 import type { Flashcard } from "../domain/card.js";
 import { collectClozeSpans, intersectsSpan, type Span } from "./cloze-spans.js";
+import { extractAtomicCards } from "./extract-atomic-cards.js";
 import { extractHashtagCards } from "./extract-hashtag-cards.js";
 import { parseNoteMetadata } from "./note-metadata.js";
 
@@ -122,6 +123,19 @@ export function extractCardsFromMarkdown(
   });
   cards.push(...hashtag.cards);
   warnings.push(...hashtag.warnings);
+
+  const atomic = extractAtomicCards(
+    metadata.frontmatter,
+    tree,
+    markdown,
+    options.settings.atomic.enabled,
+    {
+      notePath: options.notePath,
+      resolvedDeck,
+      tags: mergeTags(options.settings.defaultTags, metadata.tags),
+    },
+  );
+  cards.push(...atomic.cards);
 
   return { cards, warnings };
 }
