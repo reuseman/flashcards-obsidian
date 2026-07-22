@@ -1,7 +1,7 @@
 import type { IdentifiedFlashcard } from "../domain/card.js";
 import { parseNoteMetadata } from "../parse/note-metadata.js";
 import type { TextEdit } from "./apply-text-edits.js";
-import { computeCardHash } from "./card-hash.js";
+import { computeCardHash, computeCueHash } from "./card-hash.js";
 
 const V1_BLOCK_ID_RE = /^\d{13}$/;
 
@@ -50,7 +50,12 @@ export function writeCardFrontmatter(
   for (const card of candidates) {
     if (existingKeys.has(card.blockId)) continue;
     const hash = computeCardHash(card);
-    newLines.push(`  ${card.blockId}: { hash: ${hash} }`);
+    if (card.source.syntax === "atomic") {
+      const cue = computeCueHash(card.kind, card.front);
+      newLines.push(`  ${card.blockId}: { cue: ${cue}, hash: ${hash} }`);
+    } else {
+      newLines.push(`  ${card.blockId}: { hash: ${hash} }`);
+    }
     existingKeys.add(card.blockId);
   }
   if (newLines.length === 0) return { edits: [] };

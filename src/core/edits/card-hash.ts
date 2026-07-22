@@ -1,25 +1,11 @@
 import { createHash } from "node:crypto";
 
-import type { Flashcard } from "../domain/card.js";
+import type { CardKind, Flashcard } from "../domain/card.js";
 
 // Crockford-style base32 used across the project (drops `l, o, 0, 1`).
 const ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";
 
-/**
- * Stable content hash for a flashcard.
- *
- * Algorithm (locked):
- *  - input bytes: `kind + "\n" + front + "\n" + back` (UTF-8).
- *  - sha256, take leading 40 bits (5 bytes), encode MSB-first as 8 chars
- *    from the Crockford-style alphabet.
- *
- * Tags, deckName, and source positions are intentionally excluded.
- */
-export function computeCardHash(card: Flashcard): string {
-  const input = `${card.kind}\n${card.front}\n${card.answer}`;
-  const digest = createHash("sha256").update(input, "utf8").digest();
-
-  // Extract leading 40 bits as 8 × 5-bit groups, MSB-first.
+function toBase32(digest: Buffer): string {
   let out = "";
   for (let i = 0; i < 8; i++) {
     const bitOffset = i * 5;
@@ -37,4 +23,34 @@ export function computeCardHash(card: Flashcard): string {
     out += ALPHABET[value];
   }
   return out;
+}
+
+/**
+ * Stable content hash for a flashcard.
+ *
+ * Algorithm (locked):
+ *  - input bytes: `kind + "\n" + front + "\n" + back` (UTF-8).
+ *  - sha256, take leading 40 bits (5 bytes), encode MSB-first as 8 chars
+ *    from the Crockford-style alphabet.
+ *
+ * Tags, deckName, and source positions are intentionally excluded.
+ */
+export function computeCardHash(card: Flashcard): string {
+  const input = `${card.kind}\n${card.front}\n${card.answer}`;
+  const digest = createHash("sha256").update(input, "utf8").digest();
+  return toBase32(digest);
+}
+
+/**
+ * Cue hash for anchorless (atomic) card identity (WI-9, design §4.4).
+ *
+ * Algorithm (locked): sha256 of `kind + "\n" + front`, same leading-40-bit
+ * base32 encoding as `computeCardHash`. Kind is included so a `title` and a
+ * `reversed` item sharing the same front text (the note title) get distinct
+ * cues.
+ */
+export function computeCueHash(kind: CardKind, front: string): string {
+  const input = `${kind}\n${front}`;
+  const digest = createHash("sha256").update(input, "utf8").digest();
+  return toBase32(digest);
 }

@@ -30,6 +30,18 @@ export function insertCardAnchors(
   const outCards: IdentifiedFlashcard[] = [];
 
   for (const card of cards) {
+    // I3 (WI-9): atomic cards never touch the note body — identity lives
+    // only in the `flashcards:` map, matched by cue in the application layer.
+    if (card.source.syntax === "atomic") {
+      let candidate = generate();
+      while (usedIds.has(candidate)) {
+        candidate = generate();
+      }
+      usedIds.add(candidate);
+      outCards.push({ ...card, blockId: candidate });
+      continue;
+    }
+
     const existing = findExistingAnchor(markdown, card);
     if (existing) {
       usedIds.add(existing.blockId);

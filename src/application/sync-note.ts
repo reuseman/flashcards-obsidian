@@ -9,7 +9,7 @@ import type { FlashcardsSettings } from "../core/config/settings.js";
 import { NoopLogger, type Logger } from "../core/logging/logger.js";
 import { createNoopPerfTrace, type PerfTrace } from "../core/logging/perf-trace.js";
 import { applyTextEdits } from "../core/edits/apply-text-edits.js";
-import { computeCardHash } from "../core/edits/card-hash.js";
+import { computeCardHash, computeCueHash } from "../core/edits/card-hash.js";
 import { insertCardAnchors } from "../core/edits/insert-card-anchors.js";
 import { writeCardFrontmatter } from "../core/edits/write-card-frontmatter.js";
 import { writebackSyncResults } from "../core/edits/writeback-sync-results.js";
@@ -136,8 +136,24 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
   });
   const markdownA = applyTextEdits(note.markdown, insert.edits);
 
+  // WI-9 (I3/I4): atomic cards carry no body anchor, so their identity is
+  // resolved by cue match against the note's existing `flashcards:` map —
+  // before plan building, so a matched card inherits the entry's blockId
+  // (and therefore its `nid`, preserving scheduling).
+  const existingCueEntries = new Map(
+    parseCardFrontmatter(note.markdown)
+      .entries.filter((e) => e.cue !== undefined)
+      .map((e) => [e.cue!, e]),
+  );
+  const identifiedCards = insert.cards.map((card) => {
+    if (card.source.syntax !== "atomic") return card;
+    const cue = computeCueHash(card.kind, card.front);
+    const match = existingCueEntries.get(cue);
+    return match ? { ...card, blockId: match.blockId } : card;
+  });
+
   const writeFm = writeCardFrontmatter({
-    cards: insert.cards,
+    cards: identifiedCards,
     markdown: markdownA,
   });
   const markdownB = applyTextEdits(markdownA, writeFm.edits);
@@ -151,7 +167,7 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
   // Phase B — diff and sync.
   const frontmatter = parseCardFrontmatter(markdownB);
   const plan = buildSyncPlan({
-    cards: insert.cards,
+    cards: identifiedCards,
     computeHash: computeCardHash,
     frontmatter,
   });
@@ -160,7 +176,7 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
   // card. Creates and updates always proceed regardless of the decision.
   if (plan.delete.length >= 1) {
     const noteDeck =
-      insert.cards.find((c) => c.deckName !== undefined)?.deckName ??
+      identifiedCards.find((c) => c.deckName !== undefined)?.deckName ??
       settings.defaultDeck;
     const pending: PendingDeletion[] = plan.delete.map((op) => ({
       blockId: op.blockId,

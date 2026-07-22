@@ -4,6 +4,7 @@ import type {
 } from "../sync/sync-execution.js";
 import { parseNoteMetadata } from "../parse/note-metadata.js";
 import type { TextEdit } from "./apply-text-edits.js";
+import { computeCueHash } from "./card-hash.js";
 
 /**
  * Phase 6 slice 6d — write sync execution results back into the `flashcards:`
@@ -39,6 +40,7 @@ const V1_BLOCK_ID_RE = /^\d{13}$/;
 
 interface ExistingEntry {
   blockId: string;
+  cue: string | undefined;
   hash: string | undefined;
   // Byte range of the entry's full line, including trailing newline if present.
   lineEnd: number;
@@ -56,6 +58,7 @@ interface FlashcardsBlock {
 }
 
 interface DesiredEntry {
+  cue?: string;
   hash: string;
   nid: number;
 }
@@ -92,9 +95,13 @@ export function writebackSyncResults(
   for (const r of results.creates) {
     if (!isCreateOk(r)) continue;
     const blockId = r.op.card.blockId;
+    const cue =
+      r.op.card.source.syntax === "atomic"
+        ? computeCueHash(r.op.card.kind, r.op.card.front)
+        : undefined;
     desired.set(blockId, {
       kind: "set",
-      entry: { hash: r.op.hash, nid: r.nid! },
+      entry: { ...(cue !== undefined ? { cue } : {}), hash: r.op.hash, nid: r.nid! },
     });
   }
 
@@ -104,10 +111,10 @@ export function writebackSyncResults(
     const blockId = r.op.card.blockId;
     const prior = desired.get(blockId);
     if (prior && prior.kind === "set") {
-      // CREATE then UPDATE in one pass: refresh hash, keep CREATE's nid.
+      // CREATE then UPDATE in one pass: refresh hash, keep CREATE's nid/cue.
       desired.set(blockId, {
         kind: "set",
-        entry: { hash: r.op.newHash, nid: prior.entry.nid },
+        entry: { ...(prior.entry.cue !== undefined ? { cue: prior.entry.cue } : {}), hash: r.op.newHash, nid: prior.entry.nid },
       });
       continue;
     }
@@ -117,7 +124,7 @@ export function writebackSyncResults(
     const nid = ex.nid ?? r.op.nid;
     desired.set(blockId, {
       kind: "set",
-      entry: { hash: r.op.newHash, nid },
+      entry: { ...(ex.cue !== undefined ? { cue: ex.cue } : {}), hash: r.op.newHash, nid },
     });
   }
 
@@ -206,6 +213,9 @@ function isCreateOk(
 }
 
 function renderValue(entry: DesiredEntry): string {
+  if (entry.cue !== undefined) {
+    return `{ cue: ${entry.cue}, nid: ${entry.nid}, hash: ${entry.hash} }`;
+  }
   return `{ nid: ${entry.nid}, hash: ${entry.hash} }`;
 }
 
@@ -307,10 +317,11 @@ function collectExistingEntries(
     const valueStart = lineStart + indent.length + keyText.length + 2; // ": "
     const valueEnd = valueStart + value.length;
 
-    const { nid, hash } = parseValue(value);
+    const { nid, hash, cue } = parseValue(value);
 
     out.push({
       blockId,
+      cue,
       hash,
       lineEnd,
       lineStart,
@@ -322,19 +333,23 @@ function collectExistingEntries(
   return out;
 }
 
-function parseValue(value: string): { hash?: string; nid?: number } {
+function parseValue(value: string): { cue?: string; hash?: string; nid?: number } {
   // Object form: `{ ... }`.
   if (value.startsWith("{ ") && value.endsWith(" }")) {
     const inner = value.slice(2, -2);
     if (inner.length === 0) return {};
+    let cue: string | undefined;
     let hash: string | undefined;
     let nid: number | undefined;
     for (const part of inner.split(", ")) {
-      const kv = /^(hash|nid): (.+)$/.exec(part);
+      const kv = /^(cue|hash|nid): (.+)$/.exec(part);
       if (!kv) return {};
       const k = kv[1]!;
       const v = kv[2]!;
-      if (k === "hash") {
+      if (k === "cue") {
+        if (!/^[A-Za-z0-9]+$/.test(v)) return {};
+        cue = v;
+      } else if (k === "hash") {
         if (!/^[A-Za-z0-9]+$/.test(v)) return {};
         hash = v;
       } else {
@@ -342,7 +357,8 @@ function parseValue(value: string): { hash?: string; nid?: number } {
         nid = Number.parseInt(v, 10);
       }
     }
-    const out: { hash?: string; nid?: number } = {};
+    const out: { cue?: string; hash?: string; nid?: number } = {};
+    if (cue !== undefined) out.cue = cue;
     if (hash !== undefined) out.hash = hash;
     if (nid !== undefined) out.nid = nid;
     return out;

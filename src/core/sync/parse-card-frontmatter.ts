@@ -8,6 +8,7 @@
 
 export interface FrontmatterCardEntry {
   blockId: string;
+  cue?: string;
   hash?: string;
   nid?: number;
 }
@@ -149,14 +150,18 @@ function parseObjectValue(
   if (inner.length === 0) return null;
 
   const parts = inner.split(", ");
+  let cue: string | undefined;
   let hash: string | undefined;
   let nid: number | undefined;
   for (const part of parts) {
-    const kv = /^(hash|nid): (.+)$/.exec(part);
+    const kv = /^(cue|hash|nid): (.+)$/.exec(part);
     if (!kv) return null;
     const k = kv[1]!;
     const v = kv[2]!;
-    if (k === "hash") {
+    if (k === "cue") {
+      if (!/^[A-Za-z0-9]+$/.test(v)) return null;
+      cue = v;
+    } else if (k === "hash") {
       if (!/^[A-Za-z0-9]+$/.test(v)) return null;
       hash = v;
     } else {
@@ -164,9 +169,10 @@ function parseObjectValue(
       nid = Number.parseInt(v, 10);
     }
   }
-  if (hash === undefined && nid === undefined) return null;
+  if (cue === undefined && hash === undefined && nid === undefined) return null;
 
   const out: FrontmatterCardEntry = { blockId };
+  if (cue !== undefined) out.cue = cue;
   if (hash !== undefined) out.hash = hash;
   if (nid !== undefined) out.nid = nid;
   return out;
