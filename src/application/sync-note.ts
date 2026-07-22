@@ -114,7 +114,10 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
   const { cards, identifiedCards, insertEdits, lints } = preview;
   logLints(logger, note.path, lints);
 
-  if (cards.length === 0) {
+  // Zero cards normally means "nothing to do", but a cue-bearing orphan
+  // (spec §4.2, final-review fix #2) must still reach delete-safety below —
+  // `previewSyncPlan` already folded that into `preview.plan` when relevant.
+  if (cards.length === 0 && preview.plan.delete.length === 0) {
     logger.debug("syncNote skipped (no flashcards parsed)", { notePath: note.path });
     return {
       identityWritesApplied: 0,
@@ -149,12 +152,23 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
         (op) => op.card.source.syntax === "atomic",
       )!;
       const idx = identifiedCards.indexOf(createOp.card);
-      identifiedCards[idx] = { ...createOp.card, blockId: rebind.blockId };
-      plan = buildSyncPlan({
-        cards: identifiedCards,
-        computeHash: computeCardHash,
-        frontmatter: parseCardFrontmatter(note.markdown),
-      });
+      if (idx < 0) {
+        // Should be structurally impossible — `createOp.card` came from
+        // `identifiedCards` via `buildSyncPlan` without copying. Never
+        // silently drop a user-confirmed rebind: log and fall through to the
+        // ordinary (unrebound) plan instead.
+        logger.error("syncNote rebind: createOp.card not found in identifiedCards", {
+          notePath: note.path,
+          blockId: rebind.blockId,
+        });
+      } else {
+        identifiedCards[idx] = { ...createOp.card, blockId: rebind.blockId };
+        plan = buildSyncPlan({
+          cards: identifiedCards,
+          computeHash: computeCardHash,
+          frontmatter: parseCardFrontmatter(note.markdown),
+        });
+      }
     }
   }
 

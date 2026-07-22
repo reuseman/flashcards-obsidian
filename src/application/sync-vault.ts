@@ -1,7 +1,7 @@
 import type { AnkiGateway, MarkdownNote, MarkdownRepository } from "./ports.js";
 import type { FlashcardsSettings } from "../core/config/settings.js";
 import { extractCardsFromMarkdown } from "../core/parse/extract-cards.js";
-import type { PendingDeletion } from "../core/sync/sync-plan.js";
+import type { PendingDeletion, PendingRebind } from "../core/sync/sync-plan.js";
 import { NoopLogger, type Logger } from "../core/logging/logger.js";
 import { createPerfTrace } from "../core/logging/perf-trace.js";
 import {
@@ -23,6 +23,10 @@ function normalizeCue(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+// Cheap prefilter: only notes that could plausibly carry an atomic card are
+// worth the extraction re-run at all.
+const HAS_TEST_KEY_RE = /^test:/m;
+
 function detectCueCollisions(
   notes: MarkdownNote[],
   settings: FlashcardsSettings,
@@ -30,10 +34,19 @@ function detectCueCollisions(
   const cueToNotePaths = new Map<string, Set<string>>();
 
   for (const note of notes) {
-    const { cards } = extractCardsFromMarkdown(note.markdown, {
-      notePath: note.path,
-      settings,
-    });
+    if (!HAS_TEST_KEY_RE.test(note.markdown)) continue;
+    let cards;
+    try {
+      ({ cards } = extractCardsFromMarkdown(note.markdown, {
+        notePath: note.path,
+        settings,
+      }));
+    } catch {
+      // Defensive: a single poisoned note must never crash the whole
+      // vault-level lint pass — the per-note sync loop already reported it
+      // as `failed` if it also threw there.
+      continue;
+    }
     for (const card of cards) {
       if (card.source.syntax !== "atomic" || card.kind === "cloze") continue;
       const cue = normalizeCue(card.front);
@@ -57,6 +70,7 @@ function detectCueCollisions(
 export interface SyncVaultInput {
   ankiClient: AnkiGateway;
   confirmDeletions?: (pending: PendingDeletion[]) => Promise<boolean>;
+  confirmRebinds?: (pending: PendingRebind[]) => Promise<boolean>;
   generateBlockId?: () => string;
   logger?: Logger;
   mediaPipeline?: MediaPipeline;
@@ -95,6 +109,7 @@ export async function syncVault(
   const {
     ankiClient,
     confirmDeletions,
+    confirmRebinds,
     generateBlockId,
     mediaPipeline,
     onProgress,
@@ -125,6 +140,7 @@ export async function syncVault(
       result = await syncNote({
         ankiClient,
         ...(confirmDeletions ? { confirmDeletions } : {}),
+        ...(confirmRebinds ? { confirmRebinds } : {}),
         ...(generateBlockId ? { generateBlockId } : {}),
         logger,
         ...(mediaPipeline ? { mediaPipeline } : {}),

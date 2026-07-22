@@ -66,15 +66,43 @@ export function previewSyncPlan(
   });
 
   if (cards.length === 0) {
+    // Final-review fix #2 (spec §4.2): a note that previously synced an
+    // atomic card can be edited down to zero extracted cards (thin note, or
+    // the `test:` key removed) while its frontmatter still carries a
+    // cue-bearing entry with a live `nid`. That orphan must still reach
+    // delete-safety, so we fall through to plan-building (with an empty
+    // card set) instead of short-circuiting. Legacy zero-card notes that
+    // never had a cue entry keep the unconditional skip.
+    const frontmatterCheck = parseCardFrontmatter(markdown);
+    const hasCueOrphan = frontmatterCheck.entries.some(
+      (e) => e.cue !== undefined && e.nid !== undefined,
+    );
+    if (!hasCueOrphan) {
+      return {
+        cards: [],
+        create: 0,
+        delete: 0,
+        identifiedCards: [],
+        insertEdits: [],
+        lints,
+        plan: { create: [], delete: [], update: [] },
+        update: 0,
+      };
+    }
+    const plan = buildSyncPlan({
+      cards: [],
+      computeHash: computeCardHash,
+      frontmatter: frontmatterCheck,
+    });
     return {
       cards: [],
-      create: 0,
-      delete: 0,
+      create: plan.create.length,
+      delete: plan.delete.length,
       identifiedCards: [],
       insertEdits: [],
       lints,
-      plan: { create: [], delete: [], update: [] },
-      update: 0,
+      plan,
+      update: plan.update.length,
     };
   }
 
@@ -86,19 +114,24 @@ export function previewSyncPlan(
   // (and therefore its `nid`, preserving scheduling). Map construction over
   // an array iterates in file order, so a duplicate cue's LAST occurrence in
   // the frontmatter wins the tie-break (matches sync-note's own history).
+  const frontmatter = parseCardFrontmatter(markdown);
   const existingCueEntries = new Map(
-    parseCardFrontmatter(markdown)
-      .entries.filter((e) => e.cue !== undefined)
+    frontmatter.entries
+      .filter((e) => e.cue !== undefined)
       .map((e) => [e.cue!, e]),
   );
   const identifiedCards = insert.cards.map((card) => {
     if (card.source.syntax !== "atomic") return card;
+    // Computed ONCE here, from the raw extracted front — carried on the card
+    // for every downstream stage (frontmatter writers, media rewrite) so it's
+    // never recomputed from a front the media pipeline may have rewritten.
     const cue = computeCueHash(card.kind, card.front);
     const match = existingCueEntries.get(cue);
-    return match ? { ...card, blockId: match.blockId } : card;
+    return match
+      ? { ...card, blockId: match.blockId, cue }
+      : { ...card, cue };
   });
 
-  const frontmatter = parseCardFrontmatter(markdown);
   const plan = buildSyncPlan({
     cards: identifiedCards,
     computeHash: computeCardHash,

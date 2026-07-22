@@ -97,7 +97,7 @@ export function writebackSyncResults(
     const blockId = r.op.card.blockId;
     const cue =
       r.op.card.source.syntax === "atomic"
-        ? computeCueHash(r.op.card.kind, r.op.card.front)
+        ? (r.op.card.cue ?? computeCueHash(r.op.card.kind, r.op.card.front))
         : undefined;
     desired.set(blockId, {
       kind: "set",
@@ -122,15 +122,15 @@ export function writebackSyncResults(
     const ex = existing.get(blockId);
     if (!ex) continue; // silent skip
     const nid = ex.nid ?? r.op.nid;
-    // Atomic cards recompute `cue` from the card's actual front rather than
-    // preserving the entry's prior cue: for an ordinary answer-only edit the
-    // front (and thus the cue) is unchanged so this is a no-op, but a
-    // confirmed cue-rephrase rebind (WI-11) reassigns this card onto an
-    // orphan's blockId with a genuinely different front, and the frontmatter
-    // must reflect the new cue, not the stale one.
+    // Atomic cards use the cue carried on the card (computed once at
+    // identity-resolution time in previewSyncPlan) rather than the entry's
+    // prior cue: for an ordinary answer-only edit the carried cue matches the
+    // stale one so this is a no-op, but a confirmed cue-rephrase rebind
+    // (WI-11) reassigns this card onto an orphan's blockId with a genuinely
+    // different front, and the frontmatter must reflect the new cue.
     const cue =
       r.op.card.source.syntax === "atomic"
-        ? computeCueHash(r.op.card.kind, r.op.card.front)
+        ? (r.op.card.cue ?? computeCueHash(r.op.card.kind, r.op.card.front))
         : ex.cue;
     desired.set(blockId, {
       kind: "set",

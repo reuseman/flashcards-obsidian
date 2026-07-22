@@ -17,4 +17,11 @@ export interface Flashcard {
   tags: string[];
 }
 
-export type IdentifiedFlashcard = Flashcard & { blockId: string };
+export type IdentifiedFlashcard = Flashcard & {
+  blockId: string;
+  // Atomic cards only: the cue hash computed at identity-resolution time
+  // (from the raw, pre-media-rewrite front). Carried through every downstream
+  // stage so frontmatter writers never recompute it from a possibly-rewritten
+  // front (see preview-sync-plan.ts WI-9 comment).
+  cue?: string;
+};

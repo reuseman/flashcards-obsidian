@@ -51,7 +51,7 @@ export function writeCardFrontmatter(
     if (existingKeys.has(card.blockId)) continue;
     const hash = computeCardHash(card);
     if (card.source.syntax === "atomic") {
-      const cue = computeCueHash(card.kind, card.front);
+      const cue = card.cue ?? computeCueHash(card.kind, card.front);
       newLines.push(`  ${card.blockId}: { cue: ${cue}, hash: ${hash} }`);
     } else {
       newLines.push(`  ${card.blockId}: { hash: ${hash} }`);
