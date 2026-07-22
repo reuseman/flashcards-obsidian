@@ -388,3 +388,142 @@ describe("buildSyncPlan — computeHash injection", () => {
     expect(plan.update[0]?.oldHash).toBe("old");
   });
 });
+
+// ===========================================================================
+// WI-11 — cue-rephrase rebind pairing (spec §4.7).
+//
+// `SyncPlan` gains a `rebinds: PendingRebind[]` field. When, and only when, a
+// note's plan contains EXACTLY ONE atomic orphan (a frontmatter entry with a
+// `cue`, no matching parsed card, hence in `plan.delete`) and EXACTLY ONE
+// atomic CREATE (a parsed card with `source.syntax === "atomic"`, hence in
+// `plan.create`), buildSyncPlan additionally reports that pairing as a
+// `PendingRebind { blockId, nid, newFront, deckName }` — `blockId`/`nid` from
+// the orphan, `newFront`/`deckName` from the atomic CREATE's card. This is
+// pure, additive metadata: `plan.create`/`plan.delete` are UNCHANGED by its
+// presence — the application layer (`syncNote`) decides, based on a confirm
+// seam, whether to act on it.
+//
+// Ambiguous counts (more than one orphan and/or more than one atomic create)
+// and non-atomic orphans/creates must never pair — `rebinds` stays `[]`.
+// ===========================================================================
+
+function atomicId(
+  blockId: string,
+  overrides: Partial<Flashcard> = {},
+): IdentifiedFlashcard {
+  return id(blockId, {
+    deckName: "Some Deck",
+    ...overrides,
+    source: { ...baseSource(), syntax: "atomic" },
+  });
+}
+
+describe("buildSyncPlan — WI-11 rebind pairing (single atomic orphan + single atomic CREATE)", () => {
+  test("pairs the lone atomic orphan with the lone atomic CREATE into plan.rebinds", () => {
+    const newCard = atomicId("q-newc", { front: "New front text" });
+    const frontmatter = fm([
+      { blockId: "q-oldc", cue: "cue-old-hash", hash: "oldhash", nid: 1234567890123 },
+    ]);
+    const plan = buildSyncPlan({
+      cards: [newCard],
+      computeHash: stubHash(),
+      frontmatter,
+    });
+
+    expect(plan.rebinds).toEqual([
+      {
+        blockId: "q-oldc",
+        deckName: "Some Deck",
+        newFront: "New front text",
+        nid: 1234567890123,
+      },
+    ]);
+  });
+
+  test("plan.create and plan.delete are unaffected by the pairing (additive metadata only)", () => {
+    const newCard = atomicId("q-newc", { front: "New front text" });
+    const frontmatter = fm([
+      { blockId: "q-oldc", cue: "cue-old-hash", hash: "oldhash", nid: 1234567890123 },
+    ]);
+    const plan = buildSyncPlan({
+      cards: [newCard],
+      computeHash: stubHash(),
+      frontmatter,
+    });
+
+    expect(plan.create.map((o) => o.card.blockId)).toEqual(["q-newc"]);
+    expect(plan.delete).toEqual([{ blockId: "q-oldc", nid: 1234567890123 }]);
+  });
+});
+
+describe("buildSyncPlan — WI-11 rebind pairing: ambiguity never pairs", () => {
+  test("two atomic orphans + one atomic CREATE → no pairing", () => {
+    const newCard = atomicId("q-newc");
+    const frontmatter = fm([
+      { blockId: "q-orph1", cue: "cueA", hash: "h1", nid: 1111111111111 },
+      { blockId: "q-orph2", cue: "cueB", hash: "h2", nid: 2222222222222 },
+    ]);
+    const plan = buildSyncPlan({
+      cards: [newCard],
+      computeHash: stubHash(),
+      frontmatter,
+    });
+
+    expect(plan.rebinds).toEqual([]);
+    expect(plan.delete).toHaveLength(2);
+    expect(plan.create).toHaveLength(1);
+  });
+
+  test("one atomic orphan + two atomic CREATEs → no pairing", () => {
+    const newCard1 = atomicId("q-newc1");
+    const newCard2 = atomicId("q-newc2");
+    const frontmatter = fm([
+      { blockId: "q-orph1", cue: "cueA", hash: "h1", nid: 1111111111111 },
+    ]);
+    const plan = buildSyncPlan({
+      cards: [newCard1, newCard2],
+      computeHash: stubHash(),
+      frontmatter,
+    });
+
+    expect(plan.rebinds).toEqual([]);
+    expect(plan.delete).toHaveLength(1);
+    expect(plan.create).toHaveLength(2);
+  });
+});
+
+describe("buildSyncPlan — WI-11 rebind pairing: non-atomic participants never pair", () => {
+  test("an anchored (non-atomic) orphan entry — no `cue` — never pairs, even 1:1 with an atomic CREATE", () => {
+    const newCard = atomicId("q-newc");
+    // No `cue` on this entry: it was written by an anchored (fenced/inline/
+    // hashtag/cloze) card, not an atomic one.
+    const frontmatter = fm([
+      { blockId: "q-anchored", hash: "h1", nid: 1111111111111 },
+    ]);
+    const plan = buildSyncPlan({
+      cards: [newCard],
+      computeHash: stubHash(),
+      frontmatter,
+    });
+
+    expect(plan.rebinds).toEqual([]);
+    expect(plan.delete).toEqual([{ blockId: "q-anchored", nid: 1111111111111 }]);
+    expect(plan.create).toHaveLength(1);
+  });
+
+  test("an atomic orphan 1:1 with a non-atomic (anchored) CREATE never pairs", () => {
+    const anchoredCard = id("q-newanchor"); // baseSource() → syntax: "inline"
+    const frontmatter = fm([
+      { blockId: "q-oldc", cue: "cue-old-hash", hash: "oldhash", nid: 1234567890123 },
+    ]);
+    const plan = buildSyncPlan({
+      cards: [anchoredCard],
+      computeHash: stubHash(),
+      frontmatter,
+    });
+
+    expect(plan.rebinds).toEqual([]);
+    expect(plan.delete).toEqual([{ blockId: "q-oldc", nid: 1234567890123 }]);
+    expect(plan.create).toHaveLength(1);
+  });
+});
