@@ -28,8 +28,26 @@ export interface PendingDeletion {
   nid: number;
 }
 
+/**
+ * A candidate cue-rephrase pairing (spec §4.7, WI-11): a single atomic orphan
+ * paired 1:1 with a single atomic CREATE within the same note. Additive
+ * metadata only — `plan.create`/`plan.delete` are unaffected by its presence.
+ * The application layer decides, via a confirm seam, whether to collapse the
+ * pair into a scheduling-preserving UPDATE.
+ */
+export interface PendingRebind {
+  blockId: string;
+  deckName: string;
+  newFront: string;
+  nid: number;
+}
+
 export interface SyncPlan {
   create: CreateOp[];
   delete: DeleteOp[];
+  // Optional: omitted when there are no atomic orphans/creates to consider at
+  // all (keeps callers that predate WI-11 comparing exact plan literals
+  // unaffected); present (possibly `[]`) once pairing candidates exist.
+  rebinds?: PendingRebind[];
   update: UpdateOp[];
 }

@@ -9,6 +9,7 @@ import type { FlashcardsSettings } from "../core/config/settings.js";
 import { NoopLogger, type Logger } from "../core/logging/logger.js";
 import { createNoopPerfTrace, type PerfTrace } from "../core/logging/perf-trace.js";
 import { applyTextEdits } from "../core/edits/apply-text-edits.js";
+import { computeCardHash } from "../core/edits/card-hash.js";
 import { writeCardFrontmatter } from "../core/edits/write-card-frontmatter.js";
 import { writebackSyncResults } from "../core/edits/writeback-sync-results.js";
 import { extractMedia, type MediaRef } from "../core/render/extract-media.js";
@@ -16,7 +17,9 @@ import {
   rewriteMedia,
   type MediaRewriteMap,
 } from "../core/render/rewrite-media.js";
-import type { PendingDeletion } from "../core/sync/sync-plan.js";
+import { buildSyncPlan } from "../core/sync/build-sync-plan.js";
+import { parseCardFrontmatter } from "../core/sync/parse-card-frontmatter.js";
+import type { PendingDeletion, PendingRebind } from "../core/sync/sync-plan.js";
 import {
   defaultGenerateBlockId,
   previewSyncPlan,
@@ -48,6 +51,7 @@ export interface CardMediaError {
 export interface SyncNoteInput {
   ankiClient: AnkiGateway;
   confirmDeletions?: (pending: PendingDeletion[]) => Promise<boolean>;
+  confirmRebinds?: (pending: PendingRebind[]) => Promise<boolean>;
   generateBlockId?: () => string;
   logger?: Logger;
   mediaPipeline?: MediaPipeline;
@@ -114,6 +118,33 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
     parsedCardCount: cards.length,
   });
 
+  // Cue-rephrase rebind pairing (spec §4.7, WI-11). Resolved BEFORE the
+  // frontmatter writeback below so a confirmed rebind never materializes a
+  // throwaway entry for the atomic CREATE's transient blockId — instead the
+  // CREATE's card is re-pointed at the orphan's blockId and the plan is
+  // rebuilt, which routes it through the ordinary Rule-4 UPDATE path (correct
+  // oldHash, no duplicate frontmatter entry, cue naturally recomputed).
+  let plan = preview.plan;
+  const rebindCandidates = plan.rebinds ?? [];
+  if (rebindCandidates.length === 1) {
+    const rebind = rebindCandidates[0]!;
+    const confirmed = input.confirmRebinds
+      ? await input.confirmRebinds(rebindCandidates)
+      : false; // safe default: no confirmer wired ⇒ ordinary delete-safety flow.
+    if (confirmed) {
+      const createOp = plan.create.find(
+        (op) => op.card.source.syntax === "atomic",
+      )!;
+      const idx = identifiedCards.indexOf(createOp.card);
+      identifiedCards[idx] = { ...createOp.card, blockId: rebind.blockId };
+      plan = buildSyncPlan({
+        cards: identifiedCards,
+        computeHash: computeCardHash,
+        frontmatter: parseCardFrontmatter(note.markdown),
+      });
+    }
+  }
+
   const markdownA = applyTextEdits(note.markdown, insertEdits);
 
   const writeFm = writeCardFrontmatter({
@@ -128,12 +159,12 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
     await repository.saveNote(note, markdownB);
   }
 
-  // Phase B — diff and sync. `preview.plan` was built against the frontmatter
-  // read from `note.markdown` (pre-writeback); this is equivalent to reading
-  // it from `markdownB` because `writeCardFrontmatter` only ever appends
-  // nid-less entries, and `buildSyncPlan` treats "no entry" and "entry
-  // without nid" identically (both CREATE).
-  const plan = preview.plan;
+  // Phase B — diff and sync. `preview.plan` (or the rebind-resolved plan
+  // above) was built against the frontmatter read from `note.markdown`
+  // (pre-writeback); this is equivalent to reading it from `markdownB`
+  // because `writeCardFrontmatter` only ever appends nid-less entries, and
+  // `buildSyncPlan` treats "no entry" and "entry without nid" identically
+  // (both CREATE).
 
   // Delete-safety gate (spec §4.5). A sync must never SILENTLY delete an Anki
   // card. Creates and updates always proceed regardless of the decision.

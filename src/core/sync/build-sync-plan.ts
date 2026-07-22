@@ -3,7 +3,7 @@ import type {
   FrontmatterCardEntry,
   ParsedCardFrontmatter,
 } from "./parse-card-frontmatter.js";
-import type { SyncPlan } from "./sync-plan.js";
+import type { PendingRebind, SyncPlan } from "./sync-plan.js";
 
 const V1_BLOCK_ID_RE = /^\d{13}$/;
 
@@ -98,5 +98,39 @@ export function buildSyncPlan(input: BuildSyncPlanInput): SyncPlan {
     del.push({ blockId: entry.blockId, nid: entry.nid });
   }
 
-  return { create, delete: del, update };
+  // Cue-rephrase rebind pairing (spec §4.7, WI-11). "Atomic orphan" = a
+  // DELETE whose frontmatter source entry carries `cue` (only atomic cards
+  // ever get `cue` written). "Atomic CREATE" = a CREATE whose card came from
+  // the atomic syntax. Exactly one of each ⇒ pair; any other count ⇒ no
+  // pairing (never fuzzy-matched). Additive metadata only — `create`/`delete`
+  // above are untouched by this.
+  const atomicOrphans = del.filter(
+    (d) => fmByBlockId.get(d.blockId)?.cue !== undefined,
+  );
+  const atomicCreates = create.filter((c) => c.card.source.syntax === "atomic");
+
+  let rebinds: PendingRebind[] | undefined;
+  if (atomicOrphans.length > 0 || atomicCreates.length > 0) {
+    if (atomicOrphans.length === 1 && atomicCreates.length === 1) {
+      const orphan = atomicOrphans[0]!;
+      const createOp = atomicCreates[0]!;
+      rebinds = [
+        {
+          blockId: orphan.blockId,
+          deckName: createOp.card.deckName ?? "",
+          newFront: createOp.card.front,
+          nid: orphan.nid,
+        },
+      ];
+    } else {
+      rebinds = [];
+    }
+  }
+
+  return {
+    create,
+    delete: del,
+    ...(rebinds !== undefined ? { rebinds } : {}),
+    update,
+  };
 }
