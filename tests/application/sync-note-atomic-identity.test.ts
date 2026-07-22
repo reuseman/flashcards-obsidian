@@ -163,11 +163,27 @@ describe("syncNote — WI-9 I4: `test:` list reorder is a sync no-op", () => {
     });
     const inSync = currentMarkdown();
 
-    const reordered = inSync.replace(
-      new RegExp(`(\\s*- title\\n)(\\s*- "${CUE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"\\n)`),
-      "$2$1",
-    );
+    // Build the reordered `test:` list explicitly by swapping the two list
+    // *lines* in place (same indentation, same trailing newline for both) —
+    // safer than a whitespace-eating regex, which risks consuming the
+    // newline of the preceding `test:` key line and corrupting the YAML.
+    const lines = inSync.split("\n");
+    const titleLineIdx = lines.findIndex((l) => l.trim() === "- title");
+    const cueLineIdx = lines.findIndex((l) => l.trim() === `- "${CUE}"`);
+    expect(titleLineIdx).toBeGreaterThan(-1);
+    expect(cueLineIdx).toBeGreaterThan(-1);
+    const reorderedLines = [...lines];
+    reorderedLines[titleLineIdx] = lines[cueLineIdx]!;
+    reorderedLines[cueLineIdx] = lines[titleLineIdx]!;
+    const reordered = reorderedLines.join("\n");
     expect(reordered).not.toBe(inSync); // fixture sanity check
+
+    // Sanity: the swap only touched the `test:` list, not `flashcards:`.
+    // If it had eaten a newline and corrupted the YAML, this would either
+    // throw or report a different set of atomic cards.
+    expect(parseCardFrontmatter(reordered).entries).toEqual(
+      parseCardFrontmatter(inSync).entries,
+    );
 
     const { repository: repo2, saves: saves2 } = makeFakeRepository(reordered);
     const { calls, fetch: fetch2 } = makeFakeFetch([...bootAllV2(ALL_MODELS)]);
