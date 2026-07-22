@@ -30,6 +30,25 @@ describe("inline card properties", () => {
   });
 });
 
+// Generates content for one side ("front" or "back") of an inline `front::
+// back` card. The generated string must be plain paragraph text that the
+// markdown parser (mdast/micromark) will *not* interpret as a delimited
+// construct able to escape or swallow the `::` delimiter placed between the
+// two sides, or the sibling side's content:
+//   - `\` is CommonMark's escape character: a trailing/leading backslash can
+//     escape the character next to it once the two sides are concatenated
+//     around `::`.
+//   - a single backtick is one half of an inline-code-span delimiter pair;
+//     when front and back each contribute a lone backtick, the pair can
+//     close *across* the `::`, turning it (and the delimiter) into code
+//     content that is never scanned for cards. A backtick pair *within* one
+//     side also empties that side down to whitespace-only code content.
+//   - a leading `<` opens raw HTML (comment, declaration, processing
+//     instruction, CDATA, or tag) per CommonMark, which can likewise swallow
+//     the delimiter or the sibling side.
+// Excluding all three characters keeps the generator inside the "plain
+// paragraph text" precondition the property actually needs, while still
+// exercising unicode, punctuation, and `:`-adjacent (but not `::`) content.
 function safeInlineSideArbitrary() {
   return fc
     .string({ minLength: 1 })
@@ -43,5 +62,8 @@ function safeInlineSideArbitrary() {
     .filter((value) => !value.includes("{"))
     .filter((value) => !value.includes("}"))
     .filter((value) => !value.includes("=="))
+    .filter((value) => !value.includes("\\"))
+    .filter((value) => !value.includes("`"))
+    .filter((value) => !value.includes("<"))
     .filter((value) => !/^\s*[>#*-]/.test(value));
 }
