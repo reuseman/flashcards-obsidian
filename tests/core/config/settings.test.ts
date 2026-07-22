@@ -26,6 +26,32 @@ describe("renderPreview settings", () => {
   });
 });
 
+describe("WI-7: per-syntax toggles", () => {
+  test("DEFAULT_SETTINGS has inline/cloze/fenced/atomic all enabled by default", () => {
+    expect(DEFAULT_SETTINGS.inline).toEqual({ enabled: true });
+    expect(DEFAULT_SETTINGS.cloze).toEqual({ enabled: true });
+    expect(DEFAULT_SETTINGS.fenced).toEqual({ enabled: true });
+    expect(DEFAULT_SETTINGS.atomic).toEqual({ enabled: true });
+  });
+
+  test("mergeSettings fills defaults for inline/cloze/fenced/atomic from a pre-WI-7 persisted config", () => {
+    const merged = mergeSettings({ defaultDeck: "Legacy" });
+    expect(merged.defaultDeck).toBe("Legacy");
+    expect(merged.inline).toEqual({ enabled: true });
+    expect(merged.cloze).toEqual({ enabled: true });
+    expect(merged.fenced).toEqual({ enabled: true });
+    expect(merged.atomic).toEqual({ enabled: true });
+  });
+
+  test("mergeSettings preserves a persisted override on one toggle block", () => {
+    const merged = mergeSettings({ inline: { enabled: false } });
+    expect(merged.inline).toEqual({ enabled: false });
+    expect(merged.cloze).toEqual({ enabled: true });
+    expect(merged.fenced).toEqual({ enabled: true });
+    expect(merged.atomic).toEqual({ enabled: true });
+  });
+});
+
 describe("mergeSettings back-compat (pre-rename keys)", () => {
   test("old `legacy` object maps onto `hashtag` (enabled + basicTag)", () => {
     const merged = mergeSettings({

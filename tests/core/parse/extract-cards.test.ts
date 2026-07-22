@@ -345,6 +345,46 @@ describe("extractCardsFromMarkdown", () => {
     });
   });
 
+  describe("WI-7: per-syntax toggles gate the corresponding parser path", () => {
+    test("inline.enabled = false skips `Q :: A` inline cards but leaves cloze cards parsed", () => {
+      const settings = { ...DEFAULT_SETTINGS, inline: { ...DEFAULT_SETTINGS.inline, enabled: false } };
+      const md = ["Question:: Answer", "", "The ==heart== pumps blood."].join("\n\n");
+
+      const result = extractCardsFromMarkdown(md, { notePath: "T.md", settings });
+
+      expect(result.cards.some((c) => c.kind === "basic")).toBe(false);
+      expect(result.cards.some((c) => c.kind === "cloze")).toBe(true);
+    });
+
+    test("cloze.enabled = false skips `==x==` cloze cards but leaves inline cards parsed", () => {
+      const settings = { ...DEFAULT_SETTINGS, cloze: { ...DEFAULT_SETTINGS.cloze, enabled: false } };
+      const md = ["Question:: Answer", "", "The ==heart== pumps blood."].join("\n\n");
+
+      const result = extractCardsFromMarkdown(md, { notePath: "T.md", settings });
+
+      expect(result.cards.some((c) => c.kind === "cloze")).toBe(false);
+      expect(result.cards.some((c) => c.kind === "basic")).toBe(true);
+    });
+
+    test("fenced.enabled = false skips ```flashcard blocks but leaves inline cards parsed", () => {
+      const settings = { ...DEFAULT_SETTINGS, fenced: { ...DEFAULT_SETTINGS.fenced, enabled: false } };
+      const md = [
+        "Question:: Answer",
+        "",
+        "```flashcard",
+        "type: basic",
+        "front: What is ATP?",
+        "back: Adenosine triphosphate",
+        "```",
+      ].join("\n");
+
+      const result = extractCardsFromMarkdown(md, { notePath: "T.md", settings });
+
+      expect(result.cards.some((c) => c.front === "What is ATP?")).toBe(false);
+      expect(result.cards.some((c) => c.front === "Question")).toBe(true);
+    });
+  });
+
   describe("B1: cloze syntax does not double-extract as inline card", () => {
     test("{{cN::...}} on its own line yields exactly one cloze card", () => {
       const result = extractCardsFromMarkdown(
