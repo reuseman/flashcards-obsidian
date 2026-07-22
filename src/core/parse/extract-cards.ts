@@ -28,6 +28,8 @@ export function extractCardsFromMarkdown(
   const cards: Flashcard[] = [];
   const warnings: string[] = [];
   const metadata = parseNoteMetadata(markdown);
+  const suppressBodyScans =
+    options.settings.atomic.enabled && hasTestKey(metadata.frontmatter?.raw);
   const resolvedDeck = resolveDeckName(
     options.notePath,
     options.settings,
@@ -77,7 +79,7 @@ export function extractCardsFromMarkdown(
       const value = stripTrailingAnchor(
         phrasingToVisibleText(node.children, markdown).trim(),
       );
-      const inline = options.settings.inline.enabled
+      const inline = options.settings.inline.enabled && !suppressBodyScans
         ? parseInlineCard(value, options.settings)
         : null;
       if (inline) {
@@ -96,7 +98,9 @@ export function extractCardsFromMarkdown(
         });
       }
 
-      const cloze = options.settings.cloze.enabled ? parseClozeCard(value) : null;
+      const cloze = options.settings.cloze.enabled && !suppressBodyScans
+        ? parseClozeCard(value)
+        : null;
       if (cloze) {
         cards.push({
           answer: "",
@@ -138,6 +142,16 @@ export function extractCardsFromMarkdown(
   cards.push(...atomic.cards);
 
   return { cards, warnings };
+}
+
+/**
+ * Presence, not validity, of the `test:` key is the suppression trigger
+ * (spec §4.5) — a typo in the value must not flip the note back to
+ * legacy inline/cloze scanning.
+ */
+function hasTestKey(rawFrontmatter: string | undefined): boolean {
+  if (!rawFrontmatter) return false;
+  return /^test:/m.test(rawFrontmatter);
 }
 
 function mergeTags(defaultTags: string[], metadataTags: string[]): string[] {
