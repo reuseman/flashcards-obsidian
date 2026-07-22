@@ -79,7 +79,7 @@ export interface SyncNoteResult {
 
 function logLints(logger: Logger, notePath: string, lints: string[]): void {
   for (const lint of lints) {
-    if (/error/i.test(lint)) {
+    if (lint.startsWith("error:")) {
       logger.error(lint, { notePath });
     } else {
       logger.warn(lint, { notePath });

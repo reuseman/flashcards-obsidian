@@ -35,7 +35,7 @@ function detectCueCollisions(
       settings,
     });
     for (const card of cards) {
-      if (card.source.syntax !== "atomic" || card.kind !== "basic") continue;
+      if (card.source.syntax !== "atomic" || card.kind === "cloze") continue;
       const cue = normalizeCue(card.front);
       const notePaths = cueToNotePaths.get(cue) ?? new Set<string>();
       notePaths.add(note.path);
