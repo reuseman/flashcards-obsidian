@@ -69,11 +69,22 @@ export interface SyncNoteResult {
   ankiResults?: ExecuteSyncPlanResult;
   error?: string;
   identityWritesApplied: number;
+  lints: string[];
   mediaErrors?: CardMediaError[];
   notePath: string;
   parsedCardCount: number;
   status: SyncNoteStatus;
   writebackEditsApplied: number;
+}
+
+function logLints(logger: Logger, notePath: string, lints: string[]): void {
+  for (const lint of lints) {
+    if (/error/i.test(lint)) {
+      logger.error(lint, { notePath });
+    } else {
+      logger.warn(lint, { notePath });
+    }
+  }
 }
 
 export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
@@ -100,12 +111,14 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
       settings,
     }),
   );
-  const { cards, identifiedCards, insertEdits } = preview;
+  const { cards, identifiedCards, insertEdits, lints } = preview;
+  logLints(logger, note.path, lints);
 
   if (cards.length === 0) {
     logger.debug("syncNote skipped (no flashcards parsed)", { notePath: note.path });
     return {
       identityWritesApplied: 0,
+      lints,
       notePath: note.path,
       parsedCardCount: 0,
       status: "skipped",
@@ -208,6 +221,7 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
     });
     return {
       identityWritesApplied,
+      lints,
       notePath: note.path,
       parsedCardCount: cards.length,
       status: "ok",
@@ -327,6 +341,7 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
     });
     return {
       identityWritesApplied,
+      lints,
       ...(mediaErrors.length > 0 ? { mediaErrors } : {}),
       notePath: note.path,
       parsedCardCount: cards.length,
@@ -353,6 +368,7 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
     return {
       error: msg,
       identityWritesApplied,
+      lints,
       notePath: note.path,
       parsedCardCount: cards.length,
       status: "failed",
@@ -383,6 +399,7 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
   return {
     ankiResults: results,
     identityWritesApplied,
+    lints,
     ...(mediaErrors.length > 0 ? { mediaErrors } : {}),
     notePath: note.path,
     parsedCardCount: cards.length,

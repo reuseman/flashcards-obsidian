@@ -1,5 +1,6 @@
-import type { AnkiGateway, MarkdownRepository } from "./ports.js";
+import type { AnkiGateway, MarkdownNote, MarkdownRepository } from "./ports.js";
 import type { FlashcardsSettings } from "../core/config/settings.js";
+import { extractCardsFromMarkdown } from "../core/parse/extract-cards.js";
 import type { PendingDeletion } from "../core/sync/sync-plan.js";
 import { NoopLogger, type Logger } from "../core/logging/logger.js";
 import { createPerfTrace } from "../core/logging/perf-trace.js";
@@ -9,6 +10,49 @@ import {
   type MediaPipeline,
   type SyncNoteResult,
 } from "./sync-note.js";
+
+/**
+ * Cue-collision lint (design §4.8, item 4): identical normalized cue on
+ * DIFFERENT notes, vault-level sync only — a single-note sync has no
+ * visibility into other notes' cues, so this can never live in `syncNote`.
+ * Re-extracts each note (already parsed once inside `syncNote`, but there is
+ * no cheap way to share that result across the black-box call without
+ * threading extra plumbing through it) purely to gather cue candidates.
+ */
+function normalizeCue(text: string): string {
+  return text.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function detectCueCollisions(
+  notes: MarkdownNote[],
+  settings: FlashcardsSettings,
+): string[] {
+  const cueToNotePaths = new Map<string, Set<string>>();
+
+  for (const note of notes) {
+    const { cards } = extractCardsFromMarkdown(note.markdown, {
+      notePath: note.path,
+      settings,
+    });
+    for (const card of cards) {
+      if (card.source.syntax !== "atomic" || card.kind !== "basic") continue;
+      const cue = normalizeCue(card.front);
+      const notePaths = cueToNotePaths.get(cue) ?? new Set<string>();
+      notePaths.add(note.path);
+      cueToNotePaths.set(cue, notePaths);
+    }
+  }
+
+  const lints: string[] = [];
+  for (const notePaths of cueToNotePaths.values()) {
+    if (notePaths.size > 1) {
+      lints.push(
+        `warn: cue collision across notes — ${[...notePaths].join(", ")}`,
+      );
+    }
+  }
+  return lints;
+}
 
 export interface SyncVaultInput {
   ankiClient: AnkiGateway;
@@ -30,6 +74,7 @@ export interface NoteMediaErrors {
 
 export interface SyncVaultResult {
   failedNotes: number;
+  lints: string[];
   mediaErrors: NoteMediaErrors[];
   noteCount: number;
   perNote: SyncNoteResult[];
@@ -96,6 +141,7 @@ export async function syncVault(
       result = {
         error: msg,
         identityWritesApplied: 0,
+        lints: [],
         notePath: note.path,
         parsedCardCount: 0,
         status: "failed",
@@ -138,10 +184,17 @@ export async function syncVault(
     logger.warn("syncVault failures", { failures });
   }
 
+  const collisionLints = detectCueCollisions(notes, settings);
+  for (const lint of collisionLints) {
+    logger.warn(lint);
+  }
+  const lints = [...perNote.flatMap((r) => r.lints), ...collisionLints];
+
   trace.finish();
 
   return {
     failedNotes,
+    lints,
     mediaErrors,
     noteCount: total,
     perNote,

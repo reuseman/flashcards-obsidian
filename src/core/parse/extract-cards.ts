@@ -18,6 +18,7 @@ export interface ExtractCardsOptions {
 
 export interface ExtractCardsResult {
   cards: Flashcard[];
+  lints: string[];
   warnings: string[];
 }
 
@@ -141,7 +142,7 @@ export function extractCardsFromMarkdown(
   );
   cards.push(...atomic.cards);
 
-  return { cards, warnings };
+  return { cards, lints: atomic.lints, warnings };
 }
 
 /**

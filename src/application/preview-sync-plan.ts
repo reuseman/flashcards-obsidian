@@ -38,6 +38,7 @@ export interface PreviewSyncPlanResult {
   delete: number;
   identifiedCards: IdentifiedFlashcard[];
   insertEdits: TextEdit[];
+  lints: string[];
   plan: SyncPlan;
   update: number;
 }
@@ -59,7 +60,10 @@ export function previewSyncPlan(
     settings,
   } = input;
 
-  const { cards } = extractCardsFromMarkdown(markdown, { notePath, settings });
+  const { cards, lints } = extractCardsFromMarkdown(markdown, {
+    notePath,
+    settings,
+  });
 
   if (cards.length === 0) {
     return {
@@ -68,6 +72,7 @@ export function previewSyncPlan(
       delete: 0,
       identifiedCards: [],
       insertEdits: [],
+      lints,
       plan: { create: [], delete: [], update: [] },
       update: 0,
     };
@@ -106,6 +111,7 @@ export function previewSyncPlan(
     delete: plan.delete.length,
     identifiedCards,
     insertEdits: insert.edits,
+    lints,
     plan,
     update: plan.update.length,
   };
