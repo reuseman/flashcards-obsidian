@@ -171,6 +171,9 @@ describe.skip("golden atomic mixed note — WI-13 acceptance gate", () => {
     const clozeCard = cards.find((c) => c.kind === "cloze");
     expect(clozeCard).toBeDefined();
     expect(clozeCard?.front).toBe(FIRST_PARAGRAPH);
+    // Cloze back-composition contract: Text = first paragraph (with spans),
+    // Extra = note title.
+    expect(clozeCard?.answer).toBe(NOTE_TITLE);
 
     const fencedCard = cards.find(
       (c) => (c.source.syntax as string) === "fenced",
@@ -205,7 +208,7 @@ describe.skip("golden atomic mixed note — WI-13 acceptance gate", () => {
 
   it("writes only the fenced + hashtag anchors to the body — atomic cards never touch it (I3)", async () => {
     const { repository, currentMarkdown } = makeFakeRepository(FIXTURE);
-    const { fetch } = bootWithPlentyOfCreates();
+    const { calls, fetch } = bootWithPlentyOfCreates();
 
     await syncNote({
       ankiClient: new AnkiConnectClient({ fetch }),
@@ -220,15 +223,31 @@ describe.skip("golden atomic mixed note — WI-13 acceptance gate", () => {
 
     // Stripping every v2 anchor token from the post-sync body must restore
     // the original body byte-for-byte — i.e. anchors are the ONLY body
-    // mutation, and there are at most two of them (fenced + hashtag).
+    // mutation, and there are EXACTLY two of them (fenced + hashtag). Zero
+    // anchors would mean an over-suppression regression.
     const anchorMatches = after.match(/\s?\^q-[abcdefghijkmnpqrstuvwxyz23456789]{4}/g) ?? [];
-    expect(anchorMatches.length).toBeLessThanOrEqual(2);
+    expect(anchorMatches.length).toBe(2);
 
     const afterWithoutAnchors = after.replace(
       /\s?\^q-[abcdefghijkmnpqrstuvwxyz23456789]{4}/g,
       "",
     );
     expect(afterWithoutAnchors).toBe(before);
+
+    // Tighten the cloze back-composition contract at the Anki payload level:
+    // the addNote call for the Obsidian-Cloze model must carry the note
+    // title in its Extra field.
+    const clozeAddNote = calls.find(
+      (c) =>
+        c.action === "addNote" &&
+        (c.params.note as { modelName?: string } | undefined)?.modelName ===
+          ANKI_MODEL_CLOZE,
+    );
+    expect(clozeAddNote).toBeDefined();
+    const clozeFields = (
+      clozeAddNote?.params.note as { fields?: Record<string, string> }
+    )?.fields;
+    expect(clozeFields?.Extra).toContain(NOTE_TITLE);
   });
 
   it("writes `flashcards:` entries with a `cue` field for the 4 atomic cards only", async () => {
