@@ -38,7 +38,7 @@ export function extractCardsFromMarkdown(
   });
 
   visit(tree, (node, _index, parent) => {
-    if (node.type === "code" && node.lang === "flashcard") {
+    if (node.type === "code" && node.lang === "flashcard" && options.settings.fenced.enabled) {
       const fields = parseFencedFields(node.value ?? "");
       const front = fields.front ?? "";
       const back = fields.back ?? "";
@@ -76,7 +76,9 @@ export function extractCardsFromMarkdown(
       const value = stripTrailingAnchor(
         phrasingToVisibleText(node.children, markdown).trim(),
       );
-      const inline = parseInlineCard(value, options.settings);
+      const inline = options.settings.inline.enabled
+        ? parseInlineCard(value, options.settings)
+        : null;
       if (inline) {
         cards.push({
           answer: inline.answer,
@@ -93,7 +95,7 @@ export function extractCardsFromMarkdown(
         });
       }
 
-      const cloze = parseClozeCard(value);
+      const cloze = options.settings.cloze.enabled ? parseClozeCard(value) : null;
       if (cloze) {
         cards.push({
           answer: "",

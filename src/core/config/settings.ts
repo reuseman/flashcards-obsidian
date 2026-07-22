@@ -7,6 +7,10 @@ export interface HashtagSettings {
   basicTag: string;
 }
 
+export interface SyntaxToggleSettings {
+  enabled: boolean;
+}
+
 export interface RenderPreviewSettings {
   enabled: boolean;
   features: {
@@ -18,14 +22,18 @@ export interface RenderPreviewSettings {
 }
 
 export interface FlashcardsSettings {
+  atomic: SyntaxToggleSettings;
+  cloze: SyntaxToggleSettings;
   confirmBeforeDelete: boolean;
   contextSeparator: string;
   contextStrategy: ContextStrategy;
   defaultDeck: string;
   defaultTags: string[];
   explicitSyntax: ExplicitSyntax;
+  fenced: SyntaxToggleSettings;
   folderBasedDecks: boolean;
   hashtag: HashtagSettings;
+  inline: SyntaxToggleSettings;
   inlineReverseSeparator: string;
   inlineSeparator: string;
   logLevel: LogLevelSetting;
@@ -36,17 +44,21 @@ export interface FlashcardsSettings {
 }
 
 export const DEFAULT_SETTINGS: FlashcardsSettings = {
+  atomic: { enabled: true },
+  cloze: { enabled: true },
   confirmBeforeDelete: true,
   contextSeparator: " > ",
   contextStrategy: "headings",
   defaultDeck: "Default",
   defaultTags: ["obsidian"],
   explicitSyntax: "fenced",
+  fenced: { enabled: true },
   folderBasedDecks: true,
   hashtag: {
     enabled: true,
     basicTag: "card",
   },
+  inline: { enabled: true },
   inlineReverseSeparator: ":::",
   inlineSeparator: "::",
   logLevel: "info",
