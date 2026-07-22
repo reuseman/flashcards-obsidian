@@ -1,4 +1,6 @@
-import { computeCardHash } from "../../../src/core/edits/card-hash.js";
+import { createHash } from "node:crypto";
+
+import { computeCardHash, computeCueHash } from "../../../src/core/edits/card-hash.js";
 import type { Flashcard } from "../../../src/core/domain/card.js";
 
 /**
@@ -135,5 +137,68 @@ describe("computeCardHash — sensitivity", () => {
       source: { endOffset: 9999, line: 42, startOffset: 1234, syntax: "fenced" },
     }));
     expect(a).toBe(b);
+  });
+});
+
+/**
+ * WI-9 — cue hash (design §4.4).
+ *
+ * `cue` = first 8 base32 chars of sha256 of `kind + "\n" + front` (no
+ * `answer`/back component — this is what makes it stable across the
+ * "editing the first paragraph only" case). Kind-qualified so a `title` and
+ * a `reversed` item sharing the same front text get distinct cue values.
+ *
+ * `referenceHash` below is an independent re-implementation of the exact
+ * bit-extraction algorithm documented as locked in `card-hash.ts`, applied
+ * to different input bytes (`kind\nfront` instead of `kind\nfront\nback`).
+ * It intentionally does NOT import anything from src — the point is to
+ * cross-check `computeCueHash`'s output against the spec, not against
+ * whatever `computeCardHash` happens to do internally.
+ */
+const ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";
+function referenceHash(input: string): string {
+  const digest = createHash("sha256").update(input, "utf8").digest();
+  let out = "";
+  for (let i = 0; i < 8; i++) {
+    const bitOffset = i * 5;
+    const byteIndex = bitOffset >> 3;
+    const bitInByte = bitOffset & 7;
+    const hi = digest[byteIndex] ?? 0;
+    const lo = digest[byteIndex + 1] ?? 0;
+    const window = (hi << 8) | lo;
+    const shift = 16 - bitInByte - 5;
+    const value = (window >> shift) & 0x1f;
+    out += ALPHABET[value];
+  }
+  return out;
+}
+
+describe("computeCueHash — WI-9 cue field", () => {
+  test("matches sha256(kind + \\n + front) reference, first 8 base32 chars", () => {
+    const expected = referenceHash("basic\nWhat guarantees delivery?");
+    expect(computeCueHash("basic", "What guarantees delivery?")).toBe(expected);
+  });
+
+  test("shape: 8 chars from the locked alphabet", () => {
+    const HASH_RE = /^[abcdefghijkmnpqrstuvwxyz23456789]{8}$/;
+    expect(computeCueHash("basic", "Some front text")).toMatch(HASH_RE);
+  });
+
+  test("determinism: same kind+front -> same cue", () => {
+    expect(computeCueHash("basic", "Stable front")).toBe(
+      computeCueHash("basic", "Stable front"),
+    );
+  });
+
+  test("kind-qualified: `title` (basic) and `reversed` sharing the same front text get DISTINCT cues", () => {
+    const titleCue = computeCueHash("basic", "TCP basics");
+    const reversedCue = computeCueHash("reversed", "TCP basics");
+    expect(titleCue).not.toBe(reversedCue);
+  });
+
+  test("different front text -> different cue (same kind)", () => {
+    const a = computeCueHash("basic", "Question A");
+    const b = computeCueHash("basic", "Question B");
+    expect(a).not.toBe(b);
   });
 });

@@ -339,3 +339,80 @@ describe("parseCardFrontmatter — order preservation", () => {
     ]);
   });
 });
+
+/**
+ * WI-9 — optional `cue` field on `flashcards:` entries (design §4.4).
+ *
+ * `cue` marks an atomic (anchorless) card entry. Entries without `cue` are
+ * body-anchored cards — existing shapes/behaviour above must stay untouched.
+ * Accepted shapes (locked ordering per brief §4.4 example, `cue` first):
+ *   q-xxxx: { cue: C, hash: H }
+ *   q-xxxx: { cue: C, nid: N, hash: H }
+ */
+describe("parseCardFrontmatter — WI-9 `cue` field", () => {
+  test("object with cue + hash (no nid yet) parses cue", () => {
+    const md = [
+      "---",
+      "flashcards:",
+      "  q-ab3k: { cue: f8chars8, hash: ab12cd34 }",
+      "---",
+    ].join("\n");
+    const result = parseCardFrontmatter(md);
+    expect(result.entries).toEqual([
+      { blockId: "q-ab3k", cue: "f8chars8", hash: "ab12cd34" },
+    ]);
+    expect(result.skippedLineCount).toBe(0);
+  });
+
+  test("object with cue + nid + hash parses all three fields", () => {
+    const md = [
+      "---",
+      "flashcards:",
+      "  q-ab3k: { cue: f8chars8, nid: 1734567890123, hash: h8chars8 }",
+      "---",
+    ].join("\n");
+    const result = parseCardFrontmatter(md);
+    expect(result.entries).toEqual([
+      {
+        blockId: "q-ab3k",
+        cue: "f8chars8",
+        hash: "h8chars8",
+        nid: 1734567890123,
+      },
+    ]);
+    expect(result.skippedLineCount).toBe(0);
+  });
+
+  test("entries WITHOUT `cue` (anchored cards) still parse with `cue` left undefined", () => {
+    const md = [
+      "---",
+      "flashcards:",
+      "  q-abcd: { nid: 1714056234891, hash: ab12cd34 }",
+      "---",
+    ].join("\n");
+    const result = parseCardFrontmatter(md);
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0]!.cue).toBeUndefined();
+    // Byte-identical shape to the pre-WI-9 contract — no `cue` key materializes.
+    expect(result.entries[0]).toEqual({
+      blockId: "q-abcd",
+      hash: "ab12cd34",
+      nid: 1714056234891,
+    });
+  });
+
+  test("mixed note: one atomic (cue) entry and one anchored (no cue) entry both parse correctly", () => {
+    const md = [
+      "---",
+      "flashcards:",
+      "  q-ab3k: { cue: f8chars8, nid: 1734567890123, hash: h8chars8 }",
+      "  q-zzzz: { nid: 1714056234891, hash: ab12cd34 }",
+      "---",
+    ].join("\n");
+    const result = parseCardFrontmatter(md);
+    const atomic = result.entries.find((e) => e.blockId === "q-ab3k");
+    const anchored = result.entries.find((e) => e.blockId === "q-zzzz");
+    expect(atomic?.cue).toBe("f8chars8");
+    expect(anchored?.cue).toBeUndefined();
+  });
+});

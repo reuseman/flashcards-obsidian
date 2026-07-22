@@ -409,3 +409,79 @@ describe("insertCardAnchors — WI-1 invariant I1: existing id never regenerated
     expect(out.cards[0]?.blockId).not.toBe("q-zzzz");
   });
 });
+
+// ===========================================================================
+// WI-9 — I3: atomic cards never write a body anchor.
+// ===========================================================================
+
+function atomicCardAt(
+  markdown: string,
+  startOffset: number,
+  endOffset: number,
+  overrides: Partial<Flashcard> = {},
+): Flashcard {
+  return {
+    answer: "First paragraph text.",
+    front: "Note Title",
+    kind: "basic",
+    source: { endOffset, line: 1, startOffset, syntax: "atomic" },
+    tags: [],
+    ...overrides,
+  };
+}
+
+describe("insertCardAnchors — WI-9 I3: atomic cards skip body anchors", () => {
+  test("a single atomic card produces zero edits — body stays byte-identical", () => {
+    const md = "First paragraph text.\n";
+    const card = atomicCardAt(md, 0, md.indexOf("\n"));
+    const out = insertCardAnchors({
+      cards: [card],
+      generateBlockId: seededGenerator(["q-abcd"]),
+      markdown: md,
+    });
+
+    expect(out.edits).toEqual([]);
+    expect(applyTextEdits(md, out.edits)).toBe(md);
+  });
+
+  test("an atomic card still receives an IdentifiedFlashcard blockId (map-only identity)", () => {
+    const md = "First paragraph text.\n";
+    const card = atomicCardAt(md, 0, md.indexOf("\n"));
+    const out = insertCardAnchors({
+      cards: [card],
+      generateBlockId: seededGenerator(["q-abcd"]),
+      markdown: md,
+    });
+
+    expect(out.cards).toHaveLength(1);
+    expect(out.cards[0]?.blockId).toMatch(/^q-[abcdefghijkmnpqrstuvwxyz23456789]{4}$/);
+  });
+
+  test("mixed atomic + anchored cards sharing the SAME source range → only the anchored one gets an edit", () => {
+    // Two `test:` items derived from the same first paragraph share source
+    // offsets in the real extractor; a naive per-card anchor pass would try
+    // to insert two anchors at the same position. Pair one atomic card with
+    // one distinct inline card to isolate the I3 assertion from that
+    // (separately-scoped) multi-item concern.
+    const md = ["First paragraph text.", "", "Question:: Answer"].join("\n");
+    const atomic = atomicCardAt(md, 0, md.indexOf("\n\n"));
+    const inlineEnd = md.length;
+    const inline: Flashcard = {
+      answer: "Answer",
+      front: "Question",
+      kind: "basic",
+      source: { endOffset: inlineEnd, line: 3, startOffset: md.indexOf("Question"), syntax: "inline" },
+      tags: [],
+    };
+
+    const out = insertCardAnchors({
+      cards: [atomic, inline],
+      generateBlockId: seededGenerator(["q-aabb", "q-ccdd"]),
+      markdown: md,
+    });
+
+    expect(out.edits).toHaveLength(1);
+    const applied = applyTextEdits(md, out.edits);
+    expect(applied.match(/\^q-[abcdefghijkmnpqrstuvwxyz23456789]{4}/g)).toHaveLength(1);
+  });
+});

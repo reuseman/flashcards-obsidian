@@ -411,3 +411,84 @@ describe("writeCardFrontmatter — apply-edits round-trip", () => {
     expect(second.edits).toEqual([]);
   });
 });
+
+/**
+ * WI-9 — writer emits `cue` for atomic entries only (design §4.4).
+ *
+ * Atomic cards are identified by `card.source.syntax === "atomic"`. Their
+ * frontmatter entry gets a `cue` field (first 8 base32 chars of
+ * sha256(kind + "\n" + front)) alongside `hash`, ordered `cue` before
+ * `hash` per the brief's locked example. Anchored (non-atomic) entries are
+ * untouched — no `cue` key ever appears for them.
+ */
+describe("writeCardFrontmatter — WI-9 `cue` field for atomic entries", () => {
+  function atomicId(
+    blockId: string,
+    overrides: Partial<Flashcard> = {},
+  ): IdentifiedFlashcard {
+    return {
+      answer: "A",
+      front: "Q",
+      kind: "basic",
+      source: { endOffset: 0, line: 1, startOffset: 0, syntax: "atomic" },
+      tags: [],
+      ...overrides,
+      blockId,
+    };
+  }
+
+  test("atomic card entry gets a `cue` field ordered before `hash`", () => {
+    const md = "Some body text.\n";
+    const cards = [atomicId("q-ab3k", { front: "TCP basics", answer: "A paragraph." })];
+
+    const { edits } = writeCardFrontmatter({ cards, markdown: md });
+    const applied = applyTextEdits(md, edits);
+
+    expect(applied).toMatch(
+      /q-ab3k: \{ cue: [a-z2-9]{8}, hash: [a-z2-9]{8} \}/,
+    );
+  });
+
+  test("anchored (non-atomic) entries never get a `cue` key, even alongside atomic ones", () => {
+    const md = "Some body text.\n";
+    const cards = [
+      id("q-anch", { front: "Question", answer: "Answer" }),
+      atomicId("q-ab3k", { front: "TCP basics", answer: "A paragraph." }),
+    ];
+
+    const { edits } = writeCardFrontmatter({ cards, markdown: md });
+    const applied = applyTextEdits(md, edits);
+
+    const anchoredLine = applied
+      .split("\n")
+      .find((line) => line.includes("q-anch:"));
+    expect(anchoredLine).toBeDefined();
+    expect(anchoredLine).not.toContain("cue:");
+  });
+
+  test("cue value for an atomic card is stable across re-parse (round-trip), not the fresh writer's per-call hash", () => {
+    // Two writer calls for the *same* atomic card (same kind+front) must
+    // produce the identical `cue` value — it is a pure function of
+    // kind+front, not of anything positional or random.
+    const cardA = atomicId("q-ab3k", { front: "TCP basics", answer: "First answer." });
+    const cardB = atomicId("q-cd4m", { front: "TCP basics", answer: "Different answer." });
+
+    const mdA = "Body A.\n";
+    const mdB = "Body B.\n";
+    const appliedA = applyTextEdits(
+      mdA,
+      writeCardFrontmatter({ cards: [cardA], markdown: mdA }).edits,
+    );
+    const appliedB = applyTextEdits(
+      mdB,
+      writeCardFrontmatter({ cards: [cardB], markdown: mdB }).edits,
+    );
+
+    const cueA = /cue: ([a-z2-9]{8})/.exec(appliedA)?.[1];
+    const cueB = /cue: ([a-z2-9]{8})/.exec(appliedB)?.[1];
+    expect(cueA).toBeDefined();
+    // Same kind ("basic") + same front ("TCP basics") → same cue, despite
+    // different blockId/answer/markdown context.
+    expect(cueA).toBe(cueB);
+  });
+});
