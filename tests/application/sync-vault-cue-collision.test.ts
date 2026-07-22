@@ -84,7 +84,82 @@ function noteLintsOf(result: unknown): string[] {
   return (result as { lints?: string[] }).lints ?? [];
 }
 
+function reversedNote(): string {
+  return ["---", "test:", "  - reversed", "---", "", FIRST_PARAGRAPH_A].join(
+    "\n",
+  );
+}
+
+const CLOZE_PARAGRAPH = "The powerhouse of the cell is the ==mitochondria==.";
+
+function clozeNote(): string {
+  return ["---", "test:", "  - cloze", "---", "", CLOZE_PARAGRAPH].join("\n");
+}
+
 describe("cue collision — vault-level lint only (WI-12)", () => {
+  it("fires the cue-collision warn for TWO REVERSED-kind cards from different notes sharing the same title (WI-12 fix — scope was basic-only)", async () => {
+    // Same basename ("Chlorophyll") in two different folders ⇒ same derived
+    // `reversed` front (the note title), which is the collision surface.
+    const noteA = makeNote("folder-a/Chlorophyll.md", reversedNote());
+    const noteB = makeNote("folder-b/Chlorophyll.md", reversedNote());
+    const repository = makeFakeRepo([noteA, noteB]);
+    const { fetch } = makeFakeFetch([
+      ...bootAllV2(ALL_MODELS),
+      ok(["Default"]),
+      ok(4101),
+      ...bootAllV2(ALL_MODELS),
+      ok(["Default"]),
+      ok(4102),
+    ]);
+
+    const result = await syncVault({
+      ankiClient: new AnkiConnectClient({ fetch }),
+      generateBlockId: seededGenerator(["q-cccc", "q-dddd"]),
+      repository,
+      settings: settingsWith(),
+      vaultName: VAULT,
+    });
+
+    const warnLints = vaultLintsOf(result).filter(
+      (l) => /warn/i.test(l) && /collision/i.test(l),
+    );
+    expect(warnLints.length).toBeGreaterThan(0);
+    expect(
+      warnLints.some(
+        (l) =>
+          l.includes("folder-a/Chlorophyll.md") &&
+          l.includes("folder-b/Chlorophyll.md"),
+      ),
+    ).toBe(true);
+  });
+
+  it("does NOT fire the cue-collision lint for two CLOZE-kind cards from different notes sharing an identical first paragraph (cloze fronts are excluded from cue-collision scope)", async () => {
+    const noteA = makeNote("a-cloze.md", clozeNote());
+    const noteB = makeNote("b-cloze.md", clozeNote());
+    const repository = makeFakeRepo([noteA, noteB]);
+    const { fetch } = makeFakeFetch([
+      ...bootAllV2(ALL_MODELS),
+      ok(["Default"]),
+      ok(4201),
+      ...bootAllV2(ALL_MODELS),
+      ok(["Default"]),
+      ok(4202),
+    ]);
+
+    const result = await syncVault({
+      ankiClient: new AnkiConnectClient({ fetch }),
+      generateBlockId: seededGenerator(["q-eeee", "q-ffff"]),
+      repository,
+      settings: settingsWith(),
+      vaultName: VAULT,
+    });
+
+    const collisionLints = vaultLintsOf(result).filter((l) =>
+      /collision/i.test(l),
+    );
+    expect(collisionLints).toHaveLength(0);
+  });
+
   it("fires a warn lint on SyncVaultResult when two different notes share a normalized cue; both cards still sync", async () => {
     const noteA = makeNote("a.md", note(CUE_A, FIRST_PARAGRAPH_A));
     const noteB = makeNote("b.md", note(CUE_B, FIRST_PARAGRAPH_B));

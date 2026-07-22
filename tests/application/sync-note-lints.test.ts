@@ -164,4 +164,43 @@ describe("syncNote — atomic sync-time lints (WI-12)", () => {
     const warnLogCalls = logger.warnCalls.filter((c) => /cloze/i.test(c.message));
     expect(warnLogCalls.length).toBeGreaterThan(0);
   });
+
+  // -------------------------------------------------------------------------
+  // WI-12 fix — lint level routing must key on the level PREFIX, not a
+  // substring match on the whole message. A warn-level lint whose free text
+  // happens to contain "error" (e.g. because the note's path does) must
+  // still route to `logger.warn`, never `logger.error`.
+  // -------------------------------------------------------------------------
+
+  it("a warn-level lint whose message contains the substring \"error\" (from the note path) routes to logger.warn, not logger.error", async () => {
+    const errorPath = "notes/error-log.md";
+    const md = note(["test:", "  - title"], []); // no body paragraph ⇒ thin-card warn lint
+    const { repository } = makeFakeRepository(md);
+    const { fetch } = makeFakeFetch([]);
+    const logger = makeSpyLogger();
+
+    const noteWithErrorPath: MarkdownNote = {
+      file: {} as MarkdownNote["file"],
+      markdown: md,
+      name: "error-log",
+      path: errorPath,
+    };
+
+    const result = await syncNote({
+      ankiClient: new AnkiConnectClient({ fetch }),
+      logger,
+      note: noteWithErrorPath,
+      repository,
+      settings: settingsWith(),
+      vaultName: VAULT,
+    });
+
+    const thinLints = lintsOf(result).filter((l) => /thin/i.test(l));
+    expect(thinLints.length).toBeGreaterThan(0);
+
+    const thinWarnCalls = logger.warnCalls.filter((c) => /thin/i.test(c.message));
+    const thinErrorCalls = logger.errorCalls.filter((c) => /thin/i.test(c.message));
+    expect(thinWarnCalls.length).toBeGreaterThan(0);
+    expect(thinErrorCalls).toHaveLength(0);
+  });
 });

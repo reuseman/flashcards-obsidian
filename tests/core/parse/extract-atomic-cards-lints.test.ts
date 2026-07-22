@@ -181,4 +181,26 @@ describe("extractCardsFromMarkdown — atomic sync-time lints (WI-12)", () => {
       expect(lints.some((l) => /error/i.test(l))).toBe(false);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // WI-12 fix — derived-front collision (WI-9's hasDerivedFrontCollision)
+  // currently invalidates the whole key SILENTLY (zero cards, no lint). It
+  // must fire an error-level lint naming the note, same message shape as the
+  // other invalid-`test:`-value lints above.
+  // -------------------------------------------------------------------------
+
+  describe("derived-front collision fires an error-level lint naming the note (WI-12 fix)", () => {
+    it("an authored cue exactly equal to the note title collides with the reserved `title` item — zero cards AND an error lint", () => {
+      const md = note(
+        ["test:", "  - title", `  - "${NOTE_TITLE}"`],
+        [FIRST_PARAGRAPH],
+      );
+      const result = extract(md);
+
+      expect(atomicCards(result)).toHaveLength(0);
+      const errorLints = lintsOf(result).filter((l) => /error/i.test(l));
+      expect(errorLints.length).toBeGreaterThan(0);
+      expect(errorLints.some((l) => l.includes(NOTE_PATH))).toBe(true);
+    });
+  });
 });
