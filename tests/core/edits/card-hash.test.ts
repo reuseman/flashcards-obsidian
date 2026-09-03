@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 
-import { computeCardHash, computeCueHash } from "../../../src/core/edits/card-hash.js";
+import {
+  computeCardHash,
+  computeCueHash,
+  computeRenderedFieldsHash,
+} from "../../../src/core/edits/card-hash.js";
 import type { Flashcard } from "../../../src/core/domain/card.js";
 
 /**
@@ -137,6 +141,24 @@ describe("computeCardHash — sensitivity", () => {
       source: { endOffset: 9999, line: 42, startOffset: 1234, syntax: "fenced" },
     }));
     expect(a).toBe(b);
+  });
+});
+
+describe("computeRenderedFieldsHash", () => {
+  test("is stable when Anki returns fields in a different key order", () => {
+    expect(
+      computeRenderedFieldsHash({ Front: "Q", Back: "A", Source: "S" }),
+    ).toBe(
+      computeRenderedFieldsHash({ Source: "S", Back: "A", Front: "Q" }),
+    );
+  });
+
+  test("changes when a rendered field is edited", () => {
+    expect(
+      computeRenderedFieldsHash({ Front: "Q", Back: "A", Source: "S" }),
+    ).not.toBe(
+      computeRenderedFieldsHash({ Front: "manual edit", Back: "A", Source: "S" }),
+    );
   });
 });
 

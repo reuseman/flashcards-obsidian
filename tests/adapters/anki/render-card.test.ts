@@ -29,9 +29,8 @@ import {
  *     than an exact string. Inline `<code>` is more stable so we assert
  *     exactly `<code>x</code>`.
  *
- *  3. `<a>` Source tag: exactly `<a href="<URL>">Open in Obsidian</a>` —
- *     double-quoted href, no other attributes, attribute order trivially
- *     determined since there is only one attr. Locked.
+ *  3. The Source field contains one link with an action and a visible relative
+ *     path. The path omits the final `.md` and is escaped as HTML. Locked.
  *
  *  4. Multi-line cloze (cloze body spans `\n`): NOT supported. The regex
  *     must be single-line (`.+?`, not `[\s\S]+?`). Locked with a negative
@@ -70,6 +69,20 @@ describe("getAnkiModelSpecs", () => {
     expect(getAnkiModelSpecs()).toHaveLength(3);
   });
 
+  it("wraps long code in the default CSS for every new managed model", () => {
+    for (const spec of getAnkiModelSpecs()) {
+      expect(spec.css).toContain("white-space: pre-wrap");
+      expect(spec.css).toContain("overflow-wrap: anywhere");
+    }
+  });
+
+  it("styles the Source action and path for every new managed model", () => {
+    for (const spec of getAnkiModelSpecs()) {
+      expect(spec.css).toContain(".flashcards-source-action");
+      expect(spec.css).toContain(".flashcards-source-path");
+    }
+  });
+
   it("model names match the exported constants", () => {
     const names = getAnkiModelSpecs().map((s) => s.modelName);
     expect(names).toEqual(
@@ -91,9 +104,11 @@ describe("getAnkiModelSpecs", () => {
     expect(spec.inOrderFields).toEqual(["Front", "Back", "Source"]);
     expect(spec.isCloze).toBe(false);
     expect(spec.cardTemplates).toHaveLength(1);
-    expect(spec.cardTemplates[0]!.Front).toBe("{{Front}}");
+    expect(spec.cardTemplates[0]!.Front).toBe(
+      '<section class="flashcards-question">{{Front}}</section>',
+    );
     expect(spec.cardTemplates[0]!.Back).toBe(
-      "{{FrontSide}}<hr id=answer>{{Back}}<br><br>{{Source}}",
+      '{{FrontSide}}<hr id="answer" class="flashcards-answer-divider"><section class="flashcards-answer">{{Back}}</section><footer class="flashcards-source-footer">{{Source}}</footer>',
     );
   });
 
@@ -104,13 +119,17 @@ describe("getAnkiModelSpecs", () => {
     expect(spec.inOrderFields).toEqual(["Front", "Back", "Source"]);
     expect(spec.isCloze).toBe(false);
     expect(spec.cardTemplates).toHaveLength(2);
-    expect(spec.cardTemplates[0]!.Front).toBe("{{Front}}");
-    expect(spec.cardTemplates[0]!.Back).toBe(
-      "{{FrontSide}}<hr id=answer>{{Back}}<br><br>{{Source}}",
+    expect(spec.cardTemplates[0]!.Front).toBe(
+      '<section class="flashcards-question">{{Front}}</section>',
     );
-    expect(spec.cardTemplates[1]!.Front).toBe("{{Back}}");
+    expect(spec.cardTemplates[0]!.Back).toBe(
+      '{{FrontSide}}<hr id="answer" class="flashcards-answer-divider"><section class="flashcards-answer">{{Back}}</section><footer class="flashcards-source-footer">{{Source}}</footer>',
+    );
+    expect(spec.cardTemplates[1]!.Front).toBe(
+      '<section class="flashcards-question">{{Back}}</section>',
+    );
     expect(spec.cardTemplates[1]!.Back).toBe(
-      "{{FrontSide}}<hr id=answer>{{Front}}<br><br>{{Source}}",
+      '{{FrontSide}}<hr id="answer" class="flashcards-answer-divider"><section class="flashcards-answer">{{Front}}</section><footer class="flashcards-source-footer">{{Source}}</footer>',
     );
   });
 
@@ -121,9 +140,11 @@ describe("getAnkiModelSpecs", () => {
     expect(spec.inOrderFields).toEqual(["Text", "Extra", "Source"]);
     expect(spec.isCloze).toBe(true);
     expect(spec.cardTemplates).toHaveLength(1);
-    expect(spec.cardTemplates[0]!.Front).toBe("{{cloze:Text}}");
+    expect(spec.cardTemplates[0]!.Front).toBe(
+      '<section class="flashcards-question">{{cloze:Text}}</section>',
+    );
     expect(spec.cardTemplates[0]!.Back).toBe(
-      "{{cloze:Text}}<br>{{Extra}}<br><br>{{Source}}",
+      '<section class="flashcards-question">{{cloze:Text}}</section>{{#Extra}}<hr id="answer" class="flashcards-answer-divider"><section class="flashcards-answer">{{Extra}}</section>{{/Extra}}<footer class="flashcards-source-footer">{{Source}}</footer>',
     );
   });
 
@@ -188,14 +209,28 @@ describe("renderCardForAnki — Source URL & link HTML", () => {
     expect(out.fields.Source).toContain("#%5E1714123456789");
   });
 
-  it("emits exactly `<a href=\"<URL>\">Open in Obsidian</a>`", () => {
+  it("shows the action and relative note path without the `.md` extension", () => {
     const out = renderCardForAnki(baseCard({ blockId: "q-abcd" }), {
       ...CTX,
-      notePath: "Note.md",
+      notePath: "scenarios/auto-fixes/08-accepted-features.md",
       vaultName: "V",
     });
     expect(out.fields.Source).toBe(
-      '<a href="obsidian://open?vault=V&file=Note.md#%5Eq-abcd">Open in Obsidian</a>',
+      '<a class="flashcards-source" href="obsidian://open?vault=V&file=scenarios%2Fauto-fixes%2F08-accepted-features.md#%5Eq-abcd"><span class="flashcards-source-action">Edit source in Obsidian ↗</span><br><small class="flashcards-source-path">scenarios/auto-fixes/08-accepted-features</small></a>',
+    );
+  });
+
+  it("escapes the visible note path without changing its encoded target", () => {
+    const out = renderCardForAnki(baseCard({ blockId: "q-abcd" }), {
+      ...CTX,
+      notePath: "Research/R&D <draft>.md",
+      vaultName: "V",
+    });
+    expect(out.fields.Source).toContain(
+      "file=Research%2FR%26D%20%3Cdraft%3E.md",
+    );
+    expect(out.fields.Source).toContain(
+      '<small class="flashcards-source-path">Research/R&amp;D &lt;draft&gt;</small>',
     );
   });
 
@@ -205,7 +240,9 @@ describe("renderCardForAnki — Source URL & link HTML", () => {
       vaultName: "",
     });
     expect(out.fields.Source).toContain("vault=&");
-    expect(out.fields.Source).toMatch(/^<a href="obsidian:\/\/open\?vault=&/);
+    expect(out.fields.Source).toMatch(
+      /^<a class="flashcards-source" href="obsidian:\/\/open\?vault=&/,
+    );
   });
 });
 
@@ -238,6 +275,20 @@ describe("renderCardForAnki — basic card markdown→HTML", () => {
       CTX,
     );
     expect(out.fields.Front).toContain("<del>old</del>");
+  });
+
+  it("renders callouts as blockquotes without leaking the control marker", () => {
+    const out = renderCardForAnki(
+      baseCard({
+        answer: ["> [!quote] Readwise", "> Highlight text"].join("\n"),
+      }),
+      CTX,
+    );
+
+    expect(out.fields.Back).toContain("<blockquote>");
+    expect(out.fields.Back).toContain("Readwise");
+    expect(out.fields.Back).toContain("Highlight text");
+    expect(out.fields.Back).not.toContain("[!quote]");
   });
 
   it("passes deckName and tags through verbatim", () => {
@@ -287,6 +338,17 @@ describe("renderCardForAnki — cloze conversion", () => {
     expect(out.fields.Text).not.toContain("==word==");
   });
 
+  it("can leave highlights as Markdown while still converting explicit clozes", () => {
+    const out = renderCardForAnki(
+      clozeCard("keep ==highlight== and hide {2:answer}"),
+      { ...CTX, highlightClozeEnabled: false },
+    );
+
+    expect(out.fields.Text).toContain("==highlight==");
+    expect(out.fields.Text).toContain("{{c2::answer}}");
+    expect(out.fields.Text).not.toContain("{{c1::highlight}}");
+  });
+
   it("two `==a== ==b==` → c1, c2", () => {
     const out = renderCardForAnki(clozeCard("==a== ==b=="), CTX);
     expect(out.fields.Text).toContain("{{c1::a}}");
@@ -313,6 +375,23 @@ describe("renderCardForAnki — cloze conversion", () => {
     const out = renderCardForAnki(clozeCard("{1:a} ==b=="), CTX);
     expect(out.fields.Text).toContain("{{c1::a}}");
     expect(out.fields.Text).toContain("{{c1::b}}");
+  });
+
+  it("preserves balanced LaTeX braces inside a numbered cloze", () => {
+    const out = renderCardForAnki(
+      clozeCard("First $a+b$, then {1:$c^{2}+d$}, then $e+f$."),
+      CTX,
+    );
+
+    expect(out.fields.Text).toContain(String.raw`\(a+b\)`);
+    expect(out.fields.Text).toContain(String.raw`{{c1::\(c^{2}+d\)}}`);
+    expect(out.fields.Text).toContain(String.raw`\(e+f\)`);
+    expect(out.fields.Text).not.toContain("<em>");
+  });
+
+  it("leaves native Anki cloze syntax unchanged", () => {
+    const out = renderCardForAnki(clozeCard("{{c2::x^{2}}}"), CTX);
+    expect(out.fields.Text).toContain("{{c2::x^{2}}}");
   });
 
   it("cloze markers survive the rehype pipeline as literal `{{cN::...}}` (NOT HTML-entity-escaped)", () => {
@@ -509,13 +588,13 @@ describe("renderCardForAnki — wikilink rewriting", () => {
     expect(out.fields.Front).not.toContain("[[Note]]");
   });
 
-  it("Source field is unaffected by the rewriter — still the `Open in Obsidian` anchor", () => {
+  it("Source field is unaffected by the wikilink rewriter", () => {
     const out = renderCardForAnki(
       baseCard({ answer: "A", front: "[[Note]]", blockId: "q-abcd" }),
       withResolver(identityResolver),
     );
     expect(out.fields.Source).toBe(
-      '<a href="obsidian://open?vault=MyVault&file=Note.md#%5Eq-abcd">Open in Obsidian</a>',
+      '<a class="flashcards-source" href="obsidian://open?vault=MyVault&file=Note.md#%5Eq-abcd"><span class="flashcards-source-action">Edit source in Obsidian ↗</span><br><small class="flashcards-source-path">Note</small></a>',
     );
   });
 });

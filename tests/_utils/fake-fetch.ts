@@ -58,7 +58,7 @@ export function makeFakeFetch(
           error: null,
           result: notes
             .filter((nid): nid is number => typeof nid === "number")
-            .map((noteId) => ({ noteId })),
+            .map((noteId) => ({ noteId, tags: ["obsidian"] })),
         }),
         ok: true,
         status: 200,

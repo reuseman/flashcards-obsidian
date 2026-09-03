@@ -18,6 +18,7 @@ export interface CreateOpResult {
   op: CreateOp;
   status: "ok" | "failed";
   nid?: number;
+  syncHash?: string;
   error?: string;
 }
 
@@ -25,6 +26,7 @@ export interface UpdateOpResult {
   op: UpdateOp;
   status: "ok" | "failed";
   nid?: number;
+  syncHash?: string;
   error?: string;
 }
 

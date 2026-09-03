@@ -1,12 +1,20 @@
 import rehypeRaw from "rehype-raw";
 import rehypeStringify from "rehype-stringify";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import { unified } from "unified";
 import type { AnkiCreateModelSpec } from "../sync/anki-contract.js";
 import type { IdentifiedFlashcard } from "../domain/card.js";
 import { rewriteWikilinks } from "./rewrite-wikilinks.js";
+import { renderClozeForAnki } from "../parse/cloze-syntax.js";
+import {
+  collectProtectedMarkdownSpans,
+  parseMarkdownTree,
+} from "../parse/markdown-tree.js";
+import type { Nodes, Parent, Root } from "mdast";
+import { visit } from "unist-util-visit";
 
 // Names match v1 (lowercase) so v2 can extend the existing models in-place
 // instead of creating parallel ones. Anki treats model names case-insensitively
@@ -17,12 +25,172 @@ export const ANKI_MODEL_BASIC = "Obsidian-basic";
 export const ANKI_MODEL_REVERSED = "Obsidian-basic-reversed";
 export const ANKI_MODEL_CLOZE = "Obsidian-cloze";
 
-const DEFAULT_CSS =
-  ".card {\n font-family: arial;\n font-size: 20px;\n text-align: center;\n color: black;\n background-color: white;\n}\n";
+const DEFAULT_CSS = `/* flashcards-obsidian-managed:start */
+.card {
+  --flashcards-accent: #7056b3;
+  --flashcards-accent-soft: #eee9fb;
+  --flashcards-background: #f8f8f6;
+  --flashcards-border: #deded9;
+  --flashcards-code-background: #eeeeeb;
+  --flashcards-muted: #6f716d;
+  --flashcards-text: #20221f;
+  margin: 0;
+  padding: clamp(1.5rem, 6vw, 3rem);
+  background: var(--flashcards-background);
+  color: var(--flashcards-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 20px;
+  line-height: 1.58;
+  text-align: left;
+}
 
-const BACK_TEMPLATE = "{{FrontSide}}<hr id=answer>{{Back}}<br><br>{{Source}}";
+.nightMode,
+.nightMode .card,
+.night_mode .card {
+  --flashcards-accent: #bda8ff;
+  --flashcards-accent-soft: #302a44;
+  --flashcards-background: #171816;
+  --flashcards-border: #3b3d39;
+  --flashcards-code-background: #242522;
+  --flashcards-muted: #a7aaa3;
+  --flashcards-text: #f0f1ed;
+}
+
+.flashcards-question,
+.flashcards-answer,
+.flashcards-source-footer,
+.flashcards-answer-divider {
+  width: min(100%, 700px);
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.flashcards-question {
+  font-size: 1.18em;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1.4;
+}
+
+.flashcards-answer-divider {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+  border: 0;
+  border-top: 2px solid var(--flashcards-accent);
+}
+
+.flashcards-source-footer {
+  margin-top: 2.4rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--flashcards-border);
+}
+
+.flashcards-source {
+  display: inline-flex;
+  max-width: 100%;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--flashcards-border);
+  border-radius: 0.45rem;
+  color: var(--flashcards-text);
+  text-decoration: none;
+}
+
+.flashcards-source:hover,
+.flashcards-source:focus {
+  border-color: var(--flashcards-accent);
+}
+
+.flashcards-source br {
+  display: none;
+}
+
+.flashcards-source-action {
+  color: var(--flashcards-accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.flashcards-source-path {
+  color: var(--flashcards-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.67rem;
+  overflow-wrap: anywhere;
+}
+
+.cloze {
+  padding: 0.05em 0.22em;
+  border-radius: 0.25em;
+  background: var(--flashcards-accent-soft);
+  color: var(--flashcards-accent);
+  font-weight: 700;
+}
+
+pre {
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--flashcards-border);
+  border-radius: 0.5rem;
+  background: var(--flashcards-code-background);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.88em;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--flashcards-border);
+}
+
+blockquote {
+  margin-left: 0;
+  padding-left: 1rem;
+  border-left: 3px solid var(--flashcards-border);
+  color: var(--flashcards-muted);
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: 1.25rem;
+    font-size: 18px;
+  }
+}
+/* flashcards-obsidian-managed:end */
+`;
+
+const BASIC_FRONT_TEMPLATE =
+  '<section class="flashcards-question">{{Front}}</section>';
+const BASIC_BACK_TEMPLATE =
+  '{{FrontSide}}<hr id="answer" class="flashcards-answer-divider"><section class="flashcards-answer">{{Back}}</section><footer class="flashcards-source-footer">{{Source}}</footer>';
+const REVERSED_FRONT_TEMPLATE =
+  '<section class="flashcards-question">{{Back}}</section>';
+const REVERSED_BACK_TEMPLATE =
+  '{{FrontSide}}<hr id="answer" class="flashcards-answer-divider"><section class="flashcards-answer">{{Front}}</section><footer class="flashcards-source-footer">{{Source}}</footer>';
+const CLOZE_FRONT_TEMPLATE =
+  '<section class="flashcards-question">{{cloze:Text}}</section>';
+const CLOZE_BACK_TEMPLATE =
+  '<section class="flashcards-question">{{cloze:Text}}</section>{{#Extra}}<hr id="answer" class="flashcards-answer-divider"><section class="flashcards-answer">{{Extra}}</section>{{/Extra}}<footer class="flashcards-source-footer">{{Source}}</footer>';
 
 export interface RenderContext {
+  /** Convert `==text==` to an Anki cloze. Default: true. */
+  highlightClozeEnabled?: boolean;
   deckName: string;
   notePath: string;
   tags: string[];
@@ -57,7 +225,13 @@ export function getAnkiModelSpecs(): AnkiCreateModelSpec[] {
       inOrderFields: ["Front", "Back", "Source"],
       isCloze: false,
       css: DEFAULT_CSS,
-      cardTemplates: [{ Name: "Card 1", Front: "{{Front}}", Back: BACK_TEMPLATE }],
+      cardTemplates: [
+        {
+          Name: "Card 1",
+          Front: BASIC_FRONT_TEMPLATE,
+          Back: BASIC_BACK_TEMPLATE,
+        },
+      ],
     },
     {
       modelName: ANKI_MODEL_REVERSED,
@@ -65,11 +239,15 @@ export function getAnkiModelSpecs(): AnkiCreateModelSpec[] {
       isCloze: false,
       css: DEFAULT_CSS,
       cardTemplates: [
-        { Name: "Card 1", Front: "{{Front}}", Back: BACK_TEMPLATE },
+        {
+          Name: "Card 1",
+          Front: BASIC_FRONT_TEMPLATE,
+          Back: BASIC_BACK_TEMPLATE,
+        },
         {
           Name: "Card 2",
-          Front: "{{Back}}",
-          Back: "{{FrontSide}}<hr id=answer>{{Front}}<br><br>{{Source}}",
+          Front: REVERSED_FRONT_TEMPLATE,
+          Back: REVERSED_BACK_TEMPLATE,
         },
       ],
     },
@@ -81,32 +259,68 @@ export function getAnkiModelSpecs(): AnkiCreateModelSpec[] {
       cardTemplates: [
         {
           Name: "Card 1",
-          Front: "{{cloze:Text}}",
-          Back: "{{cloze:Text}}<br>{{Extra}}<br><br>{{Source}}",
+          Front: CLOZE_FRONT_TEMPLATE,
+          Back: CLOZE_BACK_TEMPLATE,
         },
       ],
     },
   ];
 }
 
-/**
- * Single-pass cloze conversion.
- * `==x==` → `{{c<auto++>::x}}`. `{N:x}` → `{{cN::x}}` (no counter bump).
- * Single-line only (`.+?`).
- */
-function convertCloze(src: string): string {
-  let counter = 1;
-  return src.replace(/==(.+?)==|\{(\d+):(.+?)\}/g, (_m, autoBody, n, expBody) => {
-    if (autoBody !== undefined) {
-      return `{{c${counter++}::${autoBody}}}`;
-    }
-    return `{{c${n}::${expBody}}}`;
+/** Shared strict cloze grammar; Markdown code and math nodes stay opaque. */
+function convertCloze(src: string, highlightClozeEnabled: boolean): string {
+  const tree = parseMarkdownTree(src);
+  return renderClozeForAnki(src, collectProtectedMarkdownSpans(tree), {
+    auto: highlightClozeEnabled,
   });
+}
+
+function remarkMathToAnki() {
+  return (tree: Root): void => {
+    visit(tree, (node: Nodes, index, parent) => {
+      if (
+        (node.type !== "inlineMath" && node.type !== "math") ||
+        index === undefined ||
+        parent === undefined
+      ) return;
+
+      const delimiter = node.type === "inlineMath" ? ["\\(", "\\)"] : ["\\[", "\\]"];
+      (parent as Parent).children[index] = {
+        type: "text",
+        value: `${delimiter[0]}${node.value}${delimiter[1]}`,
+      };
+    });
+  };
+}
+
+function remarkCalloutsToAnki() {
+  return (tree: Root): void => {
+    visit(tree, "blockquote", (node) => {
+      const first = node.children[0];
+      if (first?.type !== "paragraph") return;
+      const firstText = first.children[0];
+      if (firstText?.type !== "text") return;
+      const cleaned = firstText.value.replace(
+        /^\[![^\]\r\n]+\][+-]?[ \t]*(?::[ \t]*)?/,
+        "",
+      );
+      if (cleaned === firstText.value) return;
+      if (cleaned.length > 0) {
+        firstText.value = cleaned;
+        return;
+      }
+      first.children.shift();
+      if (first.children.length === 0) node.children.shift();
+    });
+  };
 }
 
 const processor = unified()
   .use(remarkParse)
+  .use(remarkMath)
   .use(remarkGfm)
+  .use(remarkCalloutsToAnki)
+  .use(remarkMathToAnki)
   .use(remarkRehype, { allowDangerousHtml: true })
   .use(rehypeRaw)
   .use(rehypeStringify, { characterReferences: { useNamedReferences: true } });
@@ -121,7 +335,19 @@ function buildSourceLink(ctx: RenderContext, blockId: string): string {
   const file = encodeURIComponent(ctx.notePath);
   const frag = encodeURIComponent(blockId);
   const url = `obsidian://open?vault=${vault}&file=${file}#%5E${frag}`;
-  return `<a href="${url}">Open in Obsidian</a>`;
+  const path = escapeHtml(ctx.notePath.replace(/\.md$/i, ""));
+  return `<a class="flashcards-source" href="${url}"><span class="flashcards-source-action">Edit source in Obsidian ↗</span><br><small class="flashcards-source-path">${path}</small></a>`;
+}
+
+function escapeHtml(value: string): string {
+  const replacements: Record<string, string> = {
+    "&": "&amp;",
+    "'": "&#39;",
+    '"': "&quot;",
+    "<": "&lt;",
+    ">": "&gt;",
+  };
+  return value.replace(/[&<>"']/g, (character) => replacements[character]!);
 }
 
 export function renderCardForAnki(
@@ -141,7 +367,9 @@ export function renderCardForAnki(
         });
 
   if (card.kind === "cloze") {
-    const text = md(convertCloze(rewrite(card.front)));
+    const text = md(
+      convertCloze(rewrite(card.front), ctx.highlightClozeEnabled ?? true),
+    );
     const extra = card.answer === "" ? "" : md(rewrite(card.answer));
     return {
       deckName: ctx.deckName,

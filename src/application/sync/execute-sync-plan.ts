@@ -9,6 +9,11 @@ import {
 import type { ExecuteSyncPlanResult } from "../../core/sync/sync-execution.js";
 import type { IdentifiedFlashcard } from "../../core/domain/card.js";
 import { NoopLogger, type Logger } from "../../core/logging/logger.js";
+import { computeRenderedFieldsHash } from "../../core/edits/card-hash.js";
+import {
+  desiredAnkiTags,
+  diffTags,
+} from "../../core/sync/tag-ownership.js";
 
 const REQUIRED_MODELS = [
   ANKI_MODEL_BASIC,
@@ -22,12 +27,14 @@ function errorMessage(e: unknown): string {
 
 function renderFor(
   card: IdentifiedFlashcard,
+  highlightClozeEnabled: boolean,
   notePath: string,
   vaultName: string,
   resolveLink: ((target: string, sourcePath: string) => string | null) | undefined,
 ) {
   return renderCardForAnki(card, {
     deckName: card.deckName ?? "",
+    highlightClozeEnabled,
     notePath,
     tags: card.tags,
     vaultName,
@@ -42,7 +49,14 @@ function crossesClozeBoundary(fromModel: string, toModel: string): boolean {
 export async function executeSyncPlan(
   input: ExecuteSyncPlanInput,
 ): Promise<ExecuteSyncPlanResult> {
-  const { client, notePath, plan, resolveLink, vaultName } = input;
+  const {
+    client,
+    highlightClozeEnabled = true,
+    notePath,
+    plan,
+    resolveLink,
+    vaultName,
+  } = input;
   const logger: Logger = input.logger ?? new NoopLogger();
 
   logger.debug("executeSyncPlan start", {
@@ -64,9 +78,9 @@ export async function executeSyncPlan(
   // 2. Bootstrap models — create-if-missing, otherwise extend-in-place.
   // Anki model names are case-insensitive for uniqueness; we use v1's lowercase
   // names so a profile carrying v1 models gets upgraded rather than duplicated.
-  // Upgrade path: add the `Source` field if absent, then rewrite card templates
-  // so `{{Source}}` actually renders. CSS is left alone (may be user-customized)
-  // — CSS migration is a separate pipeline step (see backlog).
+  // Upgrade path: add the `Source` field if absent, then append the field to
+  // the existing templates without replacing their HTML. Replacing templates
+  // and CSS is available only through the explicit, backed-up style command.
   const existingModels = await client.modelNames();
   const existingModelSet = new Set(existingModels);
   const specs = getAnkiModelSpecs();
@@ -84,13 +98,20 @@ export async function executeSyncPlan(
         model: name,
         existingFields: fields,
       });
+      const templates = await client.modelTemplates(name);
       await client.modelFieldAdd(name, "Source", fields.length);
-      const templates: Record<string, { Front: string; Back: string }> = {};
-      for (const tpl of spec.cardTemplates) {
-        const tplName = tpl.Name ?? "Card 1";
-        templates[tplName] = { Front: tpl.Front, Back: tpl.Back };
-      }
-      await client.updateModelTemplates(name, templates);
+      const withSource = Object.fromEntries(
+        Object.entries(templates).map(([templateName, template]) => [
+          templateName,
+          template.Back.includes("{{Source}}")
+            ? template
+            : {
+                Back: `${template.Back}\n<br><br>{{Source}}`,
+                Front: template.Front,
+              },
+        ]),
+      );
+      await client.updateModelTemplates(name, withSource);
     } else {
       logger.debug("bootstrap: model already v2-shaped", { model: name });
     }
@@ -134,7 +155,13 @@ export async function executeSyncPlan(
   // 4. CREATE ops.
   for (const op of plan.create) {
     try {
-      const rendered = renderFor(op.card, notePath, vaultName, resolveLink);
+      const rendered = renderFor(
+        op.card,
+        highlightClozeEnabled,
+        notePath,
+        vaultName,
+        resolveLink,
+      );
       const nid = await client.addNote({
         deckName: rendered.deckName,
         modelName: rendered.modelName,
@@ -149,7 +176,12 @@ export async function executeSyncPlan(
         result.creates.push({ op, status: "failed", error: "addNote returned null" });
       } else {
         logger.debug("CREATE ok", { blockId: op.card.blockId, nid });
-        result.creates.push({ op, status: "ok", nid });
+        result.creates.push({
+          nid,
+          op,
+          status: "ok",
+          syncHash: computeRenderedFieldsHash(rendered.fields),
+        });
       }
     } catch (e) {
       const msg = errorMessage(e);
@@ -161,18 +193,25 @@ export async function executeSyncPlan(
   // 5. UPDATE ops.
   for (const op of plan.update) {
     try {
-      const rendered = renderFor(op.card, notePath, vaultName, resolveLink);
+      const rendered = renderFor(
+        op.card,
+        highlightClozeEnabled,
+        notePath,
+        vaultName,
+        resolveLink,
+      );
       const existing = op.existing;
+      const targetTags = desiredAnkiTags(
+        rendered.tags,
+        existing?.tags ?? [],
+      );
 
       if (op.recreate) {
         const replacementNid = await client.addNote({
           deckName: rendered.deckName,
           modelName: rendered.modelName,
           fields: rendered.fields,
-          // Tag ownership is intentionally undecided. Recreation therefore
-          // preserves the live Anki tags exactly instead of treating source
-          // tags as authoritative.
-          tags: existing?.tags ?? rendered.tags,
+          tags: targetTags,
         });
         if (replacementNid === null) {
           throw new Error("addNote returned null");
@@ -196,7 +235,12 @@ export async function executeSyncPlan(
           nid: op.nid,
           replacementNid,
         });
-        result.updates.push({ op, status: "ok", nid: replacementNid });
+        result.updates.push({
+          nid: replacementNid,
+          op,
+          status: "ok",
+          syncHash: computeRenderedFieldsHash(rendered.fields),
+        });
         continue;
       }
 
@@ -214,10 +258,25 @@ export async function executeSyncPlan(
           op.nid,
           rendered.modelName,
           rendered.fields,
-          existing.tags,
+          targetTags,
         );
-      } else if (op.oldHash !== op.newHash) {
+      } else if (
+        op.oldHash !== op.newHash ||
+        (existing?.fields !== undefined &&
+          computeRenderedFieldsHash(existing.fields) !==
+            computeRenderedFieldsHash(rendered.fields))
+      ) {
         await client.updateNoteFields(op.nid, rendered.fields);
+      }
+
+      if (existing !== undefined && !modelMismatch) {
+        const tagChanges = diffTags(existing.tags, targetTags);
+        if (tagChanges.remove.length > 0) {
+          await client.removeTags([op.nid], tagChanges.remove);
+        }
+        if (tagChanges.add.length > 0) {
+          await client.addTags([op.nid], tagChanges.add);
+        }
       }
 
       const deckMismatch = existing?.cards.some(
@@ -238,7 +297,11 @@ export async function executeSyncPlan(
         }
       }
       logger.debug("UPDATE ok", { blockId: op.card.blockId, nid: op.nid });
-      result.updates.push({ op, status: "ok" });
+      result.updates.push({
+        op,
+        status: "ok",
+        syncHash: computeRenderedFieldsHash(rendered.fields),
+      });
     } catch (e) {
       const msg = errorMessage(e);
       logger.warn("UPDATE failed", { blockId: op.card.blockId, nid: op.nid, error: msg });

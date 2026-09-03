@@ -1,5 +1,8 @@
 import type { AnkiGateway } from "../ports.js";
-import { computeCardHash } from "../../core/edits/card-hash.js";
+import {
+  computeCardHash,
+  computeRenderedFieldsHash,
+} from "../../core/edits/card-hash.js";
 import type { IdentifiedFlashcard } from "../../core/domain/card.js";
 import {
   ANKI_MODEL_BASIC,
@@ -13,6 +16,10 @@ import type {
   SyncPlan,
   UpdateOp,
 } from "../../core/sync/sync-plan.js";
+import {
+  desiredAnkiTags,
+  sameTagSet,
+} from "../../core/sync/tag-ownership.js";
 
 export interface ReconcileExistingCardsInput {
   cards: IdentifiedFlashcard[];
@@ -37,6 +44,24 @@ function desiredModel(card: IdentifiedFlashcard): string {
 
 function crossesClozeBoundary(fromModel: string, toModel: string): boolean {
   return (fromModel === ANKI_MODEL_CLOZE) !== (toModel === ANKI_MODEL_CLOZE);
+}
+
+function ownedFieldNames(modelName: string): string[] {
+  return modelName === ANKI_MODEL_CLOZE
+    ? ["Text", "Extra", "Source"]
+    : ["Front", "Back", "Source"];
+}
+
+function readOwnedFields(
+  fields: Record<string, { order?: number; value?: string }> | undefined,
+  modelName: string,
+): Record<string, string> | undefined {
+  if (fields === undefined) return undefined;
+  const out: Record<string, string> = {};
+  for (const name of ownedFieldNames(modelName)) {
+    out[name] = fields[name]?.value ?? "";
+  }
+  return out;
 }
 
 /**
@@ -123,9 +148,18 @@ export async function reconcileExistingCards(
       (existingCard) => existingCard.deckName !== card.deckName,
     );
     const modelMismatch = currentModel !== targetModel;
+    const liveFields = readOwnedFields(noteInfo.fields, currentModel);
+    const fieldMismatch =
+      liveFields !== undefined &&
+      entry?.sync !== computeRenderedFieldsHash(liveFields);
+    const liveTags = Array.isArray(noteInfo.tags) ? [...noteInfo.tags] : [];
+    const tagMismatch = !sameTagSet(
+      liveTags,
+      desiredAnkiTags(card.tags, liveTags),
+    );
     let update = plan.update.find((op) => op.card.blockId === card.blockId);
 
-    if (!update && (deckMismatch || modelMismatch)) {
+    if (!update && (deckMismatch || modelMismatch || tagMismatch || fieldMismatch)) {
       const hash = computeCardHash(card);
       update = {
         card,
@@ -139,8 +173,9 @@ export async function reconcileExistingCards(
     if (!update) continue;
     update.existing = {
       cards: existingCards,
+      ...(liveFields !== undefined ? { fields: liveFields } : {}),
       modelName: currentModel,
-      tags: Array.isArray(noteInfo.tags) ? [...noteInfo.tags] : [],
+      tags: liveTags,
     };
 
     if (modelMismatch && crossesClozeBoundary(currentModel, targetModel)) {

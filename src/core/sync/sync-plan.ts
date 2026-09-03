@@ -21,6 +21,7 @@ export interface ExistingAnkiCard {
 
 export interface ExistingAnkiNote {
   cards: ExistingAnkiCard[];
+  fields?: Record<string, string>;
   modelName: string;
   tags: string[];
 }

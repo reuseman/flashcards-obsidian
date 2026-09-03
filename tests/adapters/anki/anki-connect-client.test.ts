@@ -214,6 +214,60 @@ describe("AnkiConnectClient — modelNames()", () => {
   });
 });
 
+describe("AnkiConnectClient — modelTemplates()", () => {
+  it("returns the current Front and Back HTML for every card template", async () => {
+    const templates = {
+      "Front / Back": {
+        Back: "{{FrontSide}}<hr>{{Back}}",
+        Front: "{{Front}}",
+      },
+    };
+    const { calls, fetch } = makeFakeFetch([okBody(templates)]);
+    const client = new AnkiConnectClient({ fetch });
+
+    await expect(client.modelTemplates("Obsidian-basic")).resolves.toEqual(
+      templates,
+    );
+    const body = calls[0]!.body as Record<string, unknown>;
+    expect(body.action).toBe("modelTemplates");
+    expect(body.params).toEqual({ modelName: "Obsidian-basic" });
+  });
+});
+
+describe("AnkiConnectClient — model styling", () => {
+  it("reads the current model CSS", async () => {
+    const { calls, fetch } = makeFakeFetch([okBody({ css: ".card {}" })]);
+    const client = new AnkiConnectClient({ fetch });
+
+    await expect(client.modelStyling("Obsidian-basic")).resolves.toEqual({
+      css: ".card {}",
+    });
+    expect(calls[0]?.body).toEqual({
+      action: "modelStyling",
+      params: { modelName: "Obsidian-basic" },
+      version: 6,
+    });
+  });
+
+  it("updates model CSS using AnkiConnect's model envelope", async () => {
+    const { calls, fetch } = makeFakeFetch([okBody(null)]);
+    const client = new AnkiConnectClient({ fetch });
+
+    await client.updateModelStyling("Obsidian-basic", ".card { color: red; }");
+
+    expect(calls[0]?.body).toEqual({
+      action: "updateModelStyling",
+      params: {
+        model: {
+          css: ".card { color: red; }",
+          name: "Obsidian-basic",
+        },
+      },
+      version: 6,
+    });
+  });
+});
+
 describe("AnkiConnectClient — createModel()", () => {
   it("forwards the spec verbatim as params and returns whatever Anki returns", async () => {
     const { calls, fetch } = makeFakeFetch([okBody({ id: 9999 })]);
@@ -353,6 +407,27 @@ describe("AnkiConnectClient — existing-note operations", () => {
         },
       },
     });
+  });
+
+  it("adds and removes note tags with AnkiConnect's space-separated format", async () => {
+    const { calls, fetch } = makeFakeFetch([okBody(null), okBody(null)]);
+    const client = new AnkiConnectClient({ fetch });
+
+    await client.removeTags([1714], ["manual", "old"]);
+    await client.addTags([1714], ["source", "nested::tag"]);
+
+    expect(calls.map((call) => call.body)).toEqual([
+      {
+        action: "removeTags",
+        params: { notes: [1714], tags: "manual old" },
+        version: 6,
+      },
+      {
+        action: "addTags",
+        params: { notes: [1714], tags: "source nested::tag" },
+        version: 6,
+      },
+    ]);
   });
 
   it("moves every supplied card to the requested deck", async () => {

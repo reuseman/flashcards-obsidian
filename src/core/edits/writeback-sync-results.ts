@@ -46,6 +46,7 @@ interface ExistingEntry {
   lineEnd: number;
   lineStart: number;
   nid: number | undefined;
+  sync: string | undefined;
   // Byte range of the value portion (after `key: `, before trailing newline).
   valueEnd: number;
   valueStart: number;
@@ -61,6 +62,7 @@ interface DesiredEntry {
   cue?: string;
   hash: string;
   nid: number;
+  sync?: string;
 }
 
 export function writebackSyncResults(
@@ -101,7 +103,12 @@ export function writebackSyncResults(
         : undefined;
     desired.set(blockId, {
       kind: "set",
-      entry: { ...(cue !== undefined ? { cue } : {}), hash: r.op.hash, nid: r.nid! },
+      entry: {
+        ...(cue !== undefined ? { cue } : {}),
+        hash: r.op.hash,
+        nid: r.nid!,
+        ...(r.syncHash !== undefined ? { sync: r.syncHash } : {}),
+      },
     });
   }
 
@@ -114,7 +121,16 @@ export function writebackSyncResults(
       // CREATE then UPDATE in one pass: refresh hash, keep CREATE's nid/cue.
       desired.set(blockId, {
         kind: "set",
-        entry: { ...(prior.entry.cue !== undefined ? { cue: prior.entry.cue } : {}), hash: r.op.newHash, nid: prior.entry.nid },
+        entry: {
+          ...(prior.entry.cue !== undefined ? { cue: prior.entry.cue } : {}),
+          hash: r.op.newHash,
+          nid: prior.entry.nid,
+          ...(r.syncHash !== undefined
+            ? { sync: r.syncHash }
+            : prior.entry.sync !== undefined
+              ? { sync: prior.entry.sync }
+              : {}),
+        },
       });
       continue;
     }
@@ -137,7 +153,16 @@ export function writebackSyncResults(
         : ex.cue;
     desired.set(blockId, {
       kind: "set",
-      entry: { ...(cue !== undefined ? { cue } : {}), hash: r.op.newHash, nid },
+      entry: {
+        ...(cue !== undefined ? { cue } : {}),
+        hash: r.op.newHash,
+        nid,
+        ...(r.syncHash !== undefined
+          ? { sync: r.syncHash }
+          : ex.sync !== undefined
+            ? { sync: ex.sync }
+            : {}),
+      },
     });
   }
 
@@ -226,10 +251,11 @@ function isCreateOk(
 }
 
 function renderValue(entry: DesiredEntry): string {
+  const sync = entry.sync !== undefined ? `, sync: ${entry.sync}` : "";
   if (entry.cue !== undefined) {
-    return `{ cue: ${entry.cue}, nid: ${entry.nid}, hash: ${entry.hash} }`;
+    return `{ cue: ${entry.cue}, nid: ${entry.nid}, hash: ${entry.hash}${sync} }`;
   }
-  return `{ nid: ${entry.nid}, hash: ${entry.hash} }`;
+  return `{ nid: ${entry.nid}, hash: ${entry.hash}${sync} }`;
 }
 
 function formatKey(blockId: string): string {
@@ -330,7 +356,7 @@ function collectExistingEntries(
     const valueStart = lineStart + indent.length + keyText.length + 2; // ": "
     const valueEnd = valueStart + value.length;
 
-    const { nid, hash, cue } = parseValue(value);
+    const { nid, hash, cue, sync } = parseValue(value);
 
     out.push({
       blockId,
@@ -339,6 +365,7 @@ function collectExistingEntries(
       lineEnd,
       lineStart,
       nid,
+      sync,
       valueEnd,
       valueStart,
     });
@@ -346,7 +373,12 @@ function collectExistingEntries(
   return out;
 }
 
-function parseValue(value: string): { cue?: string; hash?: string; nid?: number } {
+function parseValue(value: string): {
+  cue?: string;
+  hash?: string;
+  nid?: number;
+  sync?: string;
+} {
   // Object form: `{ ... }`.
   if (value.startsWith("{ ") && value.endsWith(" }")) {
     const inner = value.slice(2, -2);
@@ -354,8 +386,9 @@ function parseValue(value: string): { cue?: string; hash?: string; nid?: number 
     let cue: string | undefined;
     let hash: string | undefined;
     let nid: number | undefined;
+    let sync: string | undefined;
     for (const part of inner.split(", ")) {
-      const kv = /^(cue|hash|nid): (.+)$/.exec(part);
+      const kv = /^(cue|hash|nid|sync): (.+)$/.exec(part);
       if (!kv) return {};
       const k = kv[1]!;
       const v = kv[2]!;
@@ -365,15 +398,24 @@ function parseValue(value: string): { cue?: string; hash?: string; nid?: number 
       } else if (k === "hash") {
         if (!/^[A-Za-z0-9]+$/.test(v)) return {};
         hash = v;
-      } else {
+      } else if (k === "nid") {
         if (!/^\d+$/.test(v)) return {};
         nid = Number.parseInt(v, 10);
+      } else {
+        if (!/^[A-Za-z0-9]+$/.test(v)) return {};
+        sync = v;
       }
     }
-    const out: { cue?: string; hash?: string; nid?: number } = {};
+    const out: {
+      cue?: string;
+      hash?: string;
+      nid?: number;
+      sync?: string;
+    } = {};
     if (cue !== undefined) out.cue = cue;
     if (hash !== undefined) out.hash = hash;
     if (nid !== undefined) out.nid = nid;
+    if (sync !== undefined) out.sync = sync;
     return out;
   }
   // Scalar shorthand: nid only.

@@ -17,6 +17,15 @@ export interface AnkiConnectClientOptions {
   fetch?: typeof fetch;
 }
 
+export type AnkiModelTemplates = Record<
+  string,
+  { Back: string; Front: string }
+>;
+
+export interface AnkiModelStyling {
+  css: string;
+}
+
 export interface AnkiRequest {
   action: string;
   params?: Record<string, unknown>;
@@ -102,6 +111,20 @@ export class AnkiConnectClient implements AnkiGateway {
     });
   }
 
+  modelTemplates(modelName: string): Promise<AnkiModelTemplates> {
+    return this.invoke<AnkiModelTemplates>({
+      action: "modelTemplates",
+      params: { modelName },
+    });
+  }
+
+  modelStyling(modelName: string): Promise<AnkiModelStyling> {
+    return this.invoke<AnkiModelStyling>({
+      action: "modelStyling",
+      params: { modelName },
+    });
+  }
+
   async modelFieldAdd(
     modelName: string,
     fieldName: string,
@@ -123,10 +146,24 @@ export class AnkiConnectClient implements AnkiGateway {
     });
   }
 
+  async updateModelStyling(modelName: string, css: string): Promise<void> {
+    await this.invoke<null>({
+      action: "updateModelStyling",
+      params: { model: { name: modelName, css } },
+    });
+  }
+
   addNote(note: AnkiAddNoteParams): Promise<number | null> {
     return this.invoke<number | null>({
       action: "addNote",
       params: { note },
+    });
+  }
+
+  async addTags(nids: number[], tags: string[]): Promise<void> {
+    await this.invoke<null>({
+      action: "addTags",
+      params: { notes: nids, tags: tags.join(" ") },
     });
   }
 
@@ -148,6 +185,13 @@ export class AnkiConnectClient implements AnkiGateway {
     return this.invoke<AnkiNoteInfo[]>({
       action: "notesInfo",
       params: { notes: nids },
+    });
+  }
+
+  async removeTags(nids: number[], tags: string[]): Promise<void> {
+    await this.invoke<null>({
+      action: "removeTags",
+      params: { notes: nids, tags: tags.join(" ") },
     });
   }
 

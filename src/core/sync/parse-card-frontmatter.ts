@@ -11,6 +11,7 @@ export interface FrontmatterCardEntry {
   cue?: string;
   hash?: string;
   nid?: number;
+  sync?: string;
 }
 
 export interface ParsedCardFrontmatter {
@@ -153,8 +154,9 @@ function parseObjectValue(
   let cue: string | undefined;
   let hash: string | undefined;
   let nid: number | undefined;
+  let sync: string | undefined;
   for (const part of parts) {
-    const kv = /^(cue|hash|nid): (.+)$/.exec(part);
+    const kv = /^(cue|hash|nid|sync): (.+)$/.exec(part);
     if (!kv) return null;
     const k = kv[1]!;
     const v = kv[2]!;
@@ -164,16 +166,25 @@ function parseObjectValue(
     } else if (k === "hash") {
       if (!/^[A-Za-z0-9]+$/.test(v)) return null;
       hash = v;
-    } else {
+    } else if (k === "nid") {
       if (!/^\d+$/.test(v)) return null;
       nid = Number.parseInt(v, 10);
+    } else {
+      if (!/^[A-Za-z0-9]+$/.test(v)) return null;
+      sync = v;
     }
   }
-  if (cue === undefined && hash === undefined && nid === undefined) return null;
+  if (
+    cue === undefined &&
+    hash === undefined &&
+    nid === undefined &&
+    sync === undefined
+  ) return null;
 
   const out: FrontmatterCardEntry = { blockId };
   if (cue !== undefined) out.cue = cue;
   if (hash !== undefined) out.hash = hash;
   if (nid !== undefined) out.nid = nid;
+  if (sync !== undefined) out.sync = sync;
   return out;
 }

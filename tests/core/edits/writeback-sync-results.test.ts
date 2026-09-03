@@ -96,6 +96,27 @@ function results(
 // ---------------------------------------------------------------------------
 
 describe("writebackSyncResults — CREATE", () => {
+  test("stores the disposable rendered-field sync hash after CREATE", () => {
+    const md = ["---", "flashcards:", "---", "", "Q:: A ^q-abcd"].join("\n");
+    const card = makeCard("q-abcd");
+    const r = results({
+      creates: [
+        {
+          nid: 12345,
+          op: createOp(card, "ab12cd34"),
+          status: "ok",
+          syncHash: "ef56gh78",
+        },
+      ],
+    });
+
+    const { edits } = writebackSyncResults({ markdown: md, results: r });
+    const applied = applyTextEdits(md, edits);
+    expect(applied).toContain(
+      "  q-abcd: { nid: 12345, hash: ab12cd34, sync: ef56gh78 }",
+    );
+  });
+
   test("successful CREATE with blockId absent → new entry written", () => {
     const md = [
       "---",
@@ -213,6 +234,31 @@ describe("writebackSyncResults — CREATE", () => {
 // ---------------------------------------------------------------------------
 
 describe("writebackSyncResults — UPDATE", () => {
+  it("refreshes the rendered-field sync hash after UPDATE", () => {
+    const md = [
+      "---",
+      "flashcards:",
+      "  q-abcd: { nid: 1111111111111, hash: oldhash, sync: oldsync1 }",
+      "---",
+    ].join("\n");
+    const card = makeCard("q-abcd");
+    const r = results({
+      updates: [
+        {
+          op: updateOp(card, 1111111111111, "oldhash", "newhash"),
+          status: "ok",
+          syncHash: "newsync1",
+        },
+      ],
+    });
+
+    const { edits } = writebackSyncResults({ markdown: md, results: r });
+    const applied = applyTextEdits(md, edits);
+    expect(applied).toContain(
+      "  q-abcd: { nid: 1111111111111, hash: newhash, sync: newsync1 }",
+    );
+  });
+
   it("replaces nid as well as hash after a successful model recreation", () => {
     const md = [
       "---",

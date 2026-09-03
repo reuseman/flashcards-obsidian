@@ -26,7 +26,8 @@ import type { IdentifiedFlashcard } from "../../../src/core/domain/card.js";
  *     network call. If any CREATE has undefined deckName → throw
  *     `"Card has no resolved deckName: <blockId>"`. No bootstrap, no ops.
  *   - Bootstrap order: models first (modelNames; for each present model,
- *     modelFieldNames; if Source missing, modelFieldAdd + updateModelTemplates;
+ *     modelFieldNames; if Source is missing, read and preserve the current
+ *     templates, then modelFieldAdd + updateModelTemplates;
  *     for each absent model, createModel), then decks (deckNames + createDeck
  *     for each unique missing deck from CREATEs, in first-occurrence order).
  *     If no CREATEs, deck bootstrap is skipped entirely (no deckNames call).
@@ -253,13 +254,19 @@ describe("executeSyncPlan — bootstrap models", () => {
   });
 
   // Extend-in-place: a v1 model is present but lacks the `Source` field.
-  // The bootstrap must add the field, then rewrite card templates so
-  // {{Source}} actually renders. CSS is intentionally left alone.
-  it("extends a v1-shaped model in-place (modelFieldAdd + updateModelTemplates) when Source is missing", async () => {
-    // Order is per-model interleaved: probe basic → extend basic → probe reversed → probe cloze.
+  // Normal sync must add and render the field without opting the user into
+  // the v2 design. CSS and existing template HTML are left alone.
+  it("adds Source to a v1-shaped model without replacing its template", async () => {
+    const legacyTemplates = {
+      "Custom forward": {
+        Back: "{{FrontSide}}<hr>{{Back}}<script>custom()</script>",
+        Front: "{{Front}}<div>{{Tags}}</div>",
+      },
+    };
     const { calls, fetch } = makeFakeFetch([
       ok(ALL_MODELS),
       ok(["Front", "Back"]), // basic — v1 shape, no Source
+      ok(legacyTemplates),
       ok(null), // modelFieldAdd basic
       ok(null), // updateModelTemplates basic
       ok(V2_FIELDS[ANKI_MODEL_REVERSED]),
@@ -277,31 +284,40 @@ describe("executeSyncPlan — bootstrap models", () => {
     expect(calls.map((c) => c.action)).toEqual([
       "modelNames",
       "modelFieldNames",
+      "modelTemplates",
       "modelFieldAdd",
       "updateModelTemplates",
       "modelFieldNames",
       "modelFieldNames",
     ]);
-    expect(calls[2]!.params).toEqual({
+    expect(calls[3]!.params).toEqual({
       modelName: ANKI_MODEL_BASIC,
       fieldName: "Source",
       index: 2,
     });
-    const updParams = calls[3]!.params as {
+    const updParams = calls[4]!.params as {
       model: { name: string; templates: Record<string, { Front: string; Back: string }> };
     };
     expect(updParams.model.name).toBe(ANKI_MODEL_BASIC);
-    expect(updParams.model.templates["Card 1"]!.Back).toContain("{{Source}}");
+    expect(updParams.model.templates["Custom forward"]!.Front).toBe(
+      legacyTemplates["Custom forward"].Front,
+    );
+    expect(updParams.model.templates["Custom forward"]!.Back).toBe(
+      `${legacyTemplates["Custom forward"].Back}\n<br><br>{{Source}}`,
+    );
   });
 
   it("extends all 3 v1-shaped models when none of them have Source", async () => {
     const { calls, fetch } = makeFakeFetch([
       ok(ALL_MODELS),
       ok(["Front", "Back"]), // basic
+      ok({ "Card 1": { Back: "{{Back}}", Front: "{{Front}}" } }),
       ok(null), ok(null),    // extend basic
       ok(["Front", "Back"]), // reversed
+      ok({ "Card 1": { Back: "{{Back}}", Front: "{{Front}}" } }),
       ok(null), ok(null),    // extend reversed
       ok(["Text", "Extra"]), // cloze
+      ok({ "Card 1": { Back: "{{cloze:Text}}", Front: "{{cloze:Text}}" } }),
       ok(null), ok(null),    // extend cloze
     ]);
     const client = makeClient(fetch);
@@ -316,16 +332,19 @@ describe("executeSyncPlan — bootstrap models", () => {
     expect(calls.map((c) => c.action)).toEqual([
       "modelNames",
       "modelFieldNames",
+      "modelTemplates",
       "modelFieldAdd",
       "updateModelTemplates",
       "modelFieldNames",
+      "modelTemplates",
       "modelFieldAdd",
       "updateModelTemplates",
       "modelFieldNames",
+      "modelTemplates",
       "modelFieldAdd",
       "updateModelTemplates",
     ]);
-    expect((calls[8]!.params as { modelName: string }).modelName).toBe(
+    expect((calls[11]!.params as { modelName: string }).modelName).toBe(
       ANKI_MODEL_CLOZE,
     );
   });
@@ -631,13 +650,13 @@ describe("executeSyncPlan — CREATE ops", () => {
 // ---------------------------------------------------------------------------
 
 describe("executeSyncPlan — UPDATE ops", () => {
-  it("converts basic to reversed in place and preserves existing Anki tags", async () => {
+  it("converts basic to reversed with source tags and preserved review tags", async () => {
     const u: UpdateOp = {
-      ...updateOp(makeCard({ kind: "reversed" }), 555),
+      ...updateOp(makeCard({ kind: "reversed", tags: ["source"] }), 555),
       existing: {
         cards: [{ cardId: 42, deckName: "Default" }],
         modelName: ANKI_MODEL_BASIC,
-        tags: ["manual", "kept"],
+        tags: ["manual", "leech"],
       },
     };
     const { calls, fetch } = makeFakeFetch([...bootAllV2(), ok(null)]);
@@ -655,7 +674,7 @@ describe("executeSyncPlan — UPDATE ops", () => {
       note: expect.objectContaining({
         id: 555,
         modelName: ANKI_MODEL_REVERSED,
-        tags: ["manual", "kept"],
+        tags: ["source", "leech"],
       }),
     });
   });
@@ -721,7 +740,12 @@ describe("executeSyncPlan — UPDATE ops", () => {
       vaultName: VAULT,
     });
 
-    expect(result.updates[0]).toEqual({ op: u, status: "ok", nid: 777 });
+    expect(result.updates[0]).toEqual({
+      nid: 777,
+      op: u,
+      status: "ok",
+      syncHash: expect.stringMatching(/^[a-z2-9]{8}$/),
+    });
     expect(calls.filter((c) => c.action === "addNote")).toHaveLength(1);
     expect(calls.find((c) => c.action === "deleteNotes")!.params).toEqual({ notes: [555] });
   });
@@ -783,6 +807,70 @@ describe("executeSyncPlan — UPDATE ops", () => {
     }).note;
     expect(noteParam.id).toBe(555);
     expect(noteParam.fields.Front).toContain("Q1");
+  });
+
+  it("replaces authored tags while preserving Anki review tags", async () => {
+    const card = makeCard({ tags: ["source", "topic"] });
+    const u: UpdateOp = {
+      ...updateOp(card, 555),
+      existing: {
+        cards: [{ cardId: 42, deckName: "Default" }],
+        modelName: ANKI_MODEL_BASIC,
+        tags: ["manual", "leech", "marked", "topic"],
+      },
+      newHash: "same",
+      oldHash: "same",
+    };
+    const { calls, fetch } = makeFakeFetch([
+      ...bootAllV2(),
+      ok(null), // removeTags
+      ok(null), // addTags
+    ]);
+
+    const result = await executeSyncPlan({
+      client: makeClient(fetch),
+      notePath: NOTE_PATH,
+      plan: emptyPlan({ update: [u] }),
+      vaultName: VAULT,
+    });
+
+    expect(result.updates[0]?.status).toBe("ok");
+    expect(calls.find((call) => call.action === "removeTags")?.params).toEqual({
+      notes: [555],
+      tags: "manual",
+    });
+    expect(calls.find((call) => call.action === "addTags")?.params).toEqual({
+      notes: [555],
+      tags: "source",
+    });
+    expect(calls.some((call) => call.action === "updateNoteFields")).toBe(false);
+  });
+
+  it("repairs live field drift when the Obsidian source hash is unchanged", async () => {
+    const card = makeCard({ blockId: "b1", front: "Q1" });
+    const u: UpdateOp = {
+      ...updateOp(card, 555),
+      existing: {
+        cards: [{ cardId: 42, deckName: "Default" }],
+        fields: { Front: "manual edit", Back: "<p>A</p>", Source: "old" },
+        modelName: ANKI_MODEL_BASIC,
+        tags: [],
+      },
+      newHash: "same",
+      oldHash: "same",
+    };
+    const { calls, fetch } = makeFakeFetch([...bootAllV2(), ok(null)]);
+
+    const result = await executeSyncPlan({
+      client: makeClient(fetch),
+      notePath: NOTE_PATH,
+      plan: emptyPlan({ update: [u] }),
+      vaultName: VAULT,
+    });
+
+    expect(result.updates[0]?.status).toBe("ok");
+    expect(result.updates[0]?.syncHash).toMatch(/^[a-z2-9]{8}$/);
+    expect(calls.filter((call) => call.action === "updateNoteFields")).toHaveLength(1);
   });
 
   it("updateNoteFields throws → failed with error.message", async () => {

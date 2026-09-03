@@ -42,6 +42,22 @@ export function computeCardHash(card: Flashcard): string {
 }
 
 /**
+ * Hash of the plugin-owned HTML fields last written to Anki. This is a
+ * disposable reconciliation cache: losing it causes one corrective UPDATE,
+ * never a new note.
+ */
+export function computeRenderedFieldsHash(
+  fields: Record<string, string>,
+): string {
+  const input = Object.keys(fields)
+    .sort()
+    .map((key) => `${key}\n${fields[key] ?? ""}`)
+    .join("\n");
+  const digest = createHash("sha256").update(input, "utf8").digest();
+  return toBase32(digest);
+}
+
+/**
  * Cue hash for anchorless (atomic) card identity (WI-9, design §4.4).
  *
  * Algorithm (locked): sha256 of `kind + "\n" + front`, same leading-40-bit

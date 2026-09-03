@@ -15,6 +15,7 @@ import { createHash } from "node:crypto";
 
 export interface FixtureOptions {
   notePath: string;
+  resolveLink?: (target: string, sourcePath: string) => string | null;
   settings?: FlashcardsSettings;
   vaultName?: string;
 }
@@ -69,7 +70,7 @@ export function renderFeatureFixture(
       notePath: options.notePath,
       tags: card.tags,
       vaultName,
-      resolveLink: (target) => target,
+      resolveLink: options.resolveLink ?? ((target) => target),
     });
   });
 }

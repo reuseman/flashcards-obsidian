@@ -19,6 +19,7 @@ import type {
 
 export interface AnkiNoteInfo {
   cards?: number[];
+  fields?: Record<string, { order?: number; value?: string }>;
   modelName?: string;
   noteId?: number;
   tags?: string[];
@@ -62,6 +63,9 @@ export interface AnkiGateway {
   modelNames(): Promise<string[]>;
   createModel(spec: AnkiCreateModelSpec): Promise<unknown>;
   modelFieldNames(modelName: string): Promise<string[]>;
+  modelTemplates(
+    modelName: string,
+  ): Promise<Record<string, { Back: string; Front: string }>>;
   modelFieldAdd(
     modelName: string,
     fieldName: string,
@@ -74,9 +78,11 @@ export interface AnkiGateway {
   deckNames(): Promise<string[]>;
   createDeck(name: string): Promise<number>;
   addNote(note: AnkiAddNoteParams): Promise<number | null>;
+  addTags(nids: number[], tags: string[]): Promise<void>;
   cardsInfo(cardIds: number[]): Promise<AnkiCardInfo[]>;
   changeDeck(cardIds: number[], deckName: string): Promise<void>;
   notesInfo(nids: number[]): Promise<AnkiNoteInfo[]>;
+  removeTags(nids: number[], tags: string[]): Promise<void>;
   updateNoteFields(nid: number, fields: Record<string, string>): Promise<void>;
   updateNoteModel(
     nid: number,
@@ -98,6 +104,7 @@ export interface AnkiGateway {
  */
 export interface ExecuteSyncPlanInput {
   client: AnkiGateway;
+  highlightClozeEnabled?: boolean;
   logger?: Logger;
   notePath: string;
   plan: SyncPlan;

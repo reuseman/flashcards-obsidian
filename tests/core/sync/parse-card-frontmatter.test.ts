@@ -92,6 +92,25 @@ describe("parseCardFrontmatter — single-entry shapes", () => {
     expect(result.skippedLineCount).toBe(0);
   });
 
+  test("object with nid, source hash, and rendered-field sync hash", () => {
+    const md = [
+      "---",
+      "flashcards:",
+      "  q-abcd: { nid: 1714056234891, hash: ab12cd34, sync: ef56gh78 }",
+      "---",
+    ].join("\n");
+    const result = parseCardFrontmatter(md);
+    expect(result.entries).toEqual([
+      {
+        blockId: "q-abcd",
+        hash: "ab12cd34",
+        nid: 1714056234891,
+        sync: "ef56gh78",
+      },
+    ]);
+    expect(result.skippedLineCount).toBe(0);
+  });
+
   test("scalar shorthand → nid only", () => {
     const md = [
       "---",

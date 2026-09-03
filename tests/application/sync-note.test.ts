@@ -187,8 +187,12 @@ describe("syncNote — new note happy path", () => {
     const finalMarkdown = currentMarkdown();
     expect(finalMarkdown).toContain("^q-aaaa");
     expect(finalMarkdown).toContain("^q-bbbb");
-    expect(finalMarkdown).toMatch(/q-aaaa: \{ nid: 1001, hash: [a-z0-9]+ \}/);
-    expect(finalMarkdown).toMatch(/q-bbbb: \{ nid: 1002, hash: [a-z0-9]+ \}/);
+    expect(finalMarkdown).toMatch(
+      /q-aaaa: \{ nid: 1001, hash: [a-z0-9]+, sync: [a-z0-9]+ \}/,
+    );
+    expect(finalMarkdown).toMatch(
+      /q-bbbb: \{ nid: 1002, hash: [a-z0-9]+, sync: [a-z0-9]+ \}/,
+    );
   });
 });
 
@@ -393,7 +397,9 @@ describe("syncNote — partial create failure", () => {
     expect(result.ankiResults!.creates[1]!.status).toBe("failed");
 
     const final = currentMarkdown();
-    expect(final).toMatch(/q-aaaa: \{ nid: 5001, hash: [a-z0-9]+ \}/);
+    expect(final).toMatch(
+      /q-aaaa: \{ nid: 5001, hash: [a-z0-9]+, sync: [a-z0-9]+ \}/,
+    );
     // Failed card stays with no nid (slice-2 insert-only entry, hash-only).
     expect(final).not.toMatch(/q-bbbb: \{ nid: \d+/);
   });

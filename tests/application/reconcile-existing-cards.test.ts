@@ -4,7 +4,10 @@ import { reconcileExistingCards } from "../../src/application/sync/reconcile-exi
 import { syncNote } from "../../src/application/sync-note.js";
 import type { AnkiGateway, MarkdownNote } from "../../src/application/ports.js";
 import { DEFAULT_SETTINGS } from "../../src/core/config/settings.js";
-import { computeCardHash } from "../../src/core/edits/card-hash.js";
+import {
+  computeCardHash,
+  computeRenderedFieldsHash,
+} from "../../src/core/edits/card-hash.js";
 import type { IdentifiedFlashcard } from "../../src/core/domain/card.js";
 import type { ParsedCardFrontmatter } from "../../src/core/sync/parse-card-frontmatter.js";
 import type { SyncPlan } from "../../src/core/sync/sync-plan.js";
@@ -24,9 +27,19 @@ function card(overrides: Partial<IdentifiedFlashcard> = {}): IdentifiedFlashcard
   };
 }
 
-function frontmatter(c: IdentifiedFlashcard): ParsedCardFrontmatter {
+function frontmatter(
+  c: IdentifiedFlashcard,
+  sync?: string,
+): ParsedCardFrontmatter {
   return {
-    entries: [{ blockId: c.blockId, hash: computeCardHash(c), nid: NID }],
+    entries: [
+      {
+        blockId: c.blockId,
+        hash: computeCardHash(c),
+        nid: NID,
+        ...(sync !== undefined ? { sync } : {}),
+      },
+    ],
     skippedLineCount: 0,
   };
 }
@@ -89,6 +102,127 @@ describe("reconcileExistingCards", () => {
         oldHash: hash,
       }),
     ]);
+  });
+
+  it("adds an UPDATE when authored Anki tags differ from Obsidian", async () => {
+    const c = card({ tags: ["source"] });
+    const hash = computeCardHash(c);
+    const result = await reconcileExistingCards({
+      cards: [c],
+      client: gateway({
+        cardsInfo: vi.fn(async () => [{ cardId: 91, deckName: "Default", note: NID }]),
+        notesInfo: vi.fn(async () => [
+          {
+            cards: [91],
+            modelName: "Obsidian-basic",
+            noteId: NID,
+            tags: ["manual", "leech"],
+          },
+        ]),
+      }),
+      frontmatter: frontmatter(c),
+      plan: plan(),
+    });
+
+    expect(result.plan.update).toEqual([
+      expect.objectContaining({
+        card: c,
+        existing: expect.objectContaining({ tags: ["manual", "leech"] }),
+        newHash: hash,
+        nid: NID,
+        oldHash: hash,
+      }),
+    ]);
+  });
+
+  it("does not update tags when Obsidian tags and Anki review tags are already correct", async () => {
+    const c = card({ tags: ["source"] });
+    const result = await reconcileExistingCards({
+      cards: [c],
+      client: gateway({
+        cardsInfo: vi.fn(async () => [{ cardId: 91, deckName: "Default", note: NID }]),
+        notesInfo: vi.fn(async () => [
+          {
+            cards: [91],
+            modelName: "Obsidian-basic",
+            noteId: NID,
+            tags: ["marked", "source", "leech"],
+          },
+        ]),
+      }),
+      frontmatter: frontmatter(c),
+      plan: plan(),
+    });
+
+    expect(result.plan.update).toEqual([]);
+  });
+
+  it("adds an UPDATE when a live Anki field changed after the last sync", async () => {
+    const c = card();
+    const syncedFields = { Front: "<p>Q</p>", Back: "<p>A</p>", Source: "source" };
+    const result = await reconcileExistingCards({
+      cards: [c],
+      client: gateway({
+        cardsInfo: vi.fn(async () => [{ cardId: 91, deckName: "Default", note: NID }]),
+        notesInfo: vi.fn(async () => [
+          {
+            cards: [91],
+            fields: {
+              Front: { order: 0, value: "manual edit" },
+              Back: { order: 1, value: "<p>A</p>" },
+              Source: { order: 2, value: "source" },
+            },
+            modelName: "Obsidian-basic",
+            noteId: NID,
+            tags: [],
+          },
+        ]),
+      }),
+      frontmatter: frontmatter(c, computeRenderedFieldsHash(syncedFields)),
+      plan: plan(),
+    });
+
+    expect(result.plan.update).toEqual([
+      expect.objectContaining({
+        card: c,
+        existing: expect.objectContaining({
+          fields: {
+            Back: "<p>A</p>",
+            Front: "manual edit",
+            Source: "source",
+          },
+        }),
+        nid: NID,
+      }),
+    ]);
+  });
+
+  it("does not update fields when their live hash matches the last sync", async () => {
+    const c = card();
+    const fields = { Front: "<p>Q</p>", Back: "<p>A</p>", Source: "source" };
+    const result = await reconcileExistingCards({
+      cards: [c],
+      client: gateway({
+        cardsInfo: vi.fn(async () => [{ cardId: 91, deckName: "Default", note: NID }]),
+        notesInfo: vi.fn(async () => [
+          {
+            cards: [91],
+            fields: {
+              Front: { order: 0, value: fields.Front },
+              Back: { order: 1, value: fields.Back },
+              Source: { order: 2, value: fields.Source },
+            },
+            modelName: "Obsidian-basic",
+            noteId: NID,
+            tags: [],
+          },
+        ]),
+      }),
+      frontmatter: frontmatter(c, computeRenderedFieldsHash(fields)),
+      plan: plan(),
+    });
+
+    expect(result.plan.update).toEqual([]);
   });
 
   it("marks basic-to-reversed as an in-place model update without asking", async () => {

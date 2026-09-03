@@ -409,6 +409,7 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
     results = await trace.span("anki.sync", async () =>
       executeSyncPlan({
         client: ankiClient,
+        highlightClozeEnabled: settings.highlightCloze.enabled,
         logger,
         notePath: note.path,
         plan,
