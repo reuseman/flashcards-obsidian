@@ -20,6 +20,8 @@ import {
 import { buildSyncPlan } from "../core/sync/build-sync-plan.js";
 import { parseCardFrontmatter } from "../core/sync/parse-card-frontmatter.js";
 import type { PendingDeletion, PendingRebind } from "../core/sync/sync-plan.js";
+import type { PendingKindRecreation } from "../core/sync/sync-plan.js";
+import { reconcileExistingCards } from "./sync/reconcile-existing-cards.js";
 import {
   defaultGenerateBlockId,
   previewSyncPlan,
@@ -51,6 +53,9 @@ export interface CardMediaError {
 export interface SyncNoteInput {
   ankiClient: AnkiGateway;
   confirmDeletions?: (pending: PendingDeletion[]) => Promise<boolean>;
+  confirmKindRecreations?: (
+    pending: PendingKindRecreation[],
+  ) => Promise<boolean>;
   confirmRebinds?: (pending: PendingRebind[]) => Promise<boolean>;
   generateBlockId?: () => string;
   logger?: Logger;
@@ -73,6 +78,7 @@ export interface SyncNoteResult {
   mediaErrors?: CardMediaError[];
   notePath: string;
   parsedCardCount: number;
+  recoveredMissingCount: number;
   status: SyncNoteStatus;
   writebackEditsApplied: number;
 }
@@ -124,6 +130,7 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
       lints,
       notePath: note.path,
       parsedCardCount: 0,
+      recoveredMissingCount: 0,
       status: "skipped",
       writebackEditsApplied: 0,
     };
@@ -186,6 +193,37 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
     await repository.saveNote(note, markdownB);
   }
 
+  let recoveredMissingCount = 0;
+  try {
+    const reconciled = await reconcileExistingCards({
+      cards: identifiedCards,
+      client: ankiClient,
+      ...(input.confirmKindRecreations
+        ? { confirmKindRecreations: input.confirmKindRecreations }
+        : {}),
+      frontmatter: parseCardFrontmatter(note.markdown),
+      plan,
+    });
+    plan = reconciled.plan;
+    recoveredMissingCount = reconciled.recoveredMissingCount;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    logger.error("syncNote failed while checking existing Anki notes", {
+      notePath: note.path,
+      error: msg,
+    });
+    return {
+      error: msg,
+      identityWritesApplied,
+      lints,
+      notePath: note.path,
+      parsedCardCount: cards.length,
+      recoveredMissingCount,
+      status: "failed",
+      writebackEditsApplied: 0,
+    };
+  }
+
   // Phase B — diff and sync. `preview.plan` (or the rebind-resolved plan
   // above) was built against the frontmatter read from `note.markdown`
   // (pre-writeback); this is equivalent to reading it from `markdownB`
@@ -238,6 +276,7 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
       lints,
       notePath: note.path,
       parsedCardCount: cards.length,
+      recoveredMissingCount,
       status: "ok",
       writebackEditsApplied: 0,
     };
@@ -359,6 +398,7 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
       ...(mediaErrors.length > 0 ? { mediaErrors } : {}),
       notePath: note.path,
       parsedCardCount: cards.length,
+      recoveredMissingCount,
       status: "ok",
       writebackEditsApplied: 0,
     };
@@ -385,6 +425,7 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
       lints,
       notePath: note.path,
       parsedCardCount: cards.length,
+      recoveredMissingCount,
       status: "failed",
       writebackEditsApplied: 0,
     };
@@ -417,6 +458,7 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
     ...(mediaErrors.length > 0 ? { mediaErrors } : {}),
     notePath: note.path,
     parsedCardCount: cards.length,
+    recoveredMissingCount,
     status: "ok",
     writebackEditsApplied: writeback.edits.length,
   };

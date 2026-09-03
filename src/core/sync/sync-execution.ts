@@ -24,6 +24,7 @@ export interface CreateOpResult {
 export interface UpdateOpResult {
   op: UpdateOp;
   status: "ok" | "failed";
+  nid?: number;
   error?: string;
 }
 

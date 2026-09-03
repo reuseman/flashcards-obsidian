@@ -121,7 +121,10 @@ export function writebackSyncResults(
     // No prior action — must target an existing entry.
     const ex = existing.get(blockId);
     if (!ex) continue; // silent skip
-    const nid = ex.nid ?? r.op.nid;
+    // A cloze-boundary change recreates the Anki note. The executor returns
+    // its replacement nid on the otherwise ordinary UPDATE result so this
+    // existing source identity can point at the new note.
+    const nid = r.nid ?? ex.nid ?? r.op.nid;
     // Atomic cards use the cue carried on the card (computed once at
     // identity-resolution time in previewSyncPlan) rather than the entry's
     // prior cue: for an ordinary answer-only edit the carried cue matches the

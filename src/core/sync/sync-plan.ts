@@ -7,9 +7,22 @@ export interface CreateOp {
 
 export interface UpdateOp {
   card: IdentifiedFlashcard;
+  existing?: ExistingAnkiNote;
   newHash: string;
   nid: number;
   oldHash: string;
+  recreate?: boolean;
+}
+
+export interface ExistingAnkiCard {
+  cardId: number;
+  deckName: string;
+}
+
+export interface ExistingAnkiNote {
+  cards: ExistingAnkiCard[];
+  modelName: string;
+  tags: string[];
 }
 
 export interface DeleteOp {
@@ -40,6 +53,14 @@ export interface PendingRebind {
   deckName: string;
   newFront: string;
   nid: number;
+}
+
+export interface PendingKindRecreation {
+  blockId: string;
+  fromModel: string;
+  front: string;
+  nid: number;
+  toModel: string;
 }
 
 export interface SyncPlan {

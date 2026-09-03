@@ -1,4 +1,8 @@
-import type { AnkiGateway } from "../../application/ports.js";
+import type {
+  AnkiCardInfo,
+  AnkiGateway,
+  AnkiNoteInfo,
+} from "../../application/ports.js";
 import type {
   AnkiAddNoteParams,
   AnkiCreateModelSpec,
@@ -126,6 +130,27 @@ export class AnkiConnectClient implements AnkiGateway {
     });
   }
 
+  cardsInfo(cardIds: number[]): Promise<AnkiCardInfo[]> {
+    return this.invoke<AnkiCardInfo[]>({
+      action: "cardsInfo",
+      params: { cards: cardIds },
+    });
+  }
+
+  async changeDeck(cardIds: number[], deckName: string): Promise<void> {
+    await this.invoke<null>({
+      action: "changeDeck",
+      params: { cards: cardIds, deck: deckName },
+    });
+  }
+
+  notesInfo(nids: number[]): Promise<AnkiNoteInfo[]> {
+    return this.invoke<AnkiNoteInfo[]>({
+      action: "notesInfo",
+      params: { notes: nids },
+    });
+  }
+
   async updateNoteFields(
     nid: number,
     fields: Record<string, string>,
@@ -133,6 +158,18 @@ export class AnkiConnectClient implements AnkiGateway {
     await this.invoke<null>({
       action: "updateNoteFields",
       params: { note: { id: nid, fields } },
+    });
+  }
+
+  async updateNoteModel(
+    nid: number,
+    modelName: string,
+    fields: Record<string, string>,
+    tags: string[],
+  ): Promise<void> {
+    await this.invoke<null>({
+      action: "updateNoteModel",
+      params: { note: { id: nid, modelName, fields, tags } },
     });
   }
 

@@ -73,4 +73,21 @@ describe("manual AUTO-fix examples", () => {
     });
   });
 
+  it("provides basic, reversed, and cloze notes for existing-card checks", () => {
+    const cards = extract("06-existing-card-sync.md");
+
+    expect(cards).toHaveLength(3);
+    expect(cards.map((card) => card.kind)).toEqual([
+      "basic",
+      "reversed",
+      "cloze",
+    ]);
+    expect(cards.every((card) => card.deckName === "Flashcards V2 checks")).toBe(
+      true,
+    );
+    expect(cards.every((card) => card.tags.includes("flashcards-v2-sync-check"))).toBe(
+      true,
+    );
+  });
+
 });

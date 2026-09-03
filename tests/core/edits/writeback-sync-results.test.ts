@@ -213,6 +213,28 @@ describe("writebackSyncResults — CREATE", () => {
 // ---------------------------------------------------------------------------
 
 describe("writebackSyncResults — UPDATE", () => {
+  it("replaces nid as well as hash after a successful model recreation", () => {
+    const md = [
+      "---",
+      "flashcards:",
+      "  q-abcd: { nid: 1111111111111, hash: oldhash }",
+      "---",
+      "Q::A ^q-abcd",
+      "",
+    ].join("\n");
+    const op = updateOp(makeCard("q-abcd"), 1111111111111, "oldhash", "newhash");
+    const result = writebackSyncResults({
+      markdown: md,
+      results: results({
+        updates: [{ op, status: "ok", nid: 2222222222222 }],
+      }),
+    });
+
+    expect(applyTextEdits(md, result.edits)).toContain(
+      "q-abcd: { nid: 2222222222222, hash: newhash }",
+    );
+  });
+
   test("successful UPDATE: hash replaced; nid preserved", () => {
     const md = [
       "---",

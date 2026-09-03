@@ -17,6 +17,19 @@ import type {
   AnkiCreateModelSpec,
 } from "../core/sync/anki-contract.js";
 
+export interface AnkiNoteInfo {
+  cards?: number[];
+  modelName?: string;
+  noteId?: number;
+  tags?: string[];
+}
+
+export interface AnkiCardInfo {
+  cardId?: number;
+  deckName?: string;
+  note?: number;
+}
+
 // --- Markdown repository ---------------------------------------------------
 
 /**
@@ -61,7 +74,16 @@ export interface AnkiGateway {
   deckNames(): Promise<string[]>;
   createDeck(name: string): Promise<number>;
   addNote(note: AnkiAddNoteParams): Promise<number | null>;
+  cardsInfo(cardIds: number[]): Promise<AnkiCardInfo[]>;
+  changeDeck(cardIds: number[], deckName: string): Promise<void>;
+  notesInfo(nids: number[]): Promise<AnkiNoteInfo[]>;
   updateNoteFields(nid: number, fields: Record<string, string>): Promise<void>;
+  updateNoteModel(
+    nid: number,
+    modelName: string,
+    fields: Record<string, string>,
+    tags: string[],
+  ): Promise<void>;
   deleteNotes(nids: number[]): Promise<void>;
 }
 

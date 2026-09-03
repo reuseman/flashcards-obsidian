@@ -631,6 +631,132 @@ describe("executeSyncPlan — CREATE ops", () => {
 // ---------------------------------------------------------------------------
 
 describe("executeSyncPlan — UPDATE ops", () => {
+  it("converts basic to reversed in place and preserves existing Anki tags", async () => {
+    const u: UpdateOp = {
+      ...updateOp(makeCard({ kind: "reversed" }), 555),
+      existing: {
+        cards: [{ cardId: 42, deckName: "Default" }],
+        modelName: ANKI_MODEL_BASIC,
+        tags: ["manual", "kept"],
+      },
+    };
+    const { calls, fetch } = makeFakeFetch([...bootAllV2(), ok(null)]);
+
+    const result = await executeSyncPlan({
+      client: makeClient(fetch),
+      notePath: NOTE_PATH,
+      plan: emptyPlan({ update: [u] }),
+      vaultName: VAULT,
+    });
+
+    expect(result.updates[0]!.status).toBe("ok");
+    expect(calls.some((c) => c.action === "updateNoteFields")).toBe(false);
+    expect(calls.find((c) => c.action === "updateNoteModel")!.params).toEqual({
+      note: expect.objectContaining({
+        id: 555,
+        modelName: ANKI_MODEL_REVERSED,
+        tags: ["manual", "kept"],
+      }),
+    });
+  });
+
+  it("moves all cards for a deck-only update without rewriting note fields", async () => {
+    const c = makeCard({ deckName: "Source deck" });
+    const u: UpdateOp = {
+      card: c,
+      existing: {
+        cards: [
+          { cardId: 42, deckName: "Manual deck" },
+          { cardId: 43, deckName: "Manual deck" },
+        ],
+        modelName: ANKI_MODEL_BASIC,
+        tags: [],
+      },
+      newHash: "same",
+      nid: 555,
+      oldHash: "same",
+    };
+    const { calls, fetch } = makeFakeFetch([
+      ...bootAllV2(),
+      ok(["Source deck"]),
+      ok(null),
+    ]);
+
+    const result = await executeSyncPlan({
+      client: makeClient(fetch),
+      notePath: NOTE_PATH,
+      plan: emptyPlan({ update: [u] }),
+      vaultName: VAULT,
+    });
+
+    expect(result.updates[0]!.status).toBe("ok");
+    expect(calls.some((c) => c.action === "updateNoteFields")).toBe(false);
+    expect(calls.find((c) => c.action === "changeDeck")!.params).toEqual({
+      cards: [42, 43],
+      deck: "Source deck",
+    });
+  });
+
+  it("recreates a confirmed cloze boundary change and returns the replacement nid", async () => {
+    const u: UpdateOp = {
+      ...updateOp(makeCard({ answer: "", front: "The ==answer==", kind: "cloze" }), 555),
+      existing: {
+        cards: [{ cardId: 42, deckName: "Default" }],
+        modelName: ANKI_MODEL_BASIC,
+        tags: ["manual"],
+      },
+      recreate: true,
+    };
+    const { calls, fetch } = makeFakeFetch([
+      ...bootAllV2(),
+      ok(["Default"]),
+      ok(777),
+      ok(null),
+    ]);
+
+    const result = await executeSyncPlan({
+      client: makeClient(fetch),
+      notePath: NOTE_PATH,
+      plan: emptyPlan({ update: [u] }),
+      vaultName: VAULT,
+    });
+
+    expect(result.updates[0]).toEqual({ op: u, status: "ok", nid: 777 });
+    expect(calls.filter((c) => c.action === "addNote")).toHaveLength(1);
+    expect(calls.find((c) => c.action === "deleteNotes")!.params).toEqual({ notes: [555] });
+  });
+
+  it("does not delete the old note when recreation cannot create its replacement", async () => {
+    const u: UpdateOp = {
+      ...updateOp(makeCard({ answer: "", front: "The ==answer==", kind: "cloze" }), 555),
+      existing: {
+        cards: [{ cardId: 42, deckName: "Default" }],
+        modelName: ANKI_MODEL_BASIC,
+        tags: [],
+      },
+      recreate: true,
+    };
+    const { calls, fetch } = makeFakeFetch([
+      ...bootAllV2(),
+      ok(["Default"]),
+      err("cannot add replacement"),
+    ]);
+
+    const result = await executeSyncPlan({
+      client: makeClient(fetch),
+      notePath: NOTE_PATH,
+      plan: emptyPlan({ update: [u] }),
+      vaultName: VAULT,
+    });
+
+    expect(result.updates[0]).toEqual({
+      error: "cannot add replacement",
+      op: u,
+      status: "failed",
+    });
+    expect(calls.some((c) => c.action === "deleteNotes")).toBe(false);
+  });
+
   it("updateNoteFields success → ok; called with (nid, rendered.fields)", async () => {
     const card = makeCard({ blockId: "b1", front: "Q1" });
     const u = updateOp(card, 555);

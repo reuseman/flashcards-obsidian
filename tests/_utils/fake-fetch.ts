@@ -45,6 +45,33 @@ export function makeFakeFetch(
       params: (parsed.params as Record<string, unknown>) ?? {},
     });
 
+    // Existing-card reconciliation is a read-only preflight. Most orchestration
+    // tests are concerned with the mutation queued below, so provide a stable
+    // live-note default without consuming their response queue. Focused stale,
+    // model, and deck tests use a purpose-built gateway instead.
+    if (parsed.action === "notesInfo") {
+      const notes = Array.isArray((parsed.params as { notes?: unknown })?.notes)
+        ? ((parsed.params as { notes: unknown[] }).notes)
+        : [];
+      return {
+        json: async () => ({
+          error: null,
+          result: notes
+            .filter((nid): nid is number => typeof nid === "number")
+            .map((noteId) => ({ noteId })),
+        }),
+        ok: true,
+        status: 200,
+      } as unknown as Response;
+    }
+    if (parsed.action === "cardsInfo") {
+      return {
+        json: async () => ({ error: null, result: [] }),
+        ok: true,
+        status: 200,
+      } as unknown as Response;
+    }
+
     const next = queue.shift();
     if (!next) throw new Error("FakeFetch: no queued response");
     if (next.throws) throw next.throws;

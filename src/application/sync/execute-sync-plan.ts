@@ -35,6 +35,10 @@ function renderFor(
   });
 }
 
+function crossesClozeBoundary(fromModel: string, toModel: string): boolean {
+  return (fromModel === ANKI_MODEL_CLOZE) !== (toModel === ANKI_MODEL_CLOZE);
+}
+
 export async function executeSyncPlan(
   input: ExecuteSyncPlanInput,
 ): Promise<ExecuteSyncPlanResult> {
@@ -92,13 +96,27 @@ export async function executeSyncPlan(
     }
   }
 
-  // 3. Bootstrap decks (only if there are CREATE ops).
-  if (plan.create.length > 0) {
+  // 3. Bootstrap decks needed by CREATEs, confirmed recreations, and source-
+  // owned deck moves.
+  const updatesNeedingDeck = plan.update.filter((op) => {
+    if (op.recreate) return true;
+    return op.existing?.cards.some(
+      (card) => card.deckName !== op.card.deckName,
+    ) === true;
+  });
+  if (plan.create.length > 0 || updatesNeedingDeck.length > 0) {
     const existingDecks = await client.deckNames();
     const existingDeckSet = new Set(existingDecks);
     const seen = new Set<string>();
-    for (const op of plan.create) {
-      const deck = op.card.deckName as string;
+    const cardsNeedingDeck = [
+      ...plan.create.map((op) => op.card),
+      ...updatesNeedingDeck.map((op) => op.card),
+    ];
+    for (const card of cardsNeedingDeck) {
+      const deck = card.deckName;
+      if (deck === undefined) {
+        throw new Error(`Card has no resolved deckName: ${card.blockId}`);
+      }
       if (seen.has(deck)) continue;
       seen.add(deck);
       if (!existingDeckSet.has(deck)) {
@@ -144,7 +162,81 @@ export async function executeSyncPlan(
   for (const op of plan.update) {
     try {
       const rendered = renderFor(op.card, notePath, vaultName, resolveLink);
-      await client.updateNoteFields(op.nid, rendered.fields);
+      const existing = op.existing;
+
+      if (op.recreate) {
+        const replacementNid = await client.addNote({
+          deckName: rendered.deckName,
+          modelName: rendered.modelName,
+          fields: rendered.fields,
+          // Tag ownership is intentionally undecided. Recreation therefore
+          // preserves the live Anki tags exactly instead of treating source
+          // tags as authoritative.
+          tags: existing?.tags ?? rendered.tags,
+        });
+        if (replacementNid === null) {
+          throw new Error("addNote returned null");
+        }
+        try {
+          await client.deleteNotes([op.nid]);
+        } catch (deleteError) {
+          // Keep the old note authoritative when cleanup fails. Roll back the
+          // newly-created replacement so a retry does not accumulate orphans.
+          try {
+            await client.deleteNotes([replacementNid]);
+          } catch (rollbackError) {
+            throw new Error(
+              `${errorMessage(deleteError)}; replacement rollback failed: ${errorMessage(rollbackError)}`,
+            );
+          }
+          throw deleteError;
+        }
+        logger.debug("UPDATE recreated", {
+          blockId: op.card.blockId,
+          nid: op.nid,
+          replacementNid,
+        });
+        result.updates.push({ op, status: "ok", nid: replacementNid });
+        continue;
+      }
+
+      const modelMismatch =
+        existing !== undefined && existing.modelName !== rendered.modelName;
+      if (
+        modelMismatch &&
+        crossesClozeBoundary(existing.modelName, rendered.modelName)
+      ) {
+        throw new Error("Cloze model changes require confirmed recreation");
+      }
+
+      if (modelMismatch) {
+        await client.updateNoteModel(
+          op.nid,
+          rendered.modelName,
+          rendered.fields,
+          existing.tags,
+        );
+      } else if (op.oldHash !== op.newHash) {
+        await client.updateNoteFields(op.nid, rendered.fields);
+      }
+
+      const deckMismatch = existing?.cards.some(
+        (card) => card.deckName !== rendered.deckName,
+      ) === true;
+      if (deckMismatch) {
+        let cardIds = existing.cards.map((card) => card.cardId);
+        // Model conversion can add or remove templates/cards. Refresh ids so
+        // every surviving/generated card moves together.
+        if (modelMismatch) {
+          const [refreshed] = await client.notesInfo([op.nid]);
+          cardIds = (refreshed?.cards ?? []).filter(
+            (cardId): cardId is number => typeof cardId === "number",
+          );
+        }
+        if (cardIds.length > 0) {
+          await client.changeDeck(cardIds, rendered.deckName);
+        }
+      }
       logger.debug("UPDATE ok", { blockId: op.card.blockId, nid: op.nid });
       result.updates.push({ op, status: "ok" });
     } catch (e) {

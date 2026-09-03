@@ -1,7 +1,11 @@
 import type { AnkiGateway, MarkdownNote, MarkdownRepository } from "./ports.js";
 import type { FlashcardsSettings } from "../core/config/settings.js";
 import { extractCardsFromMarkdown } from "../core/parse/extract-cards.js";
-import type { PendingDeletion, PendingRebind } from "../core/sync/sync-plan.js";
+import type {
+  PendingDeletion,
+  PendingKindRecreation,
+  PendingRebind,
+} from "../core/sync/sync-plan.js";
 import { NoopLogger, type Logger } from "../core/logging/logger.js";
 import { createPerfTrace } from "../core/logging/perf-trace.js";
 import {
@@ -70,6 +74,9 @@ function detectCueCollisions(
 export interface SyncVaultInput {
   ankiClient: AnkiGateway;
   confirmDeletions?: (pending: PendingDeletion[]) => Promise<boolean>;
+  confirmKindRecreations?: (
+    pending: PendingKindRecreation[],
+  ) => Promise<boolean>;
   confirmRebinds?: (pending: PendingRebind[]) => Promise<boolean>;
   generateBlockId?: () => string;
   logger?: Logger;
@@ -109,6 +116,7 @@ export async function syncVault(
   const {
     ankiClient,
     confirmDeletions,
+    confirmKindRecreations,
     confirmRebinds,
     generateBlockId,
     mediaPipeline,
@@ -140,6 +148,7 @@ export async function syncVault(
       result = await syncNote({
         ankiClient,
         ...(confirmDeletions ? { confirmDeletions } : {}),
+        ...(confirmKindRecreations ? { confirmKindRecreations } : {}),
         ...(confirmRebinds ? { confirmRebinds } : {}),
         ...(generateBlockId ? { generateBlockId } : {}),
         logger,
@@ -160,6 +169,7 @@ export async function syncVault(
         lints: [],
         notePath: note.path,
         parsedCardCount: 0,
+        recoveredMissingCount: 0,
         status: "failed",
         writebackEditsApplied: 0,
       };

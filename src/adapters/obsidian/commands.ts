@@ -6,6 +6,7 @@ import { uploadMedia } from "../anki/upload-media.js";
 import { ObsidianMarkdownRepository } from "./obsidian-markdown-repository.js";
 import { MigrationModal } from "./migration-modal.js";
 import { createDeleteConfirmer } from "./delete-confirm-modal.js";
+import { createKindRecreationConfirmer } from "./kind-recreation-confirm-modal.js";
 import { buildMediaRewriteMap, resolveMedia } from "./media-resolver.js";
 import { createWikilinkResolver } from "./wikilink-resolver.js";
 import { backfillV1Vault } from "../../application/backfill-v1-vault.js";
@@ -166,6 +167,7 @@ async function dispatch(
   const confirmDeletions = plugin.settings.confirmBeforeDelete
     ? createDeleteConfirmer(plugin.app, ankiClient)
     : undefined;
+  const confirmKindRecreations = createKindRecreationConfirmer(plugin.app);
   try {
     if (target === "current") {
       const note = await repository.getActiveNote();
@@ -179,6 +181,7 @@ async function dispatch(
         result = await syncNote({
           ankiClient,
           ...(confirmDeletions ? { confirmDeletions } : {}),
+          confirmKindRecreations,
           logger: plugin.logger,
           mediaPipeline,
           note,
@@ -199,6 +202,7 @@ async function dispatch(
         result = await syncVault({
           ankiClient,
           ...(confirmDeletions ? { confirmDeletions } : {}),
+          confirmKindRecreations,
           logger: plugin.logger,
           mediaPipeline,
           onProgress: (current, total, notePath) => {
@@ -245,7 +249,12 @@ function summarizeNote(result: SyncNoteResult): string {
   const failedOps = countFailedOps(r);
   const failedSuffix =
     failedOps > 0 ? ` (${failedOps} card op${failedOps === 1 ? "" : "s"} failed — see sync.log)` : "";
-  return `Synced ${result.notePath}: +${creates} ~${updates} -${deletes}${failedSuffix}`;
+  const recovered = result.recoveredMissingCount;
+  const recoveredSuffix =
+    recovered > 0
+      ? ` (${recovered} missing Anki card${recovered === 1 ? "" : "s"} recreated)`
+      : "";
+  return `Synced ${result.notePath}: +${creates} ~${updates} -${deletes}${recoveredSuffix}${failedSuffix}`;
 }
 
 function summarizeVault(result: SyncVaultResult): string {

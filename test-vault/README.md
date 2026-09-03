@@ -19,8 +19,10 @@ live AnkiConnect instance.
    npm run dev        # watch mode — recompiles + copies into test-vault on save
    ```
 
-   `esbuild.config.mjs` has a postbuild hook that copies `main.js` +
-   `manifest.json` into `.obsidian/plugins/flashcards-obsidian/`.
+   `esbuild.config.mjs` has a postbuild hook that copies `main.js`,
+   `manifest.json`, and `styles.css` into
+   `.obsidian/plugins/flashcards-obsidian/`.
+
 3. Open `test-vault/` in Obsidian.
 4. Settings → Community plugins → enable "Flashcards".
 
@@ -30,12 +32,13 @@ Each subfolder under `scenarios/` exercises a specific code path. Open the
 relevant note(s) and run the plugin commands (`Flashcards: Sync current note`
 or `Flashcards: Sync vault`) from the command palette.
 
-| Folder       | What it tests                                                                 |
-| ------------ | ----------------------------------------------------------------------------- |
-| `empty/`     | Note with zero flashcards — sync should skip silently, no edits, no Anki.     |
-| `v2-clean/`  | Pre-synced v2 note (no-op rerun) + fresh note (full create path).             |
-| `v1-only/`   | Legacy `^<13-digit>` anchors only — first sync should show migration modal.   |
-| `mixed/`     | One v1 anchor + one v2 anchor — modal shows count=1.                          |
+| Folder        | What it tests                                                               |
+| ------------- | --------------------------------------------------------------------------- |
+| `empty/`      | Note with zero flashcards — sync should skip silently, no edits, no Anki.   |
+| `v2-clean/`   | Pre-synced v2 note (no-op rerun) + fresh note (full create path).           |
+| `v1-only/`    | Legacy `^<13-digit>` anchors only — first sync should show migration modal. |
+| `mixed/`      | One v1 anchor + one v2 anchor — modal shows count=1.                        |
+| `auto-fixes/` | Manual examples for verified v2 parsing and existing-card sync fixes.       |
 
 ## Features (automated)
 
@@ -44,11 +47,11 @@ or `Flashcards: Sync vault`) from the command palette.
 extracts and renders each into an Anki payload, snapshotted at
 `tests/adapters/anki/__snapshots__/features.test.ts.snap`.
 
-| Folder          | What it covers                                       |
-| --------------- | ---------------------------------------------------- |
-| `card-types/`   | One note per supported card syntax × kind.           |
-| `content/`      | Wikilinks, images, code, frontmatter (deck, tags).   |
-| `interactions/` | Known-bad combinations of the above (regression set).|
+| Folder          | What it covers                                        |
+| --------------- | ----------------------------------------------------- |
+| `card-types/`   | One note per supported card syntax × kind.            |
+| `content/`      | Wikilinks, images, code, frontmatter (deck, tags).    |
+| `interactions/` | Known-bad combinations of the above (regression set). |
 
 The harness strips written-back `^<id>` anchors before parsing and uses
 synthetic block IDs (`card-N`), so the same files can be opened in Obsidian

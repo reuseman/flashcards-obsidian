@@ -139,9 +139,9 @@ describe("syncNote — media-rewrite cue corruption (atomic cloze + image)", () 
     });
 
     expect(secondResult.status).toBe("ok");
-    // Right-reason lock: no bootstrap chatter, no addNote/deleteNotes/
-    // updateNoteFields — the note is byte-for-byte in sync already.
-    expect(calls).toHaveLength(0);
+    // The read-only notesInfo preflight checks that the stored nid is still
+    // live. No model bootstrap or mutation is needed for an in-sync card.
+    expect(calls.map((call) => call.action)).toEqual(["notesInfo"]);
     expect(second.saves).toHaveLength(0);
   });
 });

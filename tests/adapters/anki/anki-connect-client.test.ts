@@ -310,6 +310,64 @@ describe("AnkiConnectClient — updateNoteFields()", () => {
   });
 });
 
+describe("AnkiConnectClient — existing-note operations", () => {
+  it("requests note and card information with the supplied ids", async () => {
+    const { calls, fetch } = makeFakeFetch([
+      okBody([{ noteId: 1714, cards: [2714] }]),
+      okBody([{ cardId: 2714, deckName: "Default", note: 1714 }]),
+    ]);
+    const client = new AnkiConnectClient({ fetch });
+
+    await client.notesInfo([1714]);
+    await client.cardsInfo([2714]);
+
+    expect((calls[0]!.body as Record<string, unknown>)).toMatchObject({
+      action: "notesInfo",
+      params: { notes: [1714] },
+    });
+    expect((calls[1]!.body as Record<string, unknown>)).toMatchObject({
+      action: "cardsInfo",
+      params: { cards: [2714] },
+    });
+  });
+
+  it("sends updateNoteModel with the new model fields and preserved tags", async () => {
+    const { calls, fetch } = makeFakeFetch([okBody(null)]);
+    const client = new AnkiConnectClient({ fetch });
+
+    await client.updateNoteModel(
+      1714,
+      "Obsidian-basic-reversed",
+      { Front: "Q", Back: "A", Source: "S" },
+      ["manual"],
+    );
+
+    expect((calls[0]!.body as Record<string, unknown>)).toMatchObject({
+      action: "updateNoteModel",
+      params: {
+        note: {
+          id: 1714,
+          modelName: "Obsidian-basic-reversed",
+          fields: { Front: "Q", Back: "A", Source: "S" },
+          tags: ["manual"],
+        },
+      },
+    });
+  });
+
+  it("moves every supplied card to the requested deck", async () => {
+    const { calls, fetch } = makeFakeFetch([okBody(null)]);
+    const client = new AnkiConnectClient({ fetch });
+
+    await client.changeDeck([2714, 2715], "Target");
+
+    expect((calls[0]!.body as Record<string, unknown>)).toMatchObject({
+      action: "changeDeck",
+      params: { cards: [2714, 2715], deck: "Target" },
+    });
+  });
+});
+
 describe("AnkiConnectClient — deleteNotes()", () => {
   it("sends action `deleteNotes` with `{ notes: [...] }` and resolves undefined", async () => {
     const { calls, fetch } = makeFakeFetch([okBody(null)]);
