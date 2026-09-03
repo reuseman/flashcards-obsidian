@@ -4,21 +4,29 @@ import { ObsidianMarkdownRepository } from "../../../src/adapters/obsidian/obsid
 
 function createApp(activeFile: object | null = null) {
   const files = [
-    { basename: "First", path: "First.md" },
-    { basename: "Second", path: "Folder/Second.md" },
+    { basename: "First", path: "First.md", stat: { mtime: 10, size: 20 } },
+    {
+      basename: "Second",
+      path: "Folder/Second.md",
+      stat: { mtime: 11, size: 21 },
+    },
   ];
   const read = vi.fn(async (file: { path: string }) => `content:${file.path}`);
+  const cachedRead = vi.fn(
+    async (file: { path: string }) => `cached:${file.path}`,
+  );
   const modify = vi.fn(async () => undefined);
   const app = {
     vault: {
       getMarkdownFiles: () => files,
+      cachedRead,
       modify,
       read,
     },
     workspace: { getActiveFile: () => activeFile },
   };
 
-  return { app, files, modify, read };
+  return { app, cachedRead, files, modify, read };
 }
 
 describe("ObsidianMarkdownRepository", () => {
@@ -50,6 +58,43 @@ describe("ObsidianMarkdownRepository", () => {
 
     await expect(repository.getActiveNote()).resolves.toBeNull();
     expect(read).not.toHaveBeenCalled();
+  });
+
+  it("lists file stamps without reading Markdown content", async () => {
+    const { app, cachedRead, files, read } = createApp();
+    const repository = new ObsidianMarkdownRepository(app as never);
+
+    const descriptors = await repository.listMarkdownNotes();
+
+    expect(descriptors).toEqual([
+      {
+        file: files[0],
+        mtime: 10,
+        name: "First",
+        path: "First.md",
+        size: 20,
+      },
+      {
+        file: files[1],
+        mtime: 11,
+        name: "Second",
+        path: "Folder/Second.md",
+        size: 21,
+      },
+    ]);
+    expect(read).not.toHaveBeenCalled();
+    expect(cachedRead).not.toHaveBeenCalled();
+  });
+
+  it("uses Obsidian's cached read for a selected vault note", async () => {
+    const { app, cachedRead } = createApp();
+    const repository = new ObsidianMarkdownRepository(app as never);
+    const [descriptor] = await repository.listMarkdownNotes();
+
+    const note = await repository.readMarkdownNote(descriptor!);
+
+    expect(note.markdown).toBe("cached:First.md");
+    expect(cachedRead).toHaveBeenCalledOnce();
   });
 
   it("saves through Vault.modify using the original file handle", async () => {

@@ -127,6 +127,24 @@ describe("syncVault — empty vault", () => {
     expect(result.perNote).toEqual([]);
     expect(calls).toEqual([]);
   });
+
+  it("counts unchanged notes skipped by an incremental vault scan", async () => {
+    const { repository } = makeFakeRepo([]);
+    const { fetch } = makeFakeFetch([]);
+
+    const result = await syncVault({
+      ankiClient: new AnkiConnectClient({ fetch }),
+      notes: [],
+      repository,
+      settings: settingsWith(),
+      skippedUnchangedNoteCount: 3,
+      vaultName: VAULT,
+    });
+
+    expect(result.noteCount).toBe(3);
+    expect(result.processedNoteCount).toBe(0);
+    expect(result.skippedUnchangedNoteCount).toBe(3);
+  });
 });
 
 // ===========================================================================

@@ -2,15 +2,25 @@ import { Notice } from "obsidian";
 
 import type { PluginHost } from "./plugin-host.js";
 import { AnkiConnectClient } from "../anki/anki-connect-client.js";
+import { repairManagedSourceTemplates } from "../anki/repair-managed-source-templates.js";
+import {
+  applyManagedModelStyle,
+  inspectManagedModelStyle,
+} from "../anki/manage-managed-model-style.js";
 import { uploadMedia } from "../anki/upload-media.js";
 import { ObsidianMarkdownRepository } from "./obsidian-markdown-repository.js";
 import { MigrationModal } from "./migration-modal.js";
+import { SyntaxMigrationModal } from "./syntax-migration-modal.js";
 import { createDeleteConfirmer } from "./delete-confirm-modal.js";
 import { createKindRecreationConfirmer } from "./kind-recreation-confirm-modal.js";
+import { createAnkiStyleConfirmer } from "./anki-style-confirm-modal.js";
+import { writeAnkiStyleBackup } from "./anki-style-backup.js";
+import { prepareIncrementalVaultSync } from "./incremental-vault-sync.js";
 import { buildMediaRewriteMap, resolveMedia } from "./media-resolver.js";
 import { createWikilinkResolver } from "./wikilink-resolver.js";
 import { backfillV1Vault } from "../../application/backfill-v1-vault.js";
 import { migrationCheck } from "../../application/migration-check.js";
+import { buildSyntaxMigrationReport } from "../../application/build-syntax-migration-report.js";
 import {
   syncNote,
   type MediaPipeline,
@@ -24,6 +34,22 @@ import {
 type Target = "current" | "vault";
 
 export function registerPluginCommands(plugin: PluginHost): void {
+  plugin.addCommand({
+    callback: () => {
+      void runAnkiStyleMigration(plugin);
+    },
+    id: "flashcards-apply-v2-anki-style",
+    name: "Apply v2 Anki card style",
+  });
+
+  plugin.addCommand({
+    callback: () => {
+      void showSyntaxMigrationReport(plugin);
+    },
+    id: "flashcards-check-v2-syntax",
+    name: "Check vault for v2 syntax migration",
+  });
+
   plugin.addCommand({
     checkCallback: (checking) => {
       const activeFile = plugin.app.workspace.getActiveFile();
@@ -44,6 +70,108 @@ export function registerPluginCommands(plugin: PluginHost): void {
   });
 }
 
+async function runAnkiStyleMigration(plugin: PluginHost): Promise<void> {
+  if (plugin.syncInFlight) {
+    new Notice("Sync already in progress.");
+    return;
+  }
+
+  plugin.syncInFlight = true;
+  let backupPath: string | undefined;
+  let stage: "apply" | "backup" | "inspect" = "inspect";
+  try {
+    const ankiClient = createAnkiClient(plugin);
+    const plan = await inspectManagedModelStyle(ankiClient);
+    if (plan.changes.length === 0) {
+      if (plan.blocked.length === 0) {
+        new Notice("Managed Anki models already use the v2 style.");
+      } else {
+        new Notice(
+          `No compatible managed Anki models to update. ${plan.blocked
+            .map((item) => `${item.modelName}: ${item.reason}`)
+            .join("; ")}`,
+        );
+      }
+      return;
+    }
+
+    const confirmed = await createAnkiStyleConfirmer(plugin.app)(plan);
+    if (!confirmed) return;
+
+    const pluginDirectory =
+      plugin.manifest.dir ??
+      `${plugin.app.vault.configDir}/plugins/${plugin.manifest.id}`;
+    stage = "backup";
+    backupPath = await writeAnkiStyleBackup({
+      adapter: plugin.app.vault.adapter,
+      plan,
+      pluginDirectory,
+      pluginVersion: plugin.manifest.version,
+    });
+    stage = "apply";
+    await applyManagedModelStyle(ankiClient, plan);
+
+    const count = plan.changes.length;
+    new Notice(
+      `Applied v2 style to ${count} Anki ${
+        count === 1 ? "model" : "models"
+      }. Backup: ${backupPath}`,
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    plugin.logger.error("Anki style migration failed", { error: message });
+    if (stage === "inspect") {
+      new Notice(`Anki style check failed: ${message}`);
+    } else if (stage === "backup") {
+      new Notice(`Anki style backup failed: ${message}. Anki was not changed.`);
+    } else {
+      new Notice(`Anki style update failed: ${message}. Backup: ${backupPath}`);
+    }
+  } finally {
+    plugin.syncInFlight = false;
+    plugin.refreshStatusBars();
+  }
+}
+
+function createAnkiClient(plugin: PluginHost): AnkiConnectClient {
+  const secretName = plugin.settings.ankiConnectApiKeySecret;
+  const apiKey = secretName
+    ? plugin.app.secretStorage.getSecret(secretName) ?? undefined
+    : undefined;
+  return new AnkiConnectClient({ ...(apiKey ? { apiKey } : {}) });
+}
+
+async function showSyntaxMigrationReport(plugin: PluginHost): Promise<void> {
+  try {
+    const repository = new ObsidianMarkdownRepository(plugin.app);
+    const items = buildSyntaxMigrationReport(
+      await repository.getAllMarkdownNotes(),
+    );
+    if (items.length === 0) {
+      new Notice("No Flashcards v2 syntax migrations found.");
+      return;
+    }
+    new SyntaxMigrationModal(plugin.app, {
+      items,
+      onOpenLocation: (item) => {
+        void (async () => {
+          await plugin.app.workspace.openLinkText(item.notePath, "", false);
+          plugin.app.workspace.activeEditor?.editor?.setCursor({
+            ch: Math.max(0, item.column - 1),
+            line: Math.max(0, item.line - 1),
+          });
+        })();
+      },
+    }).open();
+  } catch (error) {
+    new Notice(
+      `Syntax migration check failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+}
+
 async function runWithMigrationCheck(
   plugin: PluginHost,
   target: Target,
@@ -53,7 +181,7 @@ async function runWithMigrationCheck(
     return;
   }
   const repository = new ObsidianMarkdownRepository(plugin.app);
-  const ankiClient = new AnkiConnectClient();
+  const ankiClient = createAnkiClient(plugin);
   const vaultName = plugin.app.vault.getName();
 
   // Fast path: decision already made → no vault scan.
@@ -169,6 +297,14 @@ async function dispatch(
     : undefined;
   const confirmKindRecreations = createKindRecreationConfirmer(plugin.app);
   try {
+    const repair = await repairManagedSourceTemplates(ankiClient);
+    if (repair.templatesUpdated > 0) {
+      new Notice(
+        `Updated ${repair.templatesUpdated} Anki ${
+          repair.templatesUpdated === 1 ? "template" : "templates"
+        } to show Source links.`,
+      );
+    }
     if (target === "current") {
       const note = await repository.getActiveNote();
       if (!note) {
@@ -199,12 +335,25 @@ async function dispatch(
       statusBar.setText("Flashcards: starting…");
       let result: SyncVaultResult;
       try {
+        const pluginDirectory =
+          plugin.manifest.dir ??
+          `${plugin.app.vault.configDir}/plugins/${plugin.manifest.id}`;
+        const incremental = await prepareIncrementalVaultSync({
+          adapter: plugin.app.vault.adapter,
+          indexPath: `${pluginDirectory}/vault-scan-index.json`,
+          repository,
+          settingsKey: JSON.stringify({
+            pluginVersion: plugin.manifest.version,
+            settings: plugin.settings,
+          }),
+        });
         result = await syncVault({
           ankiClient,
           ...(confirmDeletions ? { confirmDeletions } : {}),
           confirmKindRecreations,
           logger: plugin.logger,
           mediaPipeline,
+          notes: incremental.notes,
           onProgress: (current, total, notePath) => {
             const name = notePath.split("/").pop() ?? notePath;
             statusBar.setText(`Flashcards: ${current}/${total} — ${name}`);
@@ -212,8 +361,17 @@ async function dispatch(
           repository,
           resolveLink,
           settings: plugin.settings,
+          skippedUnchangedNoteCount:
+            incremental.skippedUnchangedNoteCount,
           vaultName,
         });
+        try {
+          await incremental.finish(result.perNote);
+        } catch (error) {
+          plugin.logger.warn("Could not save disposable vault scan index", {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
       } finally {
         statusBar.remove();
       }
@@ -268,7 +426,11 @@ function summarizeVault(result: SyncVaultResult): string {
   const failedSuffix =
     parts.length > 0 ? ` (${parts.join(", ")} — see sync.log)` : "";
   return (
-    `Vault sync: ${result.noteCount} notes, ` +
+    `Vault sync: ${result.noteCount} notes` +
+    (result.skippedUnchangedNoteCount > 0
+      ? ` (${result.skippedUnchangedNoteCount} unchanged card-free skipped)`
+      : "") +
+    ", " +
     `+${result.totalCreates} ~${result.totalUpdates} -${result.totalDeletes}${failedSuffix}`
   );
 }

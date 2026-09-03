@@ -81,10 +81,12 @@ export interface SyncVaultInput {
   generateBlockId?: () => string;
   logger?: Logger;
   mediaPipeline?: MediaPipeline;
+  notes?: MarkdownNote[];
   onProgress?: (current: number, total: number, notePath: string) => void;
   repository: MarkdownRepository;
   resolveLink?: (target: string, sourcePath: string) => string | null;
   settings: FlashcardsSettings;
+  skippedUnchangedNoteCount?: number;
   vaultName: string;
 }
 
@@ -99,6 +101,8 @@ export interface SyncVaultResult {
   mediaErrors: NoteMediaErrors[];
   noteCount: number;
   perNote: SyncNoteResult[];
+  processedNoteCount: number;
+  skippedUnchangedNoteCount: number;
   totalCreates: number;
   totalDeletes: number;
   totalUpdates: number;
@@ -120,19 +124,27 @@ export async function syncVault(
     confirmRebinds,
     generateBlockId,
     mediaPipeline,
+    notes: providedNotes,
     onProgress,
     repository,
     resolveLink,
     settings,
+    skippedUnchangedNoteCount = 0,
     vaultName,
   } = input;
   const logger: Logger = input.logger ?? new NoopLogger();
   const trace = createPerfTrace(logger, settings.perfTracing === true, "syncVault");
 
-  const notes = await repository.getAllMarkdownNotes();
-  const total = notes.length;
+  const notes = providedNotes ?? (await repository.getAllMarkdownNotes());
+  const processedNoteCount = notes.length;
+  const total = processedNoteCount;
+  const noteCount = processedNoteCount + skippedUnchangedNoteCount;
 
-  logger.info("syncVault start", { noteCount: total });
+  logger.info("syncVault start", {
+    noteCount,
+    processedNoteCount,
+    skippedUnchangedNoteCount,
+  });
 
   const perNote: SyncNoteResult[] = [];
   const mediaErrors: NoteMediaErrors[] = [];
@@ -197,7 +209,9 @@ export async function syncVault(
   }
 
   logger.info("syncVault end", {
-    noteCount: total,
+    noteCount,
+    processedNoteCount,
+    skippedUnchangedNoteCount,
     totalCreates,
     totalUpdates,
     totalDeletes,
@@ -222,8 +236,10 @@ export async function syncVault(
     failedNotes,
     lints,
     mediaErrors,
-    noteCount: total,
+    noteCount,
     perNote,
+    processedNoteCount,
+    skippedUnchangedNoteCount,
     totalCreates,
     totalDeletes,
     totalUpdates,
