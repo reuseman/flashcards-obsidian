@@ -64,7 +64,7 @@
     "mdast-util-gfm": "^3.1.0",
     "mdast-util-to-string": "^4.0.0",
     "micromark-extension-frontmatter": "^2.0.0",
-    "obsidian": "latest",
+    "obsidian": "1.13.1",
     "rehype-raw": "^7.0.0",
     "rehype-stringify": "^10.0.0",
     "remark-frontmatter": "^5.0.0",

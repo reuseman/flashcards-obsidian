@@ -1,119 +1,212 @@
-import { PluginSettingTab, Setting } from "obsidian";
+import { PluginSettingTab, type SettingDefinitionItem } from "obsidian";
 
+import {
+  DEFAULT_SETTINGS,
+  type ContextStrategy,
+} from "../../core/config/settings.js";
 import type { PluginHost } from "./plugin-host.js";
+
+type SettingsKey =
+  | "confirmBeforeDelete"
+  | "contextSeparator"
+  | "contextStrategy"
+  | "defaultDeck"
+  | "renderPreview.anchor"
+  | "renderPreview.cloze"
+  | "renderPreview.enabled"
+  | "renderPreview.hashtag"
+  | "renderPreview.inlineSeparator";
+
+function isContextStrategy(value: unknown): value is ContextStrategy {
+  return value === "headings" || value === "none" || value === "note-title";
+}
 
 export class FlashcardsSettingTab extends PluginSettingTab {
   constructor(app: PluginHost["app"], private readonly plugin: PluginHost) {
     super(app, plugin);
   }
 
-  override display(): void {
-    const { containerEl } = this;
-    containerEl.empty();
+  override getSettingDefinitions(): SettingDefinitionItem<SettingsKey>[] {
+    return [
+      {
+        type: "group",
+        heading: "Flashcards v2",
+        items: [
+          {
+            name: "Default deck",
+            desc: "Deck used when a note does not set one. Default: Default.",
+            control: {
+              type: "text",
+              key: "defaultDeck",
+              defaultValue: DEFAULT_SETTINGS.defaultDeck,
+              validate: (value) =>
+                value.trim() ? undefined : "Enter a deck name.",
+            },
+          },
+          {
+            name: "Context",
+            desc: "Text added before a card front. Default: headings.",
+            control: {
+              type: "dropdown",
+              key: "contextStrategy",
+              defaultValue: DEFAULT_SETTINGS.contextStrategy,
+              options: {
+                headings: "Headings (default)",
+                none: "None",
+                "note-title": "Note title",
+              },
+            },
+          },
+          {
+            name: "Context separator",
+            desc: "Text between context parts. Use \\n for a new line. Default: >.",
+            control: {
+              type: "text",
+              key: "contextSeparator",
+              defaultValue: DEFAULT_SETTINGS.contextSeparator,
+            },
+          },
+          {
+            name: "Confirm before deleting",
+            desc: "Ask before deleting Anki cards that were removed from a note. Default: on.",
+            control: {
+              type: "toggle",
+              key: "confirmBeforeDelete",
+              defaultValue: DEFAULT_SETTINGS.confirmBeforeDelete,
+            },
+          },
+        ],
+      },
+      {
+        type: "group",
+        heading: "Reading-mode rendering",
+        items: [
+          {
+            name: "Render flashcard syntax",
+            desc: "Style card syntax in Reading mode and Live Preview. Default: on.",
+            control: {
+              type: "toggle",
+              key: "renderPreview.enabled",
+              defaultValue: DEFAULT_SETTINGS.renderPreview.enabled,
+            },
+          },
+          {
+            name: "Cloze",
+            desc: "Style {{cN::text}} and {N:text}. Default: on.",
+            control: {
+              type: "toggle",
+              key: "renderPreview.cloze",
+              defaultValue: DEFAULT_SETTINGS.renderPreview.features.cloze,
+            },
+          },
+          {
+            name: "Sync anchor",
+            desc: "Dim ^q-XXXX and ^XXXXXXXXXXXXX anchors. Default: on.",
+            control: {
+              type: "toggle",
+              key: "renderPreview.anchor",
+              defaultValue: DEFAULT_SETTINGS.renderPreview.features.anchor,
+            },
+          },
+          {
+            name: "Inline separator",
+            desc: "Show :: and ::: as arrows. Default: off.",
+            control: {
+              type: "toggle",
+              key: "renderPreview.inlineSeparator",
+              defaultValue: DEFAULT_SETTINGS.renderPreview.features.inlineSeparator,
+            },
+          },
+          {
+            name: "Hashtag card",
+            desc: "Style #card and #card-reverse tags. Default: on.",
+            control: {
+              type: "toggle",
+              key: "renderPreview.hashtag",
+              defaultValue: DEFAULT_SETTINGS.renderPreview.features.hashtag,
+            },
+          },
+        ],
+      },
+    ];
+  }
 
-    containerEl.createEl("h2", { text: "Flashcards v2" });
+  override getControlValue(key: SettingsKey): unknown {
+    switch (key) {
+      case "confirmBeforeDelete":
+      case "contextSeparator":
+      case "contextStrategy":
+      case "defaultDeck":
+        return this.plugin.settings[key];
+      case "renderPreview.enabled":
+        return this.plugin.settings.renderPreview.enabled;
+      case "renderPreview.anchor":
+        return this.plugin.settings.renderPreview.features.anchor;
+      case "renderPreview.cloze":
+        return this.plugin.settings.renderPreview.features.cloze;
+      case "renderPreview.hashtag":
+        return this.plugin.settings.renderPreview.features.hashtag;
+      case "renderPreview.inlineSeparator":
+        return this.plugin.settings.renderPreview.features.inlineSeparator;
+    }
+  }
 
-    new Setting(containerEl)
-      .setName("Default deck")
-      .setDesc("Fallback deck name when a note does not override it.")
-      .addText((text) =>
-        text
-          .setValue(this.plugin.settings.defaultDeck)
-          .onChange(async (value) => {
-            if (!value.trim()) {
-              return;
-            }
+  override async setControlValue(key: SettingsKey, value: unknown): Promise<void> {
+    switch (key) {
+      case "defaultDeck":
+        if (typeof value === "string" && value.trim()) {
+          await this.plugin.updateSettings({ defaultDeck: value.trim() });
+        }
+        return;
+      case "contextStrategy":
+        if (isContextStrategy(value)) {
+          await this.plugin.updateSettings({ contextStrategy: value });
+        }
+        return;
+      case "contextSeparator":
+        if (typeof value === "string") {
+          await this.plugin.updateSettings({ contextSeparator: value });
+        }
+        return;
+      case "confirmBeforeDelete":
+        if (typeof value === "boolean") {
+          await this.plugin.updateSettings({ confirmBeforeDelete: value });
+        }
+        return;
+      case "renderPreview.enabled":
+        if (typeof value === "boolean") {
+          await this.plugin.updateSettings({
+            renderPreview: { ...this.plugin.settings.renderPreview, enabled: value },
+          });
+        }
+        return;
+      case "renderPreview.anchor":
+        return this.updateRenderPreviewFeature("anchor", value);
+      case "renderPreview.cloze":
+        return this.updateRenderPreviewFeature("cloze", value);
+      case "renderPreview.hashtag":
+        return this.updateRenderPreviewFeature("hashtag", value);
+      case "renderPreview.inlineSeparator":
+        return this.updateRenderPreviewFeature("inlineSeparator", value);
+    }
+  }
 
-            await this.plugin.updateSettings({ defaultDeck: value.trim() });
-          }),
-      );
+  private async updateRenderPreviewFeature(
+    key: keyof PluginHost["settings"]["renderPreview"]["features"],
+    value: unknown,
+  ): Promise<void> {
+    if (typeof value !== "boolean") {
+      return;
+    }
 
-    new Setting(containerEl)
-      .setName("Context strategy")
-      .setDesc("How heading context is added to generated card fronts.")
-      .addDropdown((dropdown) =>
-        dropdown
-          .addOption("headings", "Headings")
-          .addOption("none", "None")
-          .addOption("note-title", "Note title")
-          .setValue(this.plugin.settings.contextStrategy)
-          .onChange(async (value) => {
-            await this.plugin.updateSettings({
-              contextStrategy: value as typeof this.plugin.settings.contextStrategy,
-            });
-          }),
-      );
-
-    new Setting(containerEl)
-      .setName("Confirm before deleting")
-      .setDesc(
-        "Ask before deleting Anki cards that no longer appear in a note. " +
-          "When off, deletions happen silently during sync.",
-      )
-      .addToggle((t) =>
-        t
-          .setValue(this.plugin.settings.confirmBeforeDelete)
-          .onChange(async (value) => {
-            await this.plugin.updateSettings({ confirmBeforeDelete: value });
-          }),
-      );
-
-    containerEl.createEl("h3", { text: "Reading-mode rendering" });
-    containerEl.createEl("p", {
-      text:
-        "Cosmetic rendering of flashcard syntax in Reading mode and Live " +
-        "Preview. Live Preview toggles take effect after reopening the file.",
-      cls: "setting-item-description",
+    await this.plugin.updateSettings({
+      renderPreview: {
+        ...this.plugin.settings.renderPreview,
+        features: {
+          ...this.plugin.settings.renderPreview.features,
+          [key]: value,
+        },
+      },
     });
-
-    new Setting(containerEl)
-      .setName("Enable render-preview")
-      .setDesc("Master switch.")
-      .addToggle((t) =>
-        t
-          .setValue(this.plugin.settings.renderPreview.enabled)
-          .onChange(async (value) => {
-            await this.plugin.updateSettings({
-              renderPreview: {
-                ...this.plugin.settings.renderPreview,
-                enabled: value,
-              },
-            });
-          }),
-      );
-
-    const featureRow = (
-      key: "cloze" | "anchor" | "inlineSeparator" | "hashtag",
-      name: string,
-      desc: string,
-    ) =>
-      new Setting(containerEl).setName(name).setDesc(desc).addToggle((t) =>
-        t
-          .setValue(this.plugin.settings.renderPreview.features[key])
-          .onChange(async (value) => {
-            await this.plugin.updateSettings({
-              renderPreview: {
-                ...this.plugin.settings.renderPreview,
-                features: {
-                  ...this.plugin.settings.renderPreview.features,
-                  [key]: value,
-                },
-              },
-            });
-          }),
-      );
-
-    featureRow("cloze", "Cloze", "Render {{cN::x}} and {N:x} with cloze styling.");
-    featureRow("anchor", "Sync anchor", "Dim the ^q-XXXX / ^XXXXXXXXXXXXX sync anchors.");
-    featureRow(
-      "inlineSeparator",
-      "Inline separator",
-      "Replace :: and ::: with arrow glyphs. Off by default (visually invasive).",
-    );
-    featureRow(
-      "hashtag",
-      "Hashtag (#card)",
-      "Style #card / #card-reverse hashtag tags in the preview.",
-    );
   }
 }

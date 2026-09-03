@@ -25,7 +25,7 @@ import {
 import { registerRenderPreview } from "./render-preview/index.js";
 
 export default class FlashcardsPlugin extends Plugin implements PluginHost {
-  settings: FlashcardsSettings = DEFAULT_SETTINGS;
+  override settings: FlashcardsSettings = DEFAULT_SETTINGS;
   logger: Logger = new NoopLogger();
   syncInFlight = false;
 
