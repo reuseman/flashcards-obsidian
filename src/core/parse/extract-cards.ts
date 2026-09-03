@@ -1,7 +1,15 @@
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown } from "mdast-util-gfm";
 import { frontmatter } from "micromark-extension-frontmatter";
-import type { Nodes, Parent, PhrasingContent, RootContent } from "mdast";
+import type {
+  Heading,
+  Nodes,
+  Paragraph,
+  Parent,
+  PhrasingContent,
+  Root,
+  RootContent,
+} from "mdast";
 import { visit } from "unist-util-visit";
 
 import type { FlashcardsSettings } from "../config/settings.js";
@@ -77,11 +85,10 @@ export function extractCardsFromMarkdown(
         return;
       }
 
-      const value = stripTrailingAnchor(
-        phrasingToVisibleText(node.children, markdown).trim(),
-      );
+      const paragraph = paragraphMarkdown(node, markdown);
+      const value = stripTrailingAnchor(paragraph.value);
       const inline = options.settings.inline.enabled && !suppressBodyScans
-        ? parseInlineCard(value, options.settings)
+        ? parseInlineCard(value, options.settings, paragraph.inlineCodeSpans)
         : null;
       if (inline) {
         cards.push({
@@ -100,7 +107,7 @@ export function extractCardsFromMarkdown(
       }
 
       const cloze = options.settings.cloze.enabled && !suppressBodyScans
-        ? parseClozeCard(value)
+        ? parseClozeCard(value, paragraph.inlineCodeSpans)
         : null;
       if (cloze) {
         cards.push({
@@ -142,7 +149,119 @@ export function extractCardsFromMarkdown(
   );
   cards.push(...atomic.cards);
 
-  return { cards, lints: atomic.lints, warnings };
+  return {
+    cards: applyContext(cards, tree, markdown, options),
+    lints: atomic.lints,
+    warnings,
+  };
+}
+
+interface HeadingContext {
+  offset: number;
+  path: string[];
+}
+
+function applyContext(
+  cards: Flashcard[],
+  tree: Root,
+  markdown: string,
+  options: ExtractCardsOptions,
+): Flashcard[] {
+  if (options.settings.contextStrategy === "none") {
+    return cards;
+  }
+
+  const separator = options.settings.contextSeparator.replaceAll("\\n", "\n");
+  const headings = options.settings.contextStrategy === "headings"
+    ? collectHeadingContexts(tree, markdown, options.settings)
+    : [];
+  const title = noteTitle(options.notePath);
+
+  return cards.map((card) => {
+    const context = options.settings.contextStrategy === "note-title"
+      ? title
+      : headingContextAt(headings, card.source.startOffset)?.join(separator) ?? "";
+
+    if (!context || card.front === context) {
+      return card;
+    }
+
+    return { ...card, front: `${context}${separator}${card.front}` };
+  });
+}
+
+function collectHeadingContexts(
+  tree: Root,
+  markdown: string,
+  settings: FlashcardsSettings,
+): HeadingContext[] {
+  const result: HeadingContext[] = [];
+  const stack: Array<{ depth: number; text: string }> = [];
+
+  for (const node of tree.children) {
+    if (node.type !== "heading") {
+      continue;
+    }
+
+    while (stack.length > 0 && stack[stack.length - 1]!.depth >= node.depth) {
+      stack.pop();
+    }
+
+    const text = cleanHeadingText(node, markdown, settings);
+    if (text.length === 0) {
+      continue;
+    }
+
+    stack.push({ depth: node.depth, text });
+    result.push({
+      offset: node.position?.start.offset ?? 0,
+      path: stack.map((part) => part.text),
+    });
+  }
+
+  return result;
+}
+
+function cleanHeadingText(
+  heading: Heading,
+  markdown: string,
+  settings: FlashcardsSettings,
+): string {
+  let text = stripTrailingAnchor(
+    phrasingToVisibleText(heading.children, markdown).trim(),
+  );
+  const basicTag = `#${settings.hashtag.basicTag}`;
+  for (const tag of [`${basicTag}-reverse`, `${basicTag}/reverse`, basicTag]) {
+    if (text.endsWith(tag)) {
+      const before = text.slice(0, -tag.length);
+      if (before.length === 0 || /\s$/.test(before)) {
+        text = before.trimEnd();
+        break;
+      }
+    }
+  }
+  return text;
+}
+
+function headingContextAt(
+  headings: HeadingContext[],
+  cardOffset: number,
+): string[] | undefined {
+  let active: string[] | undefined;
+  for (const heading of headings) {
+    // A hashtag card can use its own heading as its front. Context must only
+    // contain headings that begin before that card, or the front is repeated.
+    if (heading.offset >= cardOffset) {
+      break;
+    }
+    active = heading.path;
+  }
+  return active;
+}
+
+function noteTitle(notePath: string): string {
+  const base = notePath.split("/").pop() ?? notePath;
+  return base.endsWith(".md") ? base.slice(0, -3) : base;
 }
 
 /**
@@ -204,10 +323,11 @@ function parseFencedFields(block: string): FencedFields {
 function parseInlineCard(
   line: string,
   settings: FlashcardsSettings,
+  protectedSpans: Span[],
 ): { answer: string; front: string; kind: "basic" | "reversed"; syntax: "inline" } | null {
-  const clozeSpans = collectClozeSpans(line);
+  const excludedSpans = [...collectClozeSpans(line), ...protectedSpans];
 
-  const reverseIndex = findSeparator(line, settings.inlineReverseSeparator, clozeSpans);
+  const reverseIndex = findSeparator(line, settings.inlineReverseSeparator, excludedSpans);
   if (reverseIndex >= 0) {
     return {
       answer: line.slice(reverseIndex + settings.inlineReverseSeparator.length).trim(),
@@ -217,7 +337,7 @@ function parseInlineCard(
     };
   }
 
-  const basicIndex = findSeparator(line, settings.inlineSeparator, clozeSpans);
+  const basicIndex = findSeparator(line, settings.inlineSeparator, excludedSpans);
   if (basicIndex >= 0) {
     return {
       answer: line.slice(basicIndex + settings.inlineSeparator.length).trim(),
@@ -247,12 +367,60 @@ function findSeparator(line: string, separator: string, clozeSpans: Span[]): num
   return -1;
 }
 
-function parseClozeCard(line: string): string | null {
-  if (/==.+?==/.test(line) || /\{(?:\d+:)?[^}]+\}/.test(line)) {
+function parseClozeCard(line: string, protectedSpans: Span[]): string | null {
+  const hasUnprotectedCloze = collectClozeSpans(line).some(
+    (span) => !intersectsSpan(span.start, span.end, protectedSpans),
+  );
+  if (hasUnprotectedCloze) {
     return line;
   }
 
   return null;
+}
+
+interface ParagraphMarkdown {
+  inlineCodeSpans: Span[];
+  value: string;
+}
+
+function paragraphMarkdown(node: Paragraph, source: string): ParagraphMarkdown {
+  const start = node.position?.start.offset;
+  const end = node.position?.end.offset;
+  if (typeof start !== "number" || typeof end !== "number") {
+    return {
+      inlineCodeSpans: [],
+      value: phrasingToVisibleText(node.children, source).trim(),
+    };
+  }
+
+  const raw = source.slice(start, end);
+  const leadingWhitespace = raw.length - raw.trimStart().length;
+  const value = raw.trim();
+  const inlineCodeSpans: Span[] = [];
+  collectInlineCodeSpans(node, start + leadingWhitespace, inlineCodeSpans);
+
+  return { inlineCodeSpans, value };
+}
+
+function collectInlineCodeSpans(
+  node: Nodes,
+  contentStart: number,
+  spans: Span[],
+): void {
+  if (node.type === "inlineCode") {
+    const start = node.position?.start.offset;
+    const end = node.position?.end.offset;
+    if (typeof start === "number" && typeof end === "number") {
+      spans.push({ start: start - contentStart, end: end - contentStart });
+    }
+    return;
+  }
+
+  if (hasChildren(node)) {
+    for (const child of node.children as Nodes[]) {
+      collectInlineCodeSpans(child, contentStart, spans);
+    }
+  }
 }
 
 /**

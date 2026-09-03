@@ -597,6 +597,60 @@ describe("extractCardsFromMarkdown", () => {
     expect(result.cards[0]?.answer).toContain("![](pic.png)");
   });
 
+  describe("preserves Markdown in inline and cloze cards", () => {
+    test("keeps emphasis, links, and inline code in both inline fields", () => {
+      const result = extractCardsFromMarkdown(
+        "What is **TCP** and [UDP](https://example.com)?::Use `reliable()` and *datagrams*.",
+        { notePath: "Markdown.md", settings: DEFAULT_SETTINGS },
+      );
+
+      expect(result.cards).toHaveLength(1);
+      expect(result.cards[0]).toMatchObject({
+        front: "What is **TCP** and [UDP](https://example.com)?",
+        answer: "Use `reliable()` and *datagrams*.",
+      });
+    });
+
+    test("keeps Markdown and inline code around a cloze", () => {
+      const source = "Use `pump()` to move **==blood==** through [arteries](Artery).";
+      const result = extractCardsFromMarkdown(source, {
+        notePath: "Markdown.md",
+        settings: DEFAULT_SETTINGS,
+      });
+
+      expect(result.cards).toHaveLength(1);
+      expect(result.cards[0]?.front).toBe(source);
+    });
+
+    test("does not treat an inline-code separator as a card", () => {
+      const result = extractCardsFromMarkdown("Run `left::right` in a shell.", {
+        notePath: "Markdown.md",
+        settings: DEFAULT_SETTINGS,
+      });
+
+      expect(result.cards).toHaveLength(0);
+    });
+
+    test("does not treat inline-code braces as a cloze", () => {
+      const result = extractCardsFromMarkdown("The syntax is `{value}`.", {
+        notePath: "Markdown.md",
+        settings: DEFAULT_SETTINGS,
+      });
+
+      expect(result.cards).toHaveLength(0);
+    });
+
+    test("preserves inline code containing separators in a real card answer", () => {
+      const result = extractCardsFromMarkdown("Question::Call `left::right`.", {
+        notePath: "Markdown.md",
+        settings: DEFAULT_SETTINGS,
+      });
+
+      expect(result.cards).toHaveLength(1);
+      expect(result.cards[0]?.answer).toBe("Call `left::right`.");
+    });
+  });
+
   describe("WI-10: double-detection suppression on `test:`-keyed notes", () => {
     function atomicNote(frontmatterLines: string[], body: string[]): string {
       return ["---", ...frontmatterLines, "---", "", ...body].join("\n");

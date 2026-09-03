@@ -4,7 +4,7 @@ End-user manual for v2. For development notes, see `CONTRIBUTING.md`.
 
 ## Requirements
 
-- Obsidian ≥ 1.8.7.
+- Obsidian 1.13.0 or newer.
 - Anki with the **AnkiConnect** add-on installed and running. Default
   endpoint: `http://127.0.0.1:8765`.
 - Community plugins enabled for the vault (Settings → Community plugins →
@@ -188,8 +188,8 @@ plugin folder (resets all plugin state).
 | `defaultDeck` | `Default` | Fallback deck if neither frontmatter nor folder picks one. |
 | `folderBasedDecks` | `true` | Map folder path to deck (`/` → `::`). |
 | `defaultTags` | `["obsidian"]` | Tags merged into every card. |
-| `contextStrategy` | `headings` | Heading-context to prepend to card fronts. `headings` \| `none` \| `note-title`. |
-| `contextSeparator` | ` > ` | Joiner between heading levels in context. |
+| `contextStrategy` | `headings` | Text added before each card front. Use `headings`, `none`, or `note-title`. |
+| `contextSeparator` | ` > ` | Text between context parts. Use `\n` for a new line. |
 | `inlineSeparator` | `::` | Basic inline card delimiter. |
 | `inlineReverseSeparator` | `:::` | Reversed inline card delimiter. |
 | `explicitSyntax` | `fenced` | Fenced-block code label. |

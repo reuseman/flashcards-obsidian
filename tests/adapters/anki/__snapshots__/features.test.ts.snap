@@ -7,7 +7,7 @@ exports[`test-vault/features snapshot coverage > renders card-types/cloze.md 1`]
     "fields": {
       "Extra": "",
       "Source": "<a href="obsidian://open?vault=Vault&file=card-types%2Fcloze.md#%5Ecard-0">Open in Obsidian</a>",
-      "Text": "<p>The mitochondria is the {{c1::powerhouse}} of the cell.</p>",
+      "Text": "<p>Cloze > The mitochondria is the {{c1::powerhouse}} of the cell.</p>",
     },
     "modelName": "Obsidian-cloze",
     "tags": [
@@ -20,7 +20,7 @@ exports[`test-vault/features snapshot coverage > renders card-types/cloze.md 1`]
     "fields": {
       "Extra": "",
       "Source": "<a href="obsidian://open?vault=Vault&file=card-types%2Fcloze.md#%5Ecard-1">Open in Obsidian</a>",
-      "Text": "<p>{{c1::Highlighted cloze}} inside a sentence.</p>",
+      "Text": "<p>Cloze > {{c1::Highlighted cloze}} inside a sentence.</p>",
     },
     "modelName": "Obsidian-cloze",
     "tags": [
@@ -37,7 +37,7 @@ exports[`test-vault/features snapshot coverage > renders card-types/fenced-basic
     "deckName": "card-types",
     "fields": {
       "Back": "<p>Hypertext Transfer Protocol.</p>",
-      "Front": "<p>What does HTTP stand for?</p>",
+      "Front": "<p>Fenced basic > What does HTTP stand for?</p>",
       "Source": "<a href="obsidian://open?vault=Vault&file=card-types%2Ffenced-basic.md#%5Ecard-0">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic",
@@ -55,7 +55,7 @@ exports[`test-vault/features snapshot coverage > renders card-types/fenced-rever
     "deckName": "card-types",
     "fields": {
       "Back": "<p>Transmission Control Protocol</p>",
-      "Front": "<p>TCP</p>",
+      "Front": "<p>Fenced reversed > TCP</p>",
       "Source": "<a href="obsidian://open?vault=Vault&file=card-types%2Ffenced-reversed.md#%5Ecard-0">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic-reversed",
@@ -73,7 +73,7 @@ exports[`test-vault/features snapshot coverage > renders card-types/hashtag.md 1
     "deckName": "card-types",
     "fields": {
       "Back": "<p>100 degrees Celsius.</p>",
-      "Front": "<p>What is the boiling point of water at sea level?</p>",
+      "Front": "<p>Hashtag (#card) > What is the boiling point of water at sea level?</p>",
       "Source": "<a href="obsidian://open?vault=Vault&file=card-types%2Fhashtag.md#%5Ecard-0">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic",
@@ -91,7 +91,7 @@ exports[`test-vault/features snapshot coverage > renders card-types/inline-basic
     "deckName": "card-types",
     "fields": {
       "Back": "<p>Paris.</p>",
-      "Front": "<p>What is the capital of France?</p>",
+      "Front": "<p>Inline basic > What is the capital of France?</p>",
       "Source": "<a href="obsidian://open?vault=Vault&file=card-types%2Finline-basic.md#%5Ecard-0">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic",
@@ -109,7 +109,7 @@ exports[`test-vault/features snapshot coverage > renders card-types/inline-rever
     "deckName": "card-types",
     "fields": {
       "Back": "<p>Four.</p>",
-      "Front": "<p>What is 2 + 2?</p>",
+      "Front": "<p>Inline reversed > What is 2 + 2?</p>",
       "Source": "<a href="obsidian://open?vault=Vault&file=card-types%2Finline-reversed.md#%5Ecard-0">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic-reversed",
@@ -127,7 +127,7 @@ exports[`test-vault/features snapshot coverage > renders content/audio.md 1`] = 
     "deckName": "content",
     "fields": {
       "Back": "<p>A bell.</p>",
-      "Front": "<p>What does this sound like? [sound:d650f6e7fa0f4f12170987cc5c2de3f3c0e4a335.wav]</p>",
+      "Front": "<p>Audio > What does this sound like? [sound:d650f6e7fa0f4f12170987cc5c2de3f3c0e4a335.wav]</p>",
       "Source": "<a href="obsidian://open?vault=Vault&file=content%2Faudio.md#%5Ecard-0">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic",
@@ -140,7 +140,7 @@ exports[`test-vault/features snapshot coverage > renders content/audio.md 1`] = 
     "deckName": "content",
     "fields": {
       "Back": "<p>A short beep.</p>",
-      "Front": "<p>Listen carefully [sound:30db0de556da42068033d53fbb07902377d0550c.wav]</p>",
+      "Front": "<p>Audio > Listen carefully [sound:30db0de556da42068033d53fbb07902377d0550c.wav]</p>",
       "Source": "<a href="obsidian://open?vault=Vault&file=content%2Faudio.md#%5Ecard-1">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic",
@@ -157,8 +157,8 @@ exports[`test-vault/features snapshot coverage > renders content/code-blocks.md 
   {
     "deckName": "content",
     "fields": {
-      "Back": "<p>Prints  to stdout.</p>",
-      "Front": "<p>What does  do?</p>",
+      "Back": "<p>Prints <code>hi</code> to stdout.</p>",
+      "Front": "<p>Code blocks > What does <code>console.log("hi")</code> do?</p>",
       "Source": "<a href="obsidian://open?vault=Vault&file=content%2Fcode-blocks.md#%5Ecard-0">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic",
@@ -176,7 +176,7 @@ exports[`test-vault/features snapshot coverage > renders content/frontmatter-dec
     "deckName": "Custom::Subdeck",
     "fields": {
       "Back": "<p>Custom::Subdeck.</p>",
-      "Front": "<p>What deck does this card belong to?</p>",
+      "Front": "<p>Frontmatter deck override > What deck does this card belong to?</p>",
       "Source": "<a href="obsidian://open?vault=Vault&file=content%2Ffrontmatter-deck.md#%5Ecard-0">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic",
@@ -194,7 +194,7 @@ exports[`test-vault/features snapshot coverage > renders content/frontmatter-tag
     "deckName": "content",
     "fields": {
       "Back": "<p>Plants converting light into energy.</p>",
-      "Front": "<p>What is photosynthesis?</p>",
+      "Front": "<p>Frontmatter tags merge > What is photosynthesis?</p>",
       "Source": "<a href="obsidian://open?vault=Vault&file=content%2Ffrontmatter-tags.md#%5Ecard-0">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic",
@@ -214,7 +214,7 @@ exports[`test-vault/features snapshot coverage > renders content/images.md 1`] =
     "deckName": "content",
     "fields": {
       "Back": "<p>It shows a flow.</p>",
-      "Front": "<p>Describe the diagram <img src="45f018d9703bdbe54824e9eb04cf0e54eb6801e8.png"></p>",
+      "Front": "<p>Images > Describe the diagram <img src="45f018d9703bdbe54824e9eb04cf0e54eb6801e8.png"></p>",
       "Source": "<a href="obsidian://open?vault=Vault&file=content%2Fimages.md#%5Ecard-0">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic",
@@ -227,7 +227,7 @@ exports[`test-vault/features snapshot coverage > renders content/images.md 1`] =
     "deckName": "content",
     "fields": {
       "Back": "<p>A screenshot.</p>",
-      "Front": "<p>What does this look like? <img src="2c23728f3575235a2550504a24c631e41ca33bb8.png" alt="alt"></p>",
+      "Front": "<p>Images > What does this look like? <img src="2c23728f3575235a2550504a24c631e41ca33bb8.png" alt="alt"></p>",
       "Source": "<a href="obsidian://open?vault=Vault&file=content%2Fimages.md#%5Ecard-1">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic",
@@ -245,7 +245,7 @@ exports[`test-vault/features snapshot coverage > renders content/wikilinks.md 1`
     "deckName": "content",
     "fields": {
       "Back": "<p>A page in Obsidian.</p>",
-      "Front": "<p>What is a <a href="obsidian://open?vault=Vault&amp;file=note">note</a>?</p>",
+      "Front": "<p>Wikilinks > What is a <a href="obsidian://open?vault=Vault&amp;file=note">note</a>?</p>",
       "Source": "<a href="obsidian://open?vault=Vault&file=content%2Fwikilinks.md#%5Ecard-0">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic",
@@ -258,7 +258,7 @@ exports[`test-vault/features snapshot coverage > renders content/wikilinks.md 1`
     "deckName": "content",
     "fields": {
       "Back": "<p>Same target, different display.</p>",
-      "Front": "<p>What is <a href="obsidian://open?vault=Vault&amp;file=note">aliased text</a>?</p>",
+      "Front": "<p>Wikilinks > What is <a href="obsidian://open?vault=Vault&amp;file=note">aliased text</a>?</p>",
       "Source": "<a href="obsidian://open?vault=Vault&file=content%2Fwikilinks.md#%5Ecard-1">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic",
@@ -271,7 +271,7 @@ exports[`test-vault/features snapshot coverage > renders content/wikilinks.md 1`
     "deckName": "content",
     "fields": {
       "Back": "<p>A link to a heading.</p>",
-      "Front": "<p>What is <a href="obsidian://open?vault=Vault&amp;file=note#Heading">note#Heading</a>?</p>",
+      "Front": "<p>Wikilinks > What is <a href="obsidian://open?vault=Vault&amp;file=note#Heading">note#Heading</a>?</p>",
       "Source": "<a href="obsidian://open?vault=Vault&file=content%2Fwikilinks.md#%5Ecard-2">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic",
@@ -284,7 +284,7 @@ exports[`test-vault/features snapshot coverage > renders content/wikilinks.md 1`
     "deckName": "content",
     "fields": {
       "Back": "<p>A link to a block.</p>",
-      "Front": "<p>What is <a href="obsidian://open?vault=Vault&amp;file=note#%5Eblock-id">note#^block-id</a>?</p>",
+      "Front": "<p>Wikilinks > What is <a href="obsidian://open?vault=Vault&amp;file=note#%5Eblock-id">note#^block-id</a>?</p>",
       "Source": "<a href="obsidian://open?vault=Vault&file=content%2Fwikilinks.md#%5Ecard-3">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic",
@@ -303,7 +303,7 @@ exports[`test-vault/features snapshot coverage > renders interactions/audio-in-c
     "fields": {
       "Extra": "",
       "Source": "<a href="obsidian://open?vault=Vault&file=interactions%2Faudio-in-cloze.md#%5Ecard-0">Open in Obsidian</a>",
-      "Text": "<p>The famous opening of {{c1::Beethoven's 5th [sound:493fdd8f82cb6139db2e5f979a79b393b125dfa0.wav]}} starts here.</p>",
+      "Text": "<p>Audio in cloze > The famous opening of {{c1::Beethoven's 5th [sound:493fdd8f82cb6139db2e5f979a79b393b125dfa0.wav]}} starts here.</p>",
     },
     "modelName": "Obsidian-cloze",
     "tags": [
@@ -320,7 +320,7 @@ exports[`test-vault/features snapshot coverage > renders interactions/image-in-r
     "deckName": "interactions",
     "fields": {
       "Back": "<p>The flag of France.</p>",
-      "Front": "<img src="760b5ea4a888728b0697120e6a87662fbddfabd0.png">",
+      "Front": "<p>Image in reversed > <img src="760b5ea4a888728b0697120e6a87662fbddfabd0.png"></p>",
       "Source": "<a href="obsidian://open?vault=Vault&file=interactions%2Fimage-in-reversed.md#%5Ecard-0">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic-reversed",
@@ -340,7 +340,7 @@ exports[`test-vault/features snapshot coverage > renders interactions/multiple-c
       "Back": "<ol start="2">
 <li></li>
 </ol>",
-      "Front": "<p>What is 1 + 1?</p>",
+      "Front": "<p>Multiple cards per note > What is 1 + 1?</p>",
       "Source": "<a href="obsidian://open?vault=Vault&file=interactions%2Fmultiple-cards-per-note.md#%5Ecard-0">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic",
@@ -355,7 +355,7 @@ exports[`test-vault/features snapshot coverage > renders interactions/multiple-c
       "Back": "<ol start="4">
 <li></li>
 </ol>",
-      "Front": "<p>What is 2 + 2?</p>",
+      "Front": "<p>Multiple cards per note > What is 2 + 2?</p>",
       "Source": "<a href="obsidian://open?vault=Vault&file=interactions%2Fmultiple-cards-per-note.md#%5Ecard-1">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic",
@@ -368,7 +368,7 @@ exports[`test-vault/features snapshot coverage > renders interactions/multiple-c
     "deckName": "interactions",
     "fields": {
       "Back": "<p>6</p>",
-      "Front": "<p>What is 3 + 3?</p>",
+      "Front": "<p>Multiple cards per note > What is 3 + 3?</p>",
       "Source": "<a href="obsidian://open?vault=Vault&file=interactions%2Fmultiple-cards-per-note.md#%5Ecard-2">Open in Obsidian</a>",
     },
     "modelName": "Obsidian-basic",
@@ -382,7 +382,7 @@ exports[`test-vault/features snapshot coverage > renders interactions/multiple-c
     "fields": {
       "Extra": "",
       "Source": "<a href="obsidian://open?vault=Vault&file=interactions%2Fmultiple-cards-per-note.md#%5Ecard-3">Open in Obsidian</a>",
-      "Text": "<p>The {{c1::mitochondria}} is the powerhouse of the cell.</p>",
+      "Text": "<p>Multiple cards per note > The {{c1::mitochondria}} is the powerhouse of the cell.</p>",
     },
     "modelName": "Obsidian-cloze",
     "tags": [
@@ -400,7 +400,7 @@ exports[`test-vault/features snapshot coverage > renders interactions/wikilink-i
     "fields": {
       "Extra": "",
       "Source": "<a href="obsidian://open?vault=Vault&file=interactions%2Fwikilink-in-cloze.md#%5Ecard-0">Open in Obsidian</a>",
-      "Text": "<p>The {{c1::<a href="obsidian://open?vault=Vault&amp;file=capital">capital</a>}} of France is Paris.</p>",
+      "Text": "<p>Wikilink in cloze > The {{c1::<a href="obsidian://open?vault=Vault&amp;file=capital">capital</a>}} of France is Paris.</p>",
     },
     "modelName": "Obsidian-cloze",
     "tags": [
@@ -413,7 +413,7 @@ exports[`test-vault/features snapshot coverage > renders interactions/wikilink-i
     "fields": {
       "Extra": "",
       "Source": "<a href="obsidian://open?vault=Vault&file=interactions%2Fwikilink-in-cloze.md#%5Ecard-1">Open in Obsidian</a>",
-      "Text": "<p>The {{c1::<a href="obsidian://open?vault=Vault&amp;file=capital">capital city</a>}} of Italy is Rome.</p>",
+      "Text": "<p>Wikilink in cloze > The {{c1::<a href="obsidian://open?vault=Vault&amp;file=capital">capital city</a>}} of Italy is Rome.</p>",
     },
     "modelName": "Obsidian-cloze",
     "tags": [

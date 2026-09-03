@@ -92,11 +92,27 @@ describe("parseNoteMetadata — tags parsing", () => {
     ).toEqual(["a-b", "c_d", "e/f"]);
   });
 
-  // Known limitation: the current single-line parser cannot read YAML
-  // block-style multi-line lists. Locked as [] to document the contract;
-  // tracked in backlog for a future YAML-aware parser slice.
-  test("YAML block-style multi-line list is unsupported (returns [])", () => {
+  test("YAML block-style multi-line list", () => {
     const md = ["---", "tags:", "  - a", "  - b", "---", ""].join("\n");
-    expect(parseNoteMetadata(md).tags).toEqual([]);
+    expect(parseNoteMetadata(md).tags).toEqual(["a", "b"]);
+  });
+
+  test("YAML block list stops at the next property", () => {
+    const md = [
+      "---",
+      "tags:",
+      "  - first",
+      "  - 'second tag'",
+      "cards-deck: Study",
+      "unrelated:",
+      "  - not-a-tag",
+      "---",
+      "",
+    ].join("\n");
+
+    expect(parseNoteMetadata(md)).toEqual(expect.objectContaining({
+      cardDeck: "Study",
+      tags: ["first", "second tag"],
+    }));
   });
 });

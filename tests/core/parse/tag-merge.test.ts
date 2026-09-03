@@ -47,4 +47,13 @@ describe("extractCardsFromMarkdown — tag merging (defaults + frontmatter)", ()
     const md = buildNote(null, "Question:: Answer");
     expect(extractFirstCardTags(md, [])).toEqual([]);
   });
+
+  test("block-style frontmatter tags are merged into card tags", () => {
+    const md = buildNote("tags:\n  - course\n  - week-1", "Question:: Answer");
+    expect(extractFirstCardTags(md, ["obsidian"])).toEqual([
+      "obsidian",
+      "course",
+      "week-1",
+    ]);
+  });
 });
