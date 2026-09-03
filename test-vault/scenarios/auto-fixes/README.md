@@ -12,6 +12,12 @@ Use these notes with the current plugin build.
    - Context: `Headings`
    - Context separator: ` > `
    - Confirm before deleting: on
+   - Inline cards: on
+   - Highlight clozes: on
+   - Folder-based decks: on
+   - Folder deck prefix: empty
+   - Folder tags: off
+   - AnkiConnect API key: none
    - Render flashcard syntax: on
    - Cloze rendering: on
    - Sync-anchor rendering: on
@@ -31,7 +37,16 @@ cards in Anki.
   inline code. Code containing card-like text must not create extra cards.
 - `05-atomic-context.md` shows heading context on an atomic card.
 - `06-existing-card-sync.md` is the manual check for card type changes, deck
-  moves, and recovery after deleting a card in Anki.
+  moves, stale IDs, tags, and Anki-only field edits.
+- `07-strict-grammar.md` shows math-safe cloze parsing, container precedence,
+  and Markdown-node boundaries for hashtag answers.
+- `08-accepted-features.md` shows a separate heading marker, a card callout,
+  an inline list card with children, one cloze note from a list, a fenced cloze
+  with Extra text, and a long code line.
+
+Run **Flashcards: Check vault for v2 syntax migration** before syncing an old
+vault. The command must not change any file. Each result shows a path and exact
+location; **Open** jumps to that source.
 
 ## Existing-card sync check
 
@@ -51,10 +66,39 @@ Use `06-existing-card-sync.md` with Anki open:
    has no invalid extra card.
 6. Delete the second note directly in Anki, then sync again. The plugin creates
    it again, replaces its missing note ID, and reports one recovered card.
+7. Add a frontmatter tag and sync. It appears in Anki. Remove it and sync; it
+   disappears. Add a `manual-only` tag directly in Anki; sync removes it. The
+   Anki review tags `leech` and `marked` are preserved.
+8. Edit the first note's Front or Back field directly in Anki. Do not change
+   the Obsidian note. Sync again; the field returns to the Obsidian value and
+   the note ID and review schedule stay unchanged.
 
 The tag on this note is useful for finding and deleting the disposable cards.
-Tag updates on existing notes are not part of this check because tag ownership
-is still undecided.
+
+## Strict grammar check
+
+Sync `07-strict-grammar.md`. It creates three notes:
+
+1. One cloze note whose math braces remain literal in Anki.
+2. One heading hashtag note. Its `::`, `:::`, and cloze-looking answer text are
+   content, not extra cards. The lower heading is part of the answer.
+3. One paragraph hashtag note whose answer is exactly the following list.
+
+The plain braces, inline code, math-only markers, and fenced example near the
+end of the note must not create cards.
+
+## Accepted-feature check
+
+Sync `08-accepted-features.md`. It creates five Anki notes. Confirm that:
+
+1. The standalone `#card` marker owns the complete heading section.
+2. The `[!CARD]` marker is absent in Anki and its long code line wraps.
+3. The inline list card includes its child paragraph and nested item.
+4. The two-item cloze list is one Anki note.
+5. The fenced cloze back appears in Anki's `Extra` field.
+6. After showing an answer, **Edit source in Obsidian** and the relative note
+   path appear on the back. The link opens the exact source block. The first
+   sync may report that it repaired existing Anki templates.
 
 ## Context-mode check
 

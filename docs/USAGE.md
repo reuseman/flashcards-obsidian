@@ -19,9 +19,20 @@ From the command palette (`Cmd/Ctrl+P`):
 
 - **Flashcards: Sync current note** — runs the pipeline on the active note.
 - **Flashcards: Sync vault** — iterates every markdown note sequentially.
+- **Flashcards: Check vault for v2 syntax migration** — reports old syntax and
+  opens each source location without changing the vault.
+- **Flashcards: Apply v2 Anki card style** — previews and backs up existing
+  managed Anki models, then installs the v2 design after confirmation.
 
-Both are idempotent: re-running on unchanged notes makes no network calls
-and no file writes.
+Sync is idempotent: re-running it does not duplicate unchanged cards.
+
+The first vault sync reads every Markdown note. It records which notes contain
+no cards in a disposable `vault-scan-index.json` file inside the plugin folder.
+Later vault syncs skip reading and parsing those notes while they remain
+unchanged. Notes containing cards are still checked against Anki. The final
+notice reports how many unchanged card-free notes were skipped.
+
+Deleting the index is safe. The next vault sync rebuilds it with one full scan.
 
 ## Write cards
 
@@ -119,6 +130,13 @@ plugin's `defaultTags` setting. Both YAML inline (`tags: [a, b]`) and
 comma-separated string forms are supported. Hyphens, underscores, and
 slashes are preserved (Anki nested-tag notation).
 
+## Wikilinks
+
+A wikilink to an existing note becomes a clickable Obsidian link in Anki.
+Aliases, headings, and block references are supported. If the target note does
+not exist, the `[[wikilink]]` stays visible and is not clickable. Create the
+target in Obsidian and sync again.
+
 ## How sync works
 
 Two phases per note.
@@ -140,12 +158,26 @@ The note is saved only if Phase A produced changes.
    - entry present, hash mismatch → **update**
    - entry present, card removed from note → **delete**
 2. Bootstrap: create missing note types and decks; extend v1 note types
-   in place (adds `Source` field, rewrites templates).
+   in place. Adding `Source` preserves existing template HTML and CSS.
 3. Send create/update/delete to AnkiConnect, sequentially.
 4. On success, write the new nid + hash back to the frontmatter entry.
 
 Per-op failures don't abort the sync. Failed ops leave their frontmatter
 entries untouched so the next run can retry.
+
+## Apply the v2 design to existing cards
+
+Cards created before the v2 design can keep their current appearance. Normal
+sync does not replace their templates or CSS.
+
+To opt in, run **Flashcards: Apply v2 Anki card style**. The confirmation lists
+the compatible models that will change. The plugin saves their current fields,
+templates, and CSS under
+`.obsidian/plugins/flashcards-obsidian/backups/` before it writes to Anki. A
+failed backup means Anki is not changed.
+
+The command updates shared Anki models in place. It does not recreate notes, so
+existing note IDs, schedules, and review history remain.
 
 ## Status bar
 

@@ -1,6 +1,7 @@
 ---
 flashcards:
-  q-cccc: { nid: 1700000000201, hash: qrstuvwx }
+  q-cccc: { nid: 1788465159489, hash: 9d4sfav2, sync: 88q7fxx9 }
+  "1700000000202": { nid: 1788465159514, hash: 4evfucxi, sync: szkd74iy }
 ---
 
 # Mixed note: one v1 anchor + one v2 anchor

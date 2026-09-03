@@ -1,0 +1,2075 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Flashcards · Card type gallery</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #20231f;
+        --muted: #6f746b;
+        --paper: #f5f0e6;
+        --surface: #fffdf8;
+        --line: #d9d2c5;
+        --accent: #df5d3d;
+        --accent-soft: #f8d8c8;
+        --green: #2f6e5a;
+        --green-soft: #d8e9df;
+        --purple: #7256a2;
+        --purple-soft: #e7ddf3;
+        --shadow: 0 18px 50px rgba(63, 48, 30, 0.1);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(
+            circle at 8% 3%,
+            rgba(223, 93, 61, 0.12),
+            transparent 30rem
+          ),
+          radial-gradient(
+            circle at 94% 26%,
+            rgba(47, 110, 90, 0.11),
+            transparent 28rem
+          ),
+          var(--paper);
+        color: var(--ink);
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      body::before {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        background-image: linear-gradient(
+          rgba(32, 35, 31, 0.025) 1px,
+          transparent 1px
+        );
+        background-size: 100% 28px;
+        content: "";
+        pointer-events: none;
+      }
+
+      main {
+        width: min(1180px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 52px 0 80px;
+      }
+
+      .eyebrow,
+      .badge,
+      .mode,
+      .card-number {
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow {
+        margin: 0 0 14px;
+        color: var(--accent);
+        font-size: 0.76rem;
+        font-weight: 800;
+      }
+
+      h1 {
+        max-width: 760px;
+        margin: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: clamp(3rem, 8vw, 6.75rem);
+        font-weight: 500;
+        letter-spacing: -0.065em;
+        line-height: 0.88;
+      }
+
+      h1 em {
+        color: var(--green);
+        font-weight: 400;
+      }
+
+      .intro {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(240px, 390px);
+        gap: 40px;
+        align-items: end;
+        margin: 32px 0 34px;
+      }
+
+      .intro p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 1.05rem;
+        line-height: 1.7;
+      }
+
+      .summary {
+        display: flex;
+        gap: 22px;
+        padding: 18px 22px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(255, 253, 248, 0.74);
+      }
+
+      .summary strong,
+      .summary span {
+        display: block;
+      }
+
+      .summary strong {
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 2rem;
+        line-height: 1;
+      }
+
+      .summary span {
+        margin-top: 5px;
+        color: var(--muted);
+        font-size: 0.73rem;
+      }
+
+      .filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 22px;
+      }
+
+      .defaults {
+        display: grid;
+        grid-template-columns: auto repeat(3, minmax(0, 1fr));
+        gap: 18px;
+        align-items: start;
+        margin-bottom: 22px;
+        padding: 18px 20px;
+        border: 1px solid var(--green);
+        border-radius: 18px;
+        background: rgba(216, 233, 223, 0.56);
+      }
+
+      .defaults-label {
+        padding: 5px 8px;
+        border-radius: 6px;
+        background: var(--green);
+        color: #fff;
+        font:
+          800 0.64rem/1 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          Monaco,
+          Consolas,
+          monospace;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .default-fact {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.82rem;
+        line-height: 1.5;
+      }
+
+      .default-fact strong {
+        display: block;
+        margin-bottom: 2px;
+        color: var(--ink);
+      }
+
+      .setting-chips,
+      .badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .setting-chips {
+        margin-top: 7px;
+      }
+
+      .setting-chip {
+        padding: 5px 7px;
+        border: 1px solid rgba(47, 110, 90, 0.35);
+        border-radius: 6px;
+        background: rgba(255, 253, 248, 0.64);
+        color: var(--green);
+        font:
+          700 0.68rem/1 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          Monaco,
+          Consolas,
+          monospace;
+      }
+
+      button {
+        color: inherit;
+        font: inherit;
+      }
+
+      .filter {
+        padding: 9px 15px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: transparent;
+        cursor: pointer;
+        font-size: 0.88rem;
+        font-weight: 650;
+      }
+
+      .filter:hover,
+      .filter[aria-pressed="true"] {
+        border-color: var(--ink);
+        background: var(--ink);
+        color: var(--surface);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .type-card {
+        position: relative;
+        overflow: hidden;
+        min-height: 430px;
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: rgba(255, 253, 248, 0.9);
+        box-shadow: var(--shadow);
+        transition:
+          opacity 180ms ease,
+          transform 180ms ease;
+      }
+
+      .type-card[hidden] {
+        display: none;
+      }
+
+      .type-card.atomic {
+        --tone: var(--green);
+        --tint: var(--green-soft);
+      }
+
+      .type-card.classic {
+        --tone: var(--accent);
+        --tint: var(--accent-soft);
+      }
+
+      .type-card.cloze {
+        --tone: var(--purple);
+        --tint: var(--purple-soft);
+      }
+
+      .card-head {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 24px 26px 18px;
+      }
+
+      .card-number {
+        color: var(--tone);
+        font-size: 0.72rem;
+        font-weight: 800;
+      }
+
+      h2 {
+        margin: 7px 0 5px;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 1.7rem;
+        font-weight: 500;
+      }
+
+      .description {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.5;
+      }
+
+      .badge {
+        padding: 6px 9px;
+        border-radius: 7px;
+        background: var(--tint);
+        color: var(--tone);
+        font-size: 0.62rem;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .badges {
+        max-width: 230px;
+        justify-content: flex-end;
+        align-self: flex-start;
+      }
+
+      .badge.count {
+        background: #eeeadf;
+        color: var(--ink);
+      }
+
+      .badge.default {
+        background: var(--ink);
+        color: var(--surface);
+      }
+
+      .badge.explicit {
+        border: 1px solid var(--line);
+        background: transparent;
+        color: var(--muted);
+      }
+
+      .view-tabs {
+        display: flex;
+        gap: 2px;
+        margin: 0 26px;
+        padding: 4px;
+        border-radius: 11px;
+        background: #eeeadf;
+      }
+
+      .view-tab {
+        flex: 1;
+        padding: 8px 10px;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        cursor: pointer;
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 750;
+      }
+
+      .view-tab[aria-selected="true"] {
+        background: var(--surface);
+        box-shadow: 0 2px 8px rgba(32, 35, 31, 0.09);
+        color: var(--ink);
+      }
+
+      .panel {
+        margin: 14px 26px 26px;
+      }
+
+      pre,
+      .anki-preview {
+        min-height: 230px;
+        margin: 0;
+        border-radius: 16px;
+      }
+
+      pre {
+        overflow: auto;
+        padding: 20px;
+        background: #242722;
+        color: #f7f2e8;
+        font:
+          0.82rem/1.62 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          Monaco,
+          Consolas,
+          monospace;
+        white-space: pre-wrap;
+      }
+
+      .token {
+        color: #f2a184;
+      }
+
+      .anki-preview {
+        display: grid;
+        place-items: center;
+        padding: 30px;
+        border: 1px solid #e1dbd0;
+        background: #fff;
+        text-align: center;
+      }
+
+      .anki-preview[hidden] {
+        display: none;
+      }
+
+      .preview-picker {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        margin-top: 10px;
+      }
+
+      .preview-count {
+        margin-right: 5px;
+        color: var(--muted);
+        font-size: 0.72rem;
+        font-weight: 650;
+      }
+
+      .card-choice {
+        display: grid;
+        width: 30px;
+        height: 30px;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 50%;
+        background: var(--surface);
+        cursor: pointer;
+        color: var(--muted);
+        font-size: 0.72rem;
+        font-weight: 800;
+      }
+
+      .card-choice:hover,
+      .card-choice[aria-pressed="true"] {
+        border-color: var(--tone);
+        background: var(--tone);
+        color: #fff;
+      }
+
+      .mode {
+        margin-bottom: 20px;
+        color: var(--tone);
+        font-size: 0.65rem;
+        font-weight: 900;
+      }
+
+      .prompt {
+        max-width: 430px;
+        margin: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 1.45rem;
+        line-height: 1.35;
+      }
+
+      .answer-rule {
+        width: min(260px, 80%);
+        height: 1px;
+        margin: 22px auto;
+        border: 0;
+        background: #d7d7d2;
+      }
+
+      .answer {
+        max-width: 430px;
+        margin: 0;
+        color: #474c45;
+        line-height: 1.55;
+      }
+
+      .cloze-blank,
+      mark {
+        padding: 0.05em 0.2em;
+        border-radius: 4px;
+        background: var(--purple-soft);
+        color: var(--purple);
+      }
+
+      footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        margin-top: 26px;
+        padding: 24px 3px 0;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 0.86rem;
+        line-height: 1.6;
+      }
+
+      footer p {
+        max-width: 620px;
+        margin: 0;
+      }
+
+      code {
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+
+      .anki-lab {
+        margin-top: 72px;
+        padding: 28px;
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        background: rgba(255, 253, 248, 0.9);
+        box-shadow: var(--shadow);
+      }
+
+      .anki-lab-head {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(260px, 420px);
+        gap: 32px;
+        align-items: end;
+        margin-bottom: 24px;
+      }
+
+      .anki-lab h2 {
+        margin-top: 6px;
+        font-size: clamp(2rem, 5vw, 3.6rem);
+        letter-spacing: -0.045em;
+        line-height: 1;
+      }
+
+      .anki-lab-copy {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+        line-height: 1.65;
+      }
+
+      .anki-lab-controls {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+
+      .anki-control {
+        min-width: 0;
+        padding: 10px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--surface);
+      }
+
+      .anki-control-label {
+        display: block;
+        margin: 0 0 8px 2px;
+        color: var(--muted);
+        font:
+          750 0.62rem/1 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          Monaco,
+          Consolas,
+          monospace;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .anki-control-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+
+      .anki-option {
+        flex: 1;
+        min-width: max-content;
+        padding: 7px 9px;
+        border: 0;
+        border-radius: 8px;
+        background: #eeeadf;
+        cursor: pointer;
+        color: var(--muted);
+        font-size: 0.73rem;
+        font-weight: 750;
+      }
+
+      .anki-option:hover,
+      .anki-option[aria-pressed="true"] {
+        background: var(--ink);
+        color: var(--surface);
+      }
+
+      .anki-stage {
+        --anki-accent: #7056b3;
+        --anki-accent-soft: #eee9fb;
+        --anki-bg: #f8f8f6;
+        --anki-border: #deded9;
+        --anki-code-bg: #eeeeeb;
+        --anki-muted: #6f716d;
+        --anki-text: #20221f;
+        display: grid;
+        min-height: 570px;
+        place-items: center;
+        padding: 48px;
+        border: 1px solid #deded9;
+        border-radius: 20px;
+        background: var(--anki-bg);
+        color: var(--anki-text);
+        transition:
+          background-color 180ms ease,
+          color 180ms ease;
+      }
+
+      .anki-stage[data-theme="dark"] {
+        --anki-accent: #bda8ff;
+        --anki-accent-soft: #302a44;
+        --anki-bg: #171816;
+        --anki-border: #3b3d39;
+        --anki-code-bg: #242522;
+        --anki-muted: #a7aaa3;
+        --anki-text: #f0f1ed;
+        border-color: #32332f;
+      }
+
+      .anki-device {
+        width: min(100%, 760px);
+        transition: width 180ms ease;
+      }
+
+      .anki-stage[data-width="mobile"] .anki-device {
+        width: min(100%, 390px);
+      }
+
+      .anki-reviewer-card[hidden],
+      .anki-side[hidden] {
+        display: none;
+      }
+
+      .anki-card-content {
+        padding: 18px clamp(4px, 4vw, 30px) 28px;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        font-size: clamp(1.05rem, 2.4vw, 1.25rem);
+        line-height: 1.58;
+        text-align: left;
+      }
+
+      .anki-card-content p:first-child {
+        margin-top: 0;
+      }
+
+      .anki-card-content p:last-child {
+        margin-bottom: 0;
+      }
+
+      .anki-state-label {
+        margin-bottom: 28px;
+        color: var(--anki-muted);
+        font:
+          750 0.64rem/1 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          Monaco,
+          Consolas,
+          monospace;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .anki-question {
+        margin: 0;
+        font-size: clamp(1.3rem, 3.2vw, 1.75rem);
+        font-weight: 650;
+        letter-spacing: -0.018em;
+        line-height: 1.35;
+      }
+
+      .anki-answer-divider {
+        width: 44px;
+        height: 2px;
+        margin: 34px 0;
+        border: 0;
+        border-radius: 2px;
+        background: var(--anki-accent);
+      }
+
+      .anki-answer {
+        color: var(--anki-text);
+      }
+
+      .anki-answer ul,
+      .anki-answer ol {
+        margin: 14px 0 0;
+        padding-left: 1.35em;
+      }
+
+      .anki-answer li + li {
+        margin-top: 7px;
+      }
+
+      .anki-cloze {
+        padding: 0.06em 0.24em;
+        border-radius: 5px;
+        background: var(--anki-accent-soft);
+        color: var(--anki-accent);
+        font-weight: 750;
+      }
+
+      .anki-reviewer-card pre {
+        min-height: 0;
+        margin: 18px 0 0;
+        padding: 16px 18px;
+        border: 1px solid var(--anki-border);
+        border-radius: 10px;
+        background: var(--anki-code-bg);
+        color: var(--anki-text);
+        font:
+          0.78em/1.6 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          Monaco,
+          Consolas,
+          monospace;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+      }
+
+      .anki-inline-code {
+        padding: 0.12em 0.35em;
+        border-radius: 5px;
+        background: var(--anki-code-bg);
+        font-size: 0.88em;
+      }
+
+      .anki-source-footer {
+        margin-top: 42px;
+        padding-top: 18px;
+        border-top: 1px solid var(--anki-border);
+      }
+
+      .anki-source-link {
+        display: inline-flex;
+        max-width: 100%;
+        flex-direction: column;
+        gap: 3px;
+        padding: 9px 12px;
+        border: 1px solid var(--anki-border);
+        border-radius: 9px;
+        color: var(--anki-text);
+        text-decoration: none;
+      }
+
+      .anki-source-link:hover,
+      .anki-source-link:focus-visible {
+        border-color: var(--anki-accent);
+        outline: none;
+      }
+
+      .anki-source-action {
+        color: var(--anki-accent);
+        font-size: 0.72rem;
+        font-weight: 750;
+      }
+
+      .anki-source-path {
+        overflow: hidden;
+        color: var(--anki-muted);
+        font:
+          0.67rem/1.35 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          Monaco,
+          Consolas,
+          monospace;
+        overflow-wrap: anywhere;
+        text-overflow: ellipsis;
+      }
+
+      .anki-source-options {
+        margin-top: 22px;
+      }
+
+      .anki-source-options h3 {
+        margin: 0 0 6px;
+        font-size: 1rem;
+      }
+
+      .anki-source-options > p {
+        margin: 0 0 14px;
+        color: var(--muted);
+        font-size: 0.85rem;
+        line-height: 1.5;
+      }
+
+      .anki-source-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .anki-source-choice {
+        position: relative;
+        min-width: 0;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--surface);
+      }
+
+      .anki-source-choice.recommended {
+        border-color: var(--purple);
+        box-shadow: inset 0 0 0 1px var(--purple);
+      }
+
+      .anki-source-choice-label {
+        display: block;
+        margin-bottom: 12px;
+        color: var(--muted);
+        font-size: 0.72rem;
+        font-weight: 750;
+      }
+
+      .anki-recommended {
+        float: right;
+        color: var(--purple);
+        font:
+          800 0.58rem/1 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          Monaco,
+          Consolas,
+          monospace;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .anki-source-sample {
+        display: inline-flex;
+        max-width: 100%;
+        flex-direction: column;
+        gap: 3px;
+        color: var(--ink);
+        font-size: 0.78rem;
+        font-weight: 750;
+      }
+
+      .anki-source-sample small {
+        overflow-wrap: anywhere;
+        color: var(--muted);
+        font:
+          0.66rem/1.35 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          Monaco,
+          Consolas,
+          monospace;
+      }
+
+      @media (max-width: 800px) {
+        main {
+          padding-top: 34px;
+        }
+
+        .intro,
+        .grid,
+        .anki-lab-head,
+        .anki-source-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .intro {
+          gap: 22px;
+        }
+
+        .defaults {
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+
+        .defaults-label {
+          justify-self: start;
+        }
+
+        .type-card {
+          min-height: 0;
+        }
+
+        .card-head {
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .badges {
+          max-width: none;
+          justify-content: flex-start;
+        }
+
+        .anki-lab {
+          padding: 20px;
+        }
+
+        .anki-lab-controls {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .anki-stage {
+          min-height: 520px;
+          padding: 28px 14px;
+        }
+
+        footer {
+          display: block;
+        }
+      }
+
+      @media (max-width: 520px) {
+        .anki-lab-controls {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          scroll-behavior: auto !important;
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Flashcards for Obsidian · v2 field guide</p>
+      <h1>One idea,<br /><em>many cards.</em></h1>
+
+      <section class="intro" aria-label="Introduction">
+        <p>
+          This page shows every way to write a flashcard. Select a filter. Open
+          “Anki preview” to see every card created by the Markdown.
+        </p>
+        <div class="summary" aria-label="Card type summary">
+          <div><strong>5</strong><span>authoring styles</span></div>
+          <div><strong>3</strong><span>Anki note models</span></div>
+          <div><strong>2×</strong><span>for reversed cards</span></div>
+        </div>
+      </section>
+
+      <aside class="defaults" aria-label="Default behavior">
+        <span class="defaults-label">Defaults</span>
+        <p class="default-fact">
+          <strong>Basic is the normal card type</strong>
+          It creates one card: front → back. Reversed and cloze must be
+          selected.
+        </p>
+        <p class="default-fact">
+          <strong>All 5 formats are on</strong>
+          Atomic, inline, fenced, hashtag, and cloze work without setup.
+        </p>
+        <div class="default-fact">
+          <strong>Values used when you do not change settings</strong>
+          <div class="setting-chips">
+            <span class="setting-chip">inline basic: ::</span>
+            <span class="setting-chip">inline reversed: :::</span>
+            <span class="setting-chip">hashtag basic: #card</span>
+            <span class="setting-chip">fence name: flashcard</span>
+            <span class="setting-chip">fenced type: basic</span>
+            <span class="setting-chip">fallback deck: Default</span>
+            <span class="setting-chip">tag: obsidian</span>
+          </div>
+        </div>
+      </aside>
+
+      <nav class="filters" aria-label="Filter card examples">
+        <button
+          class="filter"
+          type="button"
+          data-filter="all"
+          aria-pressed="true"
+        >
+          All types
+        </button>
+        <button
+          class="filter"
+          type="button"
+          data-filter="atomic"
+          aria-pressed="false"
+        >
+          Atomic notes
+        </button>
+        <button
+          class="filter"
+          type="button"
+          data-filter="classic"
+          aria-pressed="false"
+        >
+          Classic syntax
+        </button>
+        <button
+          class="filter"
+          type="button"
+          data-filter="cloze"
+          aria-pressed="false"
+        >
+          Cloze
+        </button>
+      </nav>
+
+      <section class="grid" aria-live="polite">
+        <article class="type-card atomic" data-group="atomic">
+          <header class="card-head">
+            <div>
+              <span class="card-number">01 / Atomic</span>
+              <h2>Title card</h2>
+              <p class="description">
+                Uses the file name as the question. Uses the first paragraph as
+                the answer.
+              </p>
+            </div>
+            <div class="badges" aria-label="Card properties">
+              <span class="badge">Basic</span>
+              <span class="badge count">1 card</span>
+            </div>
+          </header>
+          <div class="view-tabs" role="tablist" aria-label="Title card views">
+            <button
+              class="view-tab"
+              role="tab"
+              aria-selected="true"
+              data-view="source"
+            >
+              Markdown
+            </button>
+            <button
+              class="view-tab"
+              role="tab"
+              aria-selected="false"
+              data-view="preview"
+            >
+              Anki preview
+            </button>
+          </div>
+          <div class="panel source-panel">
+            <pre><span class="token">---</span>
+test:
+  - title
+<span class="token">---</span>
+
+Chlorophyll absorbs light energy to drive the reactions.</pre>
+          </div>
+          <div class="panel preview-panel" hidden>
+            <div class="anki-preview">
+              <div>
+                <div class="mode">Front · Photosynthesis.md</div>
+                <p class="prompt">Photosynthesis</p>
+                <hr class="answer-rule" />
+                <p class="answer">
+                  Chlorophyll absorbs light energy to drive the reactions.
+                </p>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="type-card atomic" data-group="atomic">
+          <header class="card-head">
+            <div>
+              <span class="card-number">02 / Atomic</span>
+              <h2>Custom question</h2>
+              <p class="description">
+                Each item under <code>test:</code> creates a card. The answer is
+                the file name plus the first paragraph.
+              </p>
+            </div>
+            <div class="badges" aria-label="Card properties">
+              <span class="badge">Basic</span>
+              <span class="badge count">2 cards</span>
+            </div>
+          </header>
+          <div class="view-tabs" role="tablist" aria-label="Authored cue views">
+            <button
+              class="view-tab"
+              role="tab"
+              aria-selected="true"
+              data-view="source"
+            >
+              Markdown
+            </button>
+            <button
+              class="view-tab"
+              role="tab"
+              aria-selected="false"
+              data-view="preview"
+            >
+              Anki preview
+            </button>
+          </div>
+          <div class="panel source-panel">
+            <pre><span class="token">---</span>
+test:
+  - "What does chlorophyll do?"
+  - "Where are light reactions located?"
+<span class="token">---</span>
+
+Chlorophyll absorbs light energy to drive the reactions.</pre>
+          </div>
+          <div class="panel preview-panel" hidden>
+            <div class="anki-preview" data-card-preview="1">
+              <div>
+                <div class="mode">Front · card 1 of 2</div>
+                <p class="prompt">What does chlorophyll do?</p>
+                <hr class="answer-rule" />
+                <p class="answer">
+                  <strong>Photosynthesis</strong><br /><br />Chlorophyll absorbs
+                  light energy to drive the reactions.
+                </p>
+              </div>
+            </div>
+            <div class="anki-preview" data-card-preview="2" hidden>
+              <div>
+                <div class="mode">Front · card 2 of 2</div>
+                <p class="prompt">Where are light reactions located?</p>
+                <hr class="answer-rule" />
+                <p class="answer">
+                  <strong>Photosynthesis</strong><br /><br />Chlorophyll absorbs
+                  light energy to drive the reactions.
+                </p>
+              </div>
+            </div>
+            <div class="preview-picker" aria-label="Choose generated card">
+              <span class="preview-count">2 cards generated</span>
+              <button
+                class="card-choice"
+                type="button"
+                data-card="1"
+                aria-pressed="true"
+              >
+                1
+              </button>
+              <button
+                class="card-choice"
+                type="button"
+                data-card="2"
+                aria-pressed="false"
+              >
+                2
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <article class="type-card atomic" data-group="atomic">
+          <header class="card-head">
+            <div>
+              <span class="card-number">03 / Atomic</span>
+              <h2>Whole-note reversed</h2>
+              <p class="description">
+                Creates one card in each direction: title → paragraph and
+                paragraph → title.
+              </p>
+            </div>
+            <div class="badges" aria-label="Card properties">
+              <span class="badge">Reversed</span>
+              <span class="badge count">2 cards</span>
+              <span class="badge explicit">Explicit</span>
+            </div>
+          </header>
+          <div
+            class="view-tabs"
+            role="tablist"
+            aria-label="Atomic reversed views"
+          >
+            <button
+              class="view-tab"
+              role="tab"
+              aria-selected="true"
+              data-view="source"
+            >
+              Markdown
+            </button>
+            <button
+              class="view-tab"
+              role="tab"
+              aria-selected="false"
+              data-view="preview"
+            >
+              Anki preview
+            </button>
+          </div>
+          <div class="panel source-panel">
+            <pre><span class="token">---</span>
+test: reversed
+<span class="token">---</span>
+
+The process by which plants convert light into chemical energy.</pre>
+          </div>
+          <div class="panel preview-panel" hidden>
+            <div class="anki-preview" data-card-preview="1">
+              <div>
+                <div class="mode">Front · card 1 of 2</div>
+                <p class="prompt">Photosynthesis</p>
+                <hr class="answer-rule" />
+                <p class="answer">
+                  The process by which plants convert light into chemical
+                  energy.
+                </p>
+              </div>
+            </div>
+            <div class="anki-preview" data-card-preview="2" hidden>
+              <div>
+                <div class="mode">Reverse · card 2 of 2</div>
+                <p class="prompt">
+                  The process by which plants convert light into chemical
+                  energy.
+                </p>
+                <hr class="answer-rule" />
+                <p class="answer">Photosynthesis</p>
+              </div>
+            </div>
+            <div class="preview-picker" aria-label="Choose generated card">
+              <span class="preview-count">2 cards generated</span>
+              <button
+                class="card-choice"
+                type="button"
+                data-card="1"
+                aria-pressed="true"
+              >
+                1
+              </button>
+              <button
+                class="card-choice"
+                type="button"
+                data-card="2"
+                aria-pressed="false"
+              >
+                2
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <article class="type-card atomic cloze" data-group="atomic cloze">
+          <header class="card-head">
+            <div>
+              <span class="card-number">04 / Atomic</span>
+              <h2>Whole-note cloze</h2>
+              <p class="description">
+                Makes a cloze from the first paragraph. Shows the file name with
+                the answer.
+              </p>
+            </div>
+            <div class="badges" aria-label="Card properties">
+              <span class="badge">Cloze</span>
+              <span class="badge count">1 card</span>
+              <span class="badge explicit">Explicit</span>
+            </div>
+          </header>
+          <div class="view-tabs" role="tablist" aria-label="Atomic cloze views">
+            <button
+              class="view-tab"
+              role="tab"
+              aria-selected="true"
+              data-view="source"
+            >
+              Markdown
+            </button>
+            <button
+              class="view-tab"
+              role="tab"
+              aria-selected="false"
+              data-view="preview"
+            >
+              Anki preview
+            </button>
+          </div>
+          <div class="panel source-panel">
+            <pre><span class="token">---</span>
+test: cloze
+<span class="token">---</span>
+
+Chlorophyll is a ==pigment== that absorbs light.</pre>
+          </div>
+          <div class="panel preview-panel" hidden>
+            <div class="anki-preview">
+              <div>
+                <div class="mode">Front · cloze 1</div>
+                <p class="prompt">
+                  Chlorophyll is a <span class="cloze-blank">[…] </span> that
+                  absorbs light.
+                </p>
+                <hr class="answer-rule" />
+                <p class="answer">
+                  Chlorophyll is a <mark>pigment</mark> that absorbs light.<br /><br /><strong
+                    >Photosynthesis</strong
+                  >
+                </p>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="type-card classic" data-group="classic">
+          <header class="card-head">
+            <div>
+              <span class="card-number">05 / Classic</span>
+              <h2>Inline</h2>
+              <p class="description">
+                Use <code>::</code> for one direction. Use <code>:::</code> for
+                both directions.
+              </p>
+            </div>
+            <div class="badges" aria-label="Card properties">
+              <span class="badge">Basic + reversed</span>
+              <span class="badge count">3 cards</span>
+              <span class="badge default">Default separators</span>
+            </div>
+          </header>
+          <div class="view-tabs" role="tablist" aria-label="Inline card views">
+            <button
+              class="view-tab"
+              role="tab"
+              aria-selected="true"
+              data-view="source"
+            >
+              Markdown
+            </button>
+            <button
+              class="view-tab"
+              role="tab"
+              aria-selected="false"
+              data-view="preview"
+            >
+              Anki preview
+            </button>
+          </div>
+          <div class="panel source-panel">
+            <pre>Capital of France?<span class="token">::</span>Paris
+
+DNA stands for?<span class="token">:::</span>Deoxyribonucleic acid</pre>
+          </div>
+          <div class="panel preview-panel" hidden>
+            <div class="anki-preview" data-card-preview="1">
+              <div>
+                <div class="mode">Basic · card 1 of 3</div>
+                <p class="prompt">Capital of France?</p>
+                <hr class="answer-rule" />
+                <p class="answer">Paris</p>
+              </div>
+            </div>
+            <div class="anki-preview" data-card-preview="2" hidden>
+              <div>
+                <div class="mode">Reversed · card 2 of 3</div>
+                <p class="prompt">DNA stands for?</p>
+                <hr class="answer-rule" />
+                <p class="answer">Deoxyribonucleic acid</p>
+              </div>
+            </div>
+            <div class="anki-preview" data-card-preview="3" hidden>
+              <div>
+                <div class="mode">Reverse · card 3 of 3</div>
+                <p class="prompt">Deoxyribonucleic acid</p>
+                <hr class="answer-rule" />
+                <p class="answer">DNA stands for?</p>
+              </div>
+            </div>
+            <div class="preview-picker" aria-label="Choose generated card">
+              <span class="preview-count">3 cards generated</span>
+              <button
+                class="card-choice"
+                type="button"
+                data-card="1"
+                aria-pressed="true"
+              >
+                1
+              </button>
+              <button
+                class="card-choice"
+                type="button"
+                data-card="2"
+                aria-pressed="false"
+              >
+                2
+              </button>
+              <button
+                class="card-choice"
+                type="button"
+                data-card="3"
+                aria-pressed="false"
+              >
+                3
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <article class="type-card classic" data-group="classic">
+          <header class="card-head">
+            <div>
+              <span class="card-number">06 / Classic</span>
+              <h2>Fenced block</h2>
+              <p class="description">
+                Use this format for long text. <code>type:</code> is optional.
+                If it is missing, the card is basic.
+              </p>
+            </div>
+            <div class="badges" aria-label="Card properties">
+              <span class="badge">Basic</span>
+              <span class="badge count">1 card</span>
+              <span class="badge default">type: omitted</span>
+            </div>
+          </header>
+          <div class="view-tabs" role="tablist" aria-label="Fenced card views">
+            <button
+              class="view-tab"
+              role="tab"
+              aria-selected="true"
+              data-view="source"
+            >
+              Markdown
+            </button>
+            <button
+              class="view-tab"
+              role="tab"
+              aria-selected="false"
+              data-view="preview"
+            >
+              Anki preview
+            </button>
+          </div>
+          <div class="panel source-panel">
+            <pre><span class="token">```flashcard</span>
+front: What is the CAP theorem?
+back: A distributed store provides at most two of
+  Consistency, Availability, and Partition tolerance.
+<span class="token">```</span></pre>
+          </div>
+          <div class="panel preview-panel" hidden>
+            <div class="anki-preview">
+              <div>
+                <div class="mode">Basic · type defaults to basic</div>
+                <p class="prompt">What is the CAP theorem?</p>
+                <hr class="answer-rule" />
+                <p class="answer">
+                  A distributed store provides at most two of Consistency,
+                  Availability, and Partition tolerance.
+                </p>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="type-card classic" data-group="classic">
+          <header class="card-head">
+            <div>
+              <span class="card-number">07 / Classic</span>
+              <h2>Hashtag</h2>
+              <p class="description">
+                Use <code>#card</code> for one direction. Use
+                <code>#card-reverse</code> or <code>#card/reverse</code> for
+                both directions.
+              </p>
+            </div>
+            <div class="badges" aria-label="Card properties">
+              <span class="badge">Basic + reversed</span>
+              <span class="badge count">3 cards</span>
+              <span class="badge default">Default tag names</span>
+            </div>
+          </header>
+          <div class="view-tabs" role="tablist" aria-label="Hashtag card views">
+            <button
+              class="view-tab"
+              role="tab"
+              aria-selected="true"
+              data-view="source"
+            >
+              Markdown
+            </button>
+            <button
+              class="view-tab"
+              role="tab"
+              aria-selected="false"
+              data-view="preview"
+            >
+              Anki preview
+            </button>
+          </div>
+          <div class="panel source-panel">
+            <pre>What is recursion? <span class="token">#card</span>
+A function that calls itself, with a base case.
+
+TCP <span class="token">#card-reverse</span>
+Transmission Control Protocol</pre>
+          </div>
+          <div class="panel preview-panel" hidden>
+            <div class="anki-preview" data-card-preview="1">
+              <div>
+                <div class="mode">Basic · card 1 of 3</div>
+                <p class="prompt">What is recursion?</p>
+                <hr class="answer-rule" />
+                <p class="answer">
+                  A function that calls itself, with a base case.
+                </p>
+              </div>
+            </div>
+            <div class="anki-preview" data-card-preview="2" hidden>
+              <div>
+                <div class="mode">Reversed · card 2 of 3</div>
+                <p class="prompt">TCP</p>
+                <hr class="answer-rule" />
+                <p class="answer">Transmission Control Protocol</p>
+              </div>
+            </div>
+            <div class="anki-preview" data-card-preview="3" hidden>
+              <div>
+                <div class="mode">Reverse · card 3 of 3</div>
+                <p class="prompt">Transmission Control Protocol</p>
+                <hr class="answer-rule" />
+                <p class="answer">TCP</p>
+              </div>
+            </div>
+            <div class="preview-picker" aria-label="Choose generated card">
+              <span class="preview-count">3 cards generated</span>
+              <button
+                class="card-choice"
+                type="button"
+                data-card="1"
+                aria-pressed="true"
+              >
+                1
+              </button>
+              <button
+                class="card-choice"
+                type="button"
+                data-card="2"
+                aria-pressed="false"
+              >
+                2
+              </button>
+              <button
+                class="card-choice"
+                type="button"
+                data-card="3"
+                aria-pressed="false"
+              >
+                3
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <article class="type-card cloze" data-group="cloze classic">
+          <header class="card-head">
+            <div>
+              <span class="card-number">08 / Classic</span>
+              <h2>Cloze sentence</h2>
+              <p class="description">
+                Hide text with <code>==text==</code> or
+                <code>{number:text}</code>. Spans with the same number are
+                hidden on the same card.
+              </p>
+            </div>
+            <div class="badges" aria-label="Card properties">
+              <span class="badge">Cloze</span>
+              <span class="badge count">2 cards</span>
+              <span class="badge explicit">Explicit marks</span>
+            </div>
+          </header>
+          <div
+            class="view-tabs"
+            role="tablist"
+            aria-label="Cloze sentence views"
+          >
+            <button
+              class="view-tab"
+              role="tab"
+              aria-selected="true"
+              data-view="source"
+            >
+              Markdown
+            </button>
+            <button
+              class="view-tab"
+              role="tab"
+              aria-selected="false"
+              data-view="preview"
+            >
+              Anki preview
+            </button>
+          </div>
+          <div class="panel source-panel">
+            <pre>The mitochondria is the <span class="token">==powerhouse==</span> of the cell.
+
+The <span class="token">{1:powerhouse}</span> of the cell is the <span class="token">{1:mitochondria}</span>.</pre>
+          </div>
+          <div class="panel preview-panel" hidden>
+            <div class="anki-preview" data-card-preview="1">
+              <div>
+                <div class="mode">Auto cloze · card 1 of 2</div>
+                <p class="prompt">
+                  The mitochondria is the
+                  <span class="cloze-blank">[…]</span> of the cell.
+                </p>
+                <hr class="answer-rule" />
+                <p class="answer">
+                  The mitochondria is the <mark>powerhouse</mark> of the cell.
+                </p>
+              </div>
+            </div>
+            <div class="anki-preview" data-card-preview="2" hidden>
+              <div>
+                <div class="mode">Numbered cloze · card 2 of 2</div>
+                <p class="prompt">
+                  The <span class="cloze-blank">[…]</span> of the cell is the
+                  <span class="cloze-blank">[…]</span>.
+                </p>
+                <hr class="answer-rule" />
+                <p class="answer">
+                  The <mark>powerhouse</mark> of the cell is the
+                  <mark>mitochondria</mark>.
+                </p>
+              </div>
+            </div>
+            <div class="preview-picker" aria-label="Choose generated card">
+              <span class="preview-count">2 cards generated</span>
+              <button
+                class="card-choice"
+                type="button"
+                data-card="1"
+                aria-pressed="true"
+              >
+                1
+              </button>
+              <button
+                class="card-choice"
+                type="button"
+                data-card="2"
+                aria-pressed="false"
+              >
+                2
+              </button>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section
+        class="anki-lab"
+        id="anki-design"
+        aria-labelledby="anki-lab-title"
+      >
+        <div class="anki-lab-head">
+          <div>
+            <span class="card-number">Proposed v2 design</span>
+            <h2 id="anki-lab-title">Anki review surface</h2>
+          </div>
+          <p class="anki-lab-copy">
+            This is a design preview, not the current Anki template. Change the
+            card, side, theme, and viewport. The source link appears only after
+            the answer is shown.
+          </p>
+        </div>
+
+        <div class="anki-lab-controls" aria-label="Anki preview controls">
+          <div class="anki-control">
+            <span class="anki-control-label">Card</span>
+            <div class="anki-control-options" data-anki-control="scenario">
+              <button
+                class="anki-option"
+                type="button"
+                data-value="basic"
+                aria-pressed="true"
+              >
+                Basic
+              </button>
+              <button
+                class="anki-option"
+                type="button"
+                data-value="reversed"
+                aria-pressed="false"
+              >
+                Reversed
+              </button>
+              <button
+                class="anki-option"
+                type="button"
+                data-value="cloze"
+                aria-pressed="false"
+              >
+                Cloze
+              </button>
+              <button
+                class="anki-option"
+                type="button"
+                data-value="technical"
+                aria-pressed="false"
+              >
+                Technical
+              </button>
+            </div>
+          </div>
+
+          <div class="anki-control">
+            <span class="anki-control-label">Side</span>
+            <div class="anki-control-options" data-anki-control="side">
+              <button
+                class="anki-option"
+                type="button"
+                data-value="question"
+                aria-pressed="false"
+              >
+                Question
+              </button>
+              <button
+                class="anki-option"
+                type="button"
+                data-value="answer"
+                aria-pressed="true"
+              >
+                Answer
+              </button>
+            </div>
+          </div>
+
+          <div class="anki-control">
+            <span class="anki-control-label">Theme</span>
+            <div class="anki-control-options" data-anki-control="theme">
+              <button
+                class="anki-option"
+                type="button"
+                data-value="light"
+                aria-pressed="true"
+              >
+                Light
+              </button>
+              <button
+                class="anki-option"
+                type="button"
+                data-value="dark"
+                aria-pressed="false"
+              >
+                Dark
+              </button>
+            </div>
+          </div>
+
+          <div class="anki-control">
+            <span class="anki-control-label">Viewport</span>
+            <div class="anki-control-options" data-anki-control="width">
+              <button
+                class="anki-option"
+                type="button"
+                data-value="desktop"
+                aria-pressed="true"
+              >
+                Desktop
+              </button>
+              <button
+                class="anki-option"
+                type="button"
+                data-value="mobile"
+                aria-pressed="false"
+              >
+                Mobile
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="anki-stage"
+          data-theme="light"
+          data-width="desktop"
+          aria-live="polite"
+        >
+          <div class="anki-device">
+            <article class="anki-reviewer-card" data-anki-scenario="basic">
+              <div class="anki-side" data-anki-side="question" hidden>
+                <div class="anki-card-content">
+                  <div class="anki-state-label">Basic · question</div>
+                  <p class="anki-question">What does TCP guarantee?</p>
+                </div>
+              </div>
+              <div class="anki-side" data-anki-side="answer">
+                <div class="anki-card-content">
+                  <div class="anki-state-label">Basic · answer</div>
+                  <p class="anki-question">What does TCP guarantee?</p>
+                  <hr class="anki-answer-divider" />
+                  <div class="anki-answer">
+                    <p>
+                      Reliable and ordered delivery of a byte stream between
+                      applications.
+                    </p>
+                  </div>
+                  <div class="anki-source-footer">
+                    <a class="anki-source-link" href="#anki-source-options">
+                      <span class="anki-source-action"
+                        >Edit source in Obsidian ↗</span
+                      >
+                      <span class="anki-source-path"
+                        >computer-science/networks/transmission-control-protocol</span
+                      >
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article
+              class="anki-reviewer-card"
+              data-anki-scenario="reversed"
+              hidden
+            >
+              <div class="anki-side" data-anki-side="question" hidden>
+                <div class="anki-card-content">
+                  <div class="anki-state-label">Reversed · question</div>
+                  <p class="anki-question">
+                    Reliable and ordered delivery of a byte stream between
+                    applications.
+                  </p>
+                </div>
+              </div>
+              <div class="anki-side" data-anki-side="answer">
+                <div class="anki-card-content">
+                  <div class="anki-state-label">Reversed · answer</div>
+                  <p class="anki-question">
+                    Reliable and ordered delivery of a byte stream between
+                    applications.
+                  </p>
+                  <hr class="anki-answer-divider" />
+                  <div class="anki-answer">
+                    <p>Transmission Control Protocol</p>
+                  </div>
+                  <div class="anki-source-footer">
+                    <a class="anki-source-link" href="#anki-source-options">
+                      <span class="anki-source-action"
+                        >Edit source in Obsidian ↗</span
+                      >
+                      <span class="anki-source-path"
+                        >computer-science/networks/transmission-control-protocol</span
+                      >
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article
+              class="anki-reviewer-card"
+              data-anki-scenario="cloze"
+              hidden
+            >
+              <div class="anki-side" data-anki-side="question" hidden>
+                <div class="anki-card-content">
+                  <div class="anki-state-label">Cloze · question</div>
+                  <p class="anki-question">
+                    The mitochondria is the <span class="anki-cloze">[…]</span>
+                    of the cell.
+                  </p>
+                </div>
+              </div>
+              <div class="anki-side" data-anki-side="answer">
+                <div class="anki-card-content">
+                  <div class="anki-state-label">Cloze · answer</div>
+                  <p class="anki-question">
+                    The mitochondria is the
+                    <span class="anki-cloze">powerhouse</span> of the cell.
+                  </p>
+                  <hr class="anki-answer-divider" />
+                  <div class="anki-answer">
+                    <p>
+                      It produces most of the cell's ATP through aerobic
+                      respiration.
+                    </p>
+                  </div>
+                  <div class="anki-source-footer">
+                    <a class="anki-source-link" href="#anki-source-options">
+                      <span class="anki-source-action"
+                        >Edit source in Obsidian ↗</span
+                      >
+                      <span class="anki-source-path"
+                        >biology/cell/mitochondria</span
+                      >
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article
+              class="anki-reviewer-card"
+              data-anki-scenario="technical"
+              hidden
+            >
+              <div class="anki-side" data-anki-side="question" hidden>
+                <div class="anki-card-content">
+                  <div class="anki-state-label">Technical · question</div>
+                  <p class="anki-question">
+                    How do you extract the resolved value of a Promise type in
+                    TypeScript?
+                  </p>
+                </div>
+              </div>
+              <div class="anki-side" data-anki-side="answer">
+                <div class="anki-card-content">
+                  <div class="anki-state-label">Technical · answer</div>
+                  <p class="anki-question">
+                    How do you extract the resolved value of a Promise type in
+                    TypeScript?
+                  </p>
+                  <hr class="anki-answer-divider" />
+                  <div class="anki-answer">
+                    <p>
+                      Use a conditional type with
+                      <span class="anki-inline-code">infer</span>:
+                    </p>
+                    <pre>
+type Resolved&lt;T&gt; =
+  T extends Promise&lt;infer Value&gt;
+    ? Value
+    : T;</pre
+                    >
+                    <ul>
+                      <li>The code stays left-aligned.</li>
+                      <li>Long lines wrap instead of leaving the viewport.</li>
+                    </ul>
+                  </div>
+                  <div class="anki-source-footer">
+                    <a class="anki-source-link" href="#anki-source-options">
+                      <span class="anki-source-action"
+                        >Edit source in Obsidian ↗</span
+                      >
+                      <span class="anki-source-path"
+                        >engineering/typescript/conditional-types-and-inference</span
+                      >
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <div
+          class="anki-source-options"
+          id="anki-source-options"
+          aria-labelledby="anki-source-title"
+        >
+          <h3 id="anki-source-title">Source label comparison</h3>
+          <p>
+            All variants open the exact block. The path is shown only on the
+            answer side, so it cannot reveal the answer before review.
+          </p>
+          <div class="anki-source-grid">
+            <div class="anki-source-choice recommended">
+              <span class="anki-source-choice-label">
+                Action + path
+                <span class="anki-recommended">Recommended</span>
+              </span>
+              <span class="anki-source-sample">
+                Edit source in Obsidian ↗
+                <small>scenarios/auto-fixes/08-accepted-features</small>
+              </span>
+            </div>
+            <div class="anki-source-choice">
+              <span class="anki-source-choice-label">Note name</span>
+              <span class="anki-source-sample">
+                Edit 08-accepted-features in Obsidian ↗
+              </span>
+            </div>
+            <div class="anki-source-choice">
+              <span class="anki-source-choice-label">Relative path</span>
+              <span class="anki-source-sample">
+                Open scenarios/auto-fixes/08-accepted-features ↗
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <p>
+          <strong>Atomic notes</strong> use <code>test:</code> in the top YAML
+          block. The plugin does not create extra inline or cloze cards from the
+          body of these notes. Fenced and hashtag cards still work.
+        </p>
+      </footer>
+    </main>
+
+    <script>
+      const filters = document.querySelectorAll(".filter");
+      const cards = document.querySelectorAll(".type-card");
+
+      filters.forEach((button) => {
+        button.addEventListener("click", () => {
+          const selected = button.dataset.filter;
+          filters.forEach((item) =>
+            item.setAttribute("aria-pressed", String(item === button)),
+          );
+          cards.forEach((card) => {
+            const groups = card.dataset.group.split(" ");
+            card.hidden = selected !== "all" && !groups.includes(selected);
+          });
+        });
+      });
+
+      document.querySelectorAll(".view-tabs").forEach((tabs) => {
+        tabs.addEventListener("click", (event) => {
+          const button = event.target.closest(".view-tab");
+          if (!button) return;
+
+          const card = tabs.closest(".type-card");
+          const showPreview = button.dataset.view === "preview";
+          tabs.querySelectorAll(".view-tab").forEach((tab) => {
+            tab.setAttribute("aria-selected", String(tab === button));
+          });
+          card.querySelector(".source-panel").hidden = showPreview;
+          card.querySelector(".preview-panel").hidden = !showPreview;
+        });
+      });
+
+      document.querySelectorAll(".preview-picker").forEach((picker) => {
+        picker.addEventListener("click", (event) => {
+          const button = event.target.closest(".card-choice");
+          if (!button) return;
+
+          const panel = picker.closest(".preview-panel");
+          const selectedCard = button.dataset.card;
+          panel.querySelectorAll(".card-choice").forEach((choice) => {
+            choice.setAttribute("aria-pressed", String(choice === button));
+          });
+          panel.querySelectorAll("[data-card-preview]").forEach((preview) => {
+            preview.hidden = preview.dataset.cardPreview !== selectedCard;
+          });
+        });
+      });
+
+      const ankiStage = document.querySelector(".anki-stage");
+      const ankiState = {
+        scenario: "basic",
+        side: "answer",
+        theme: "light",
+        width: "desktop",
+      };
+
+      function renderAnkiLab() {
+        ankiStage.dataset.theme = ankiState.theme;
+        ankiStage.dataset.width = ankiState.width;
+        document.querySelectorAll("[data-anki-scenario]").forEach((card) => {
+          card.hidden = card.dataset.ankiScenario !== ankiState.scenario;
+        });
+        document.querySelectorAll("[data-anki-side]").forEach((side) => {
+          side.hidden = side.dataset.ankiSide !== ankiState.side;
+        });
+      }
+
+      document.querySelectorAll("[data-anki-control]").forEach((control) => {
+        control.addEventListener("click", (event) => {
+          const button = event.target.closest(".anki-option");
+          if (!button) return;
+
+          const key = control.dataset.ankiControl;
+          ankiState[key] = button.dataset.value;
+          control.querySelectorAll(".anki-option").forEach((option) => {
+            option.setAttribute("aria-pressed", String(option === button));
+          });
+          renderAnkiLab();
+        });
+      });
+    </script>
+  </body>
+</html>

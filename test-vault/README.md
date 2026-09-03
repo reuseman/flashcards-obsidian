@@ -57,7 +57,19 @@ The harness strips written-back `^<id>` anchors before parsing and uses
 synthetic block IDs (`card-N`), so the same files can be opened in Obsidian
 and synced manually without affecting snapshots.
 
+The root notes `note.md` and `capital.md` are real link targets for the
+wikilink smoke examples. They contain no cards.
+
 After a manual run:
+
+- For a profile with cards created before the v2 design, run **Flashcards:
+  Apply v2 Anki card style**. Confirm that the dialog names each changed model,
+  that a JSON file appears under the plugin's `backups` directory, and that the
+  cards keep their existing scheduling while using the new answer-side Source
+  action and path.
+- Run **Flashcards: Sync vault** a second time without editing any files. The
+  completion notice should report unchanged card-free notes as skipped, while
+  notes containing cards are still checked.
 
 ```sh
 npm run test-vault:reset
