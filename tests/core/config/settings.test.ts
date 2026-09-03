@@ -27,11 +27,15 @@ describe("renderPreview settings", () => {
 });
 
 describe("WI-7: per-syntax toggles", () => {
-  test("DEFAULT_SETTINGS has inline/cloze/fenced/atomic all enabled by default", () => {
+  test("DEFAULT_SETTINGS has inline/cloze/highlight/fenced/atomic all enabled by default", () => {
     expect(DEFAULT_SETTINGS.inline).toEqual({ enabled: true });
     expect(DEFAULT_SETTINGS.cloze).toEqual({ enabled: true });
+    expect(DEFAULT_SETTINGS.highlightCloze).toEqual({ enabled: true });
     expect(DEFAULT_SETTINGS.fenced).toEqual({ enabled: true });
     expect(DEFAULT_SETTINGS.atomic).toEqual({ enabled: true });
+    expect(DEFAULT_SETTINGS.ankiConnectApiKeySecret).toBe("");
+    expect(DEFAULT_SETTINGS.folderBasedTags).toBe(false);
+    expect(DEFAULT_SETTINGS.folderDeckPrefix).toBe("");
   });
 
   test("mergeSettings fills defaults for inline/cloze/fenced/atomic from a pre-WI-7 persisted config", () => {
@@ -39,16 +43,25 @@ describe("WI-7: per-syntax toggles", () => {
     expect(merged.defaultDeck).toBe("Legacy");
     expect(merged.inline).toEqual({ enabled: true });
     expect(merged.cloze).toEqual({ enabled: true });
+    expect(merged.highlightCloze).toEqual({ enabled: true });
     expect(merged.fenced).toEqual({ enabled: true });
     expect(merged.atomic).toEqual({ enabled: true });
+    expect(merged.ankiConnectApiKeySecret).toBe("");
   });
 
   test("mergeSettings preserves a persisted override on one toggle block", () => {
     const merged = mergeSettings({ inline: { enabled: false } });
     expect(merged.inline).toEqual({ enabled: false });
     expect(merged.cloze).toEqual({ enabled: true });
+    expect(merged.highlightCloze).toEqual({ enabled: true });
     expect(merged.fenced).toEqual({ enabled: true });
     expect(merged.atomic).toEqual({ enabled: true });
+  });
+
+  test("mergeSettings fills missing nested toggle values", () => {
+    const merged = mergeSettings({ highlightCloze: {} } as unknown);
+
+    expect(merged.highlightCloze).toEqual({ enabled: true });
   });
 });
 

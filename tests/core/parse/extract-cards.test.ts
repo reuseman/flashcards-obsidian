@@ -30,6 +30,130 @@ describe("extractCardsFromMarkdown", () => {
     });
   });
 
+  test("an inline list card owns its child blocks", () => {
+    const markdown = [
+      "- Question:: Short answer",
+      "",
+      "  More detail.",
+      "",
+      "  - Child ==content== stays in the answer.",
+    ].join("\n");
+    const result = extractCardsFromMarkdown(markdown, {
+      notePath: "List.md",
+      settings: DEFAULT_SETTINGS,
+    });
+
+    expect(result.cards).toHaveLength(1);
+    expect(result.cards[0]).toMatchObject({
+      answer: expect.stringContaining("More detail."),
+      front: "Question",
+      kind: "basic",
+    });
+    expect(result.cards[0]?.answer).toContain(
+      "- Child ==content== stays in the answer.",
+    );
+  });
+
+  test("a list containing clozes becomes one cloze note", () => {
+    const markdown = [
+      "- The ==heart== pumps blood.",
+      "- The {2:lungs} exchange gases.",
+    ].join("\n");
+    const result = extractCardsFromMarkdown(markdown, {
+      notePath: "List.md",
+      settings: DEFAULT_SETTINGS,
+    });
+
+    expect(result.cards).toHaveLength(1);
+    expect(result.cards[0]).toMatchObject({
+      answer: "",
+      front: markdown,
+      kind: "cloze",
+    });
+  });
+
+  test("separate inline list items remain separate cards", () => {
+    const result = extractCardsFromMarkdown(
+      ["- First:: One", "- Second:: Two"].join("\n"),
+      { notePath: "List.md", settings: DEFAULT_SETTINGS },
+    );
+
+    expect(result.cards).toHaveLength(2);
+    expect(result.cards.map(({ front, answer }) => ({ front, answer }))).toEqual([
+      { answer: "One", front: "First" },
+      { answer: "Two", front: "Second" },
+    ]);
+  });
+
+  test("a list nested in a blockquote does not create cards", () => {
+    const result = extractCardsFromMarkdown(
+      ["> - Question:: Answer", "> - The ==heart== pumps."].join("\n"),
+      { notePath: "Quote.md", settings: DEFAULT_SETTINGS },
+    );
+
+    expect(result.cards).toHaveLength(0);
+  });
+
+  describe("explicit card callouts", () => {
+    test("[!CARD] uses its title as front and its body as answer", () => {
+      const result = extractCardsFromMarkdown(
+        [
+          "> [!CARD] : What is recursion?",
+          "> A function that calls itself.",
+          ">",
+          "> It needs a base case.",
+        ].join("\n"),
+        { notePath: "Callout.md", settings: DEFAULT_SETTINGS },
+      );
+
+      expect(result.cards).toEqual([
+        expect.objectContaining({
+          answer: expect.stringContaining("A function that calls itself."),
+          front: "What is recursion?",
+          kind: "basic",
+          source: expect.objectContaining({ syntax: "callout" }),
+        }),
+      ]);
+      expect(result.cards[0]?.answer).toContain("It needs a base case.");
+    });
+
+    test("the callout body cannot create extra inline or cloze cards", () => {
+      const result = extractCardsFromMarkdown(
+        [
+          "> [!card] Question",
+          "> Answer:: this is answer content.",
+          "> The ==highlight== is also answer content.",
+        ].join("\n"),
+        { notePath: "Callout.md", settings: DEFAULT_SETTINGS },
+      );
+
+      expect(result.cards).toHaveLength(1);
+      expect(result.cards[0]?.answer).toContain("Answer:: this is answer content.");
+      expect(result.cards[0]?.answer).toContain("==highlight==");
+    });
+
+    test("a CARD callout without a question is reported and skipped", () => {
+      const result = extractCardsFromMarkdown(
+        ["> [!CARD]", "> Answer"].join("\n"),
+        { notePath: "Callout.md", settings: DEFAULT_SETTINGS },
+      );
+
+      expect(result.cards).toEqual([]);
+      expect(result.warnings).toEqual([
+        "Card callout in Callout.md:1 has no question; skipped.",
+      ]);
+    });
+
+    test("ordinary callout types do not create cards", () => {
+      const result = extractCardsFromMarkdown(
+        ["> [!quote] Source", "> Quoted text"].join("\n"),
+        { notePath: "Callout.md", settings: DEFAULT_SETTINGS },
+      );
+
+      expect(result.cards).toEqual([]);
+    });
+  });
+
   test("does not parse inline cards inside blockquotes", () => {
     const result = extractCardsFromMarkdown("> Question:: Answer", {
       notePath: "Blockquote.md",
@@ -121,6 +245,38 @@ describe("extractCardsFromMarkdown", () => {
     expect(front).toContain("{1:heart}");
     expect(front).toContain("{2:blood}");
     expect(front).not.toContain("{{c");
+  });
+
+  test("plain curly braces are ordinary text in the strict v2 grammar", () => {
+    const result = extractCardsFromMarkdown("A set is written {a, b, c}.", {
+      notePath: "Cloze.md",
+      settings: DEFAULT_SETTINGS,
+    });
+
+    expect(result.cards).toHaveLength(0);
+  });
+
+  test("protects LaTeX braces while allowing a cloze to contain math", () => {
+    const source = "First $a+b$, then {1:$c^{2}+d$}, then $e+f$.";
+    const result = extractCardsFromMarkdown(source, {
+      notePath: "Cloze.md",
+      settings: DEFAULT_SETTINGS,
+    });
+
+    expect(result.cards).toHaveLength(1);
+    expect(result.cards[0]).toMatchObject({ front: source, kind: "cloze" });
+  });
+
+  test("reports malformed cloze syntax without creating a card", () => {
+    const result = extractCardsFromMarkdown("The {1:answer is not closed.", {
+      notePath: "Cloze.md",
+      settings: DEFAULT_SETTINGS,
+    });
+
+    expect(result.cards).toHaveLength(0);
+    expect(result.warnings).toEqual([
+      expect.stringContaining("Cloze.md:1"),
+    ]);
   });
 
   describe("reversed inline cards (:::)", () => {
@@ -366,6 +522,28 @@ describe("extractCardsFromMarkdown", () => {
       expect(result.cards.some((c) => c.kind === "basic")).toBe(true);
     });
 
+    test("highlightCloze.enabled = false treats ==x== as Markdown but keeps explicit clozes", () => {
+      const settings = {
+        ...DEFAULT_SETTINGS,
+        highlightCloze: { enabled: false },
+      };
+      const md = [
+        "The ==heart== pumps blood.",
+        "",
+        "The {2:atrium} receives blood.",
+        "",
+        "The {{c3::ventricle}} pumps blood.",
+      ].join("\n");
+
+      const result = extractCardsFromMarkdown(md, { notePath: "T.md", settings });
+
+      expect(result.cards).toHaveLength(2);
+      expect(result.cards.map((card) => card.front)).toEqual([
+        "The {2:atrium} receives blood.",
+        "The {{c3::ventricle}} pumps blood.",
+      ]);
+    });
+
     test("fenced.enabled = false skips ```flashcard blocks but leaves inline cards parsed", () => {
       const settings = { ...DEFAULT_SETTINGS, fenced: { ...DEFAULT_SETTINGS.fenced, enabled: false } };
       const md = [
@@ -382,6 +560,64 @@ describe("extractCardsFromMarkdown", () => {
 
       expect(result.cards.some((c) => c.front === "What is ATP?")).toBe(false);
       expect(result.cards.some((c) => c.front === "Question")).toBe(true);
+    });
+  });
+
+  describe("fenced cloze cards", () => {
+    test("type: cloze maps front to cloze text and optional back to extra", () => {
+      const result = extractCardsFromMarkdown(
+        [
+          "```flashcard",
+          "type: cloze",
+          "front: The {1:heart} pumps blood.",
+          "back: Remember the four chambers.",
+          "```",
+        ].join("\n"),
+        { notePath: "T.md", settings: DEFAULT_SETTINGS },
+      );
+
+      expect(result.cards).toEqual([
+        expect.objectContaining({
+          answer: "Remember the four chambers.",
+          front: "The {1:heart} pumps blood.",
+          kind: "cloze",
+        }),
+      ]);
+    });
+
+    test("type: cloze does not require back", () => {
+      const result = extractCardsFromMarkdown(
+        [
+          "```flashcard",
+          "type: cloze",
+          "front: The {1:heart} pumps blood.",
+          "```",
+        ].join("\n"),
+        { notePath: "T.md", settings: DEFAULT_SETTINGS },
+      );
+
+      expect(result.cards).toEqual([
+        expect.objectContaining({ answer: "", kind: "cloze" }),
+      ]);
+      expect(result.warnings).toEqual([]);
+    });
+
+    test("an unsupported fenced type is reported and skipped", () => {
+      const result = extractCardsFromMarkdown(
+        [
+          "```flashcard",
+          "type: mystery",
+          "front: Question",
+          "back: Answer",
+          "```",
+        ].join("\n"),
+        { notePath: "T.md", settings: DEFAULT_SETTINGS },
+      );
+
+      expect(result.cards).toEqual([]);
+      expect(result.warnings).toEqual([
+        "Fenced flashcard block has unsupported `type: mystery`; skipped.",
+      ]);
     });
   });
 
@@ -670,16 +906,15 @@ describe("extractCardsFromMarkdown", () => {
         settings: DEFAULT_SETTINGS,
       });
 
+      const atomicCards = result.cards.filter(
+        (c) => (c.source.syntax as string) === "atomic",
+      );
+      expect(atomicCards).toHaveLength(1);
       const legacy = result.cards.filter((c) => {
         const syntax = c.source.syntax as string;
         return syntax === "inline" || syntax === "cloze";
       });
       expect(legacy).toEqual([]);
-
-      const atomicCards = result.cards.filter(
-        (c) => (c.source.syntax as string) === "atomic",
-      );
-      expect(atomicCards).toHaveLength(1);
     });
 
     test("atomic-cloze first paragraph yields exactly one card, not an atomic + legacy-cloze double", () => {
@@ -696,7 +931,21 @@ describe("extractCardsFromMarkdown", () => {
       expect(result.cards[0]?.source.syntax as string).toBe("atomic");
     });
 
-    test("invalid `test:` value (key presence, not validity) still suppresses inline/cloze and yields zero atomic cards", () => {
+    test("an atomic first paragraph takes precedence over a hashtag marker in that paragraph", () => {
+      const md = atomicNote(VALID_TEST_FRONTMATTER, [
+        "What is the owned paragraph? #card\nThis text belongs to the atomic card.",
+      ]);
+
+      const result = extractCardsFromMarkdown(md, {
+        notePath: "Atomic.md",
+        settings: DEFAULT_SETTINGS,
+      });
+
+      expect(result.cards).toHaveLength(1);
+      expect(result.cards[0]?.source.syntax as string).toBe("atomic");
+    });
+
+    test("invalid `test:` value still suppresses inline/cloze and yields zero atomic cards", () => {
       const md = atomicNote(["test: true"], [
         "The ==heart== pumps blood through the body.",
         "",

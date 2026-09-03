@@ -22,6 +22,8 @@ export interface RenderPreviewSettings {
 }
 
 export interface FlashcardsSettings {
+  /** Name of an Obsidian SecretStorage entry, never the secret value itself. */
+  ankiConnectApiKeySecret: string;
   atomic: SyntaxToggleSettings;
   cloze: SyntaxToggleSettings;
   confirmBeforeDelete: boolean;
@@ -32,7 +34,10 @@ export interface FlashcardsSettings {
   explicitSyntax: ExplicitSyntax;
   fenced: SyntaxToggleSettings;
   folderBasedDecks: boolean;
+  folderBasedTags: boolean;
+  folderDeckPrefix: string;
   hashtag: HashtagSettings;
+  highlightCloze: SyntaxToggleSettings;
   inline: SyntaxToggleSettings;
   inlineReverseSeparator: string;
   inlineSeparator: string;
@@ -44,6 +49,7 @@ export interface FlashcardsSettings {
 }
 
 export const DEFAULT_SETTINGS: FlashcardsSettings = {
+  ankiConnectApiKeySecret: "",
   atomic: { enabled: true },
   cloze: { enabled: true },
   confirmBeforeDelete: true,
@@ -54,10 +60,13 @@ export const DEFAULT_SETTINGS: FlashcardsSettings = {
   explicitSyntax: "fenced",
   fenced: { enabled: true },
   folderBasedDecks: true,
+  folderBasedTags: false,
+  folderDeckPrefix: "",
   hashtag: {
     enabled: true,
     basicTag: "card",
   },
+  highlightCloze: { enabled: true },
   inline: { enabled: true },
   inlineReverseSeparator: ":::",
   inlineSeparator: "::",
@@ -136,6 +145,8 @@ export function mergeSettings(
   return {
     ...defaults,
     ...mergedCandidate,
+    atomic: mergeSyntaxToggle(defaults.atomic, candidate.atomic),
+    cloze: mergeSyntaxToggle(defaults.cloze, candidate.cloze),
     defaultTags: Array.isArray(candidate.defaultTags)
       ? candidate.defaultTags.filter((value): value is string => typeof value === "string")
       : defaults.defaultTags,
@@ -145,6 +156,12 @@ export function mergeSettings(
       ...(oldHashtagMapped ?? {}),
       ...(newHashtagCandidate ?? {}),
     },
+    highlightCloze: mergeSyntaxToggle(
+      defaults.highlightCloze,
+      candidate.highlightCloze,
+    ),
+    fenced: mergeSyntaxToggle(defaults.fenced, candidate.fenced),
+    inline: mergeSyntaxToggle(defaults.inline, candidate.inline),
     renderPreview: {
       ...defaults.renderPreview,
       ...(renderPreviewCandidate ?? {}),
@@ -156,4 +173,13 @@ export function mergeSettings(
       },
     },
   };
+}
+
+function mergeSyntaxToggle(
+  defaults: SyntaxToggleSettings,
+  candidate: SyntaxToggleSettings | undefined,
+): SyntaxToggleSettings {
+  return candidate && typeof candidate === "object"
+    ? { ...defaults, ...candidate }
+    : defaults;
 }

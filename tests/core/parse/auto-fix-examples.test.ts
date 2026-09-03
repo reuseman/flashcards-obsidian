@@ -90,4 +90,35 @@ describe("manual AUTO-fix examples", () => {
     );
   });
 
+  it("provides strict cloze and hashtag-boundary examples without duplicates", () => {
+    const cards = extract("07-strict-grammar.md");
+
+    expect(cards).toHaveLength(3);
+    expect(cards.map((card) => card.source.syntax)).toEqual([
+      "cloze",
+      "hashtag",
+      "hashtag",
+    ]);
+    expect(cards[1]?.answer).toContain("### Lower heading");
+    expect(cards[2]?.answer).toBe("- first item\n- second item");
+  });
+
+  it("provides one manual example for each accepted parser feature", () => {
+    const cards = extract("08-accepted-features.md");
+
+    expect(cards).toHaveLength(5);
+    expect(cards.map((card) => card.source.syntax)).toEqual([
+      "hashtag",
+      "callout",
+      "inline",
+      "cloze",
+      "fenced",
+    ]);
+    expect(cards[2]?.answer).toContain("child paragraph");
+    expect(cards[3]?.front).toContain("{2:lungs}");
+    expect(cards[4]).toMatchObject({
+      answer: "This optional back becomes the Anki Extra field.",
+      kind: "cloze",
+    });
+  });
 });

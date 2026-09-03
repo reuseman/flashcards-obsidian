@@ -43,10 +43,11 @@ describe("inline card properties", () => {
 //     close *across* the `::`, turning it (and the delimiter) into code
 //     content that is never scanned for cards. A backtick pair *within* one
 //     side also empties that side down to whitespace-only code content.
+//   - `$` can open a Markdown math span around the separator.
 //   - a leading `<` opens raw HTML (comment, declaration, processing
 //     instruction, CDATA, or tag) per CommonMark, which can likewise swallow
 //     the delimiter or the sibling side.
-// Excluding all three characters keeps the generator inside the "plain
+// Excluding these characters keeps the generator inside the "plain
 // paragraph text" precondition the property actually needs, while still
 // exercising unicode, punctuation, and `:`-adjacent (but not `::`) content.
 function safeInlineSideArbitrary() {
@@ -64,6 +65,7 @@ function safeInlineSideArbitrary() {
     .filter((value) => !value.includes("=="))
     .filter((value) => !value.includes("\\"))
     .filter((value) => !value.includes("`"))
+    .filter((value) => !value.includes("$"))
     .filter((value) => !value.includes("<"))
     .filter((value) => !/^\s*[>#*-]/.test(value));
 }

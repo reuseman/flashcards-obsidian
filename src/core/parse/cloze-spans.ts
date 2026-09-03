@@ -1,35 +1,17 @@
-export interface Span {
-  end: number;
-  start: number;
-}
+import { parseClozeSyntax, type SourceSpan } from "./cloze-syntax.js";
+
+export type Span = SourceSpan;
 
 /**
- * Returns the source ranges of cloze constructs claimed by `parseClozeCard`:
- *   - `==highlight==`
- *   - `{N:text}` and `{text}`
- *   - `{{cN::text}}` (Anki-native; matched by the curly-brace pattern via its
- *     inner `{cN::text}` substring — we widen to the outer `{{...}}` here so
- *     the entire Anki cloze is excluded from inline-separator scanning).
+ * Compatibility adapter for callers that need only the ranges claimed by the
+ * strict tokenizer: `==highlight==`, `{N:text}`, and `{{cN::text}}`.
  */
 export function collectClozeSpans(line: string): Span[] {
-  const spans: Span[] = [];
+  return parseStrictClozeSpans(line);
+}
 
-  for (const m of line.matchAll(/==.+?==/g)) {
-    const idx = m.index ?? 0;
-    spans.push({ end: idx + m[0].length, start: idx });
-  }
-
-  for (const m of line.matchAll(/\{\{c\d+::[^}]+\}\}/g)) {
-    const idx = m.index ?? 0;
-    spans.push({ end: idx + m[0].length, start: idx });
-  }
-
-  for (const m of line.matchAll(/\{(?:\d+:)?[^}]+\}/g)) {
-    const idx = m.index ?? 0;
-    spans.push({ end: idx + m[0].length, start: idx });
-  }
-
-  return spans;
+function parseStrictClozeSpans(line: string): Span[] {
+  return parseClozeSyntax(line).spans.map(({ start, end }) => ({ start, end }));
 }
 
 export function intersectsSpan(start: number, end: number, spans: Span[]): boolean {

@@ -1,7 +1,8 @@
 import type { Paragraph, Root } from "mdast";
 
 import type { CardKind, Flashcard } from "../domain/card.js";
-import { collectClozeSpans } from "./cloze-spans.js";
+import { parseClozeSyntax } from "./cloze-syntax.js";
+import { collectProtectedMarkdownSpans } from "./markdown-tree.js";
 import type { FrontmatterBlock } from "./note-metadata.js";
 
 export interface AtomicExtractContext {
@@ -54,6 +55,7 @@ export function extractAtomicCards(
   markdown: string,
   atomicEnabled: boolean,
   context: AtomicExtractContext,
+  highlightClozeEnabled = true,
 ): AtomicExtractResult {
   if (!atomicEnabled || !frontmatter) return { cards: [], lints: [] };
 
@@ -75,12 +77,18 @@ export function extractAtomicCards(
   const end = paragraph.position?.end.offset ?? 0;
   const line = paragraph.position?.start.line ?? 1;
   const firstParagraph = markdown.slice(start, end);
+  const protectedSpans = collectProtectedMarkdownSpans(paragraph, start);
   const title = noteTitle(context.notePath);
 
   const lints: string[] = [];
   const cards: Flashcard[] = [];
   for (const item of parsed.items) {
-    if (item === RESERVED_CLOZE && collectClozeSpans(firstParagraph).length === 0) {
+    if (
+      item === RESERVED_CLOZE &&
+      parseClozeSyntax(firstParagraph, protectedSpans, {
+        auto: highlightClozeEnabled,
+      }).spans.length === 0
+    ) {
       lints.push(clozeSpanLint(context.notePath));
       continue;
     }

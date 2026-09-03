@@ -6,7 +6,6 @@ import type { FlashcardsSettings } from "../../core/config/settings.js";
 import type { MarkdownRepository } from "../../application/ports.js";
 
 const NO_CARDS = "Note: no cards";
-const IN_SYNC = "Note: in sync";
 
 /**
  * Aggregate status for the active note. Runs the same Phase A + Phase B
@@ -14,11 +13,9 @@ const IN_SYNC = "Note: in sync";
  *
  * Returns one of:
  *   - "Flashcards: no cards" — 0 cards parsed
- *   - "Flashcards: in sync" — cards exist, no pending ops, no v1 pending
- *   - "Flashcards: 2 new, 1 modified, 3 pending migration" — any combination
- *     of: NEW (no anchor yet), MODIFIED (v2 anchor + stale hash), and
- *     PENDING MIGRATION (v1 anchors with no frontmatter entry — invisible
- *     to the sync diff until the user opts in to migration).
+ *   - "Note: 3 cards, in sync" — cards exist, no pending ops, no v1 pending
+ *   - "Note: 3 cards, 2 new, 1 modified" — the total followed by any
+ *     combination of NEW, MODIFIED, and PENDING MIGRATION.
  */
 export function computeActiveNoteStatus(
   markdown: string,
@@ -38,9 +35,13 @@ export function computeActiveNoteStatus(
   const modCount = preview.update;
   const legacyCount = detectV1Migration({ markdown }).unmigrated;
 
-  if (newCount === 0 && modCount === 0 && legacyCount === 0) return IN_SYNC;
-
-  const parts: string[] = [];
+  const cardCount = preview.cards.length;
+  const parts: string[] = [
+    `${cardCount} ${cardCount === 1 ? "card" : "cards"}`,
+  ];
+  if (newCount === 0 && modCount === 0 && legacyCount === 0) {
+    parts.push("in sync");
+  }
   if (newCount > 0) parts.push(`${newCount} new`);
   if (modCount > 0) parts.push(`${modCount} modified`);
   if (legacyCount > 0)

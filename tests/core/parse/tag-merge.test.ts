@@ -56,4 +56,34 @@ describe("extractCardsFromMarkdown — tag merging (defaults + frontmatter)", ()
       "week-1",
     ]);
   });
+
+  test("folder-derived hierarchical tag is default-off", () => {
+    const result = extractCardsFromMarkdown("Question:: Answer", {
+      notePath: "Languages/German/Note.md",
+      settings: DEFAULT_SETTINGS,
+    });
+
+    expect(result.cards[0]?.tags).toEqual(["obsidian"]);
+  });
+
+  test("folder-derived tags add one normalized full path when enabled", () => {
+    const result = extractCardsFromMarkdown("Question:: Answer", {
+      notePath: "/ Languages // German /Note.md",
+      settings: { ...DEFAULT_SETTINGS, folderBasedTags: true },
+    });
+
+    expect(result.cards[0]?.tags).toEqual([
+      "obsidian",
+      "Languages::German",
+    ]);
+  });
+
+  test("a root note gets no folder-derived tag", () => {
+    const result = extractCardsFromMarkdown("Question:: Answer", {
+      notePath: "Note.md",
+      settings: { ...DEFAULT_SETTINGS, folderBasedTags: true },
+    });
+
+    expect(result.cards[0]?.tags).toEqual(["obsidian"]);
+  });
 });

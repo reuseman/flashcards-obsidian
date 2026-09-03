@@ -60,10 +60,12 @@ export function previewSyncPlan(
     settings,
   } = input;
 
-  const { cards, lints } = extractCardsFromMarkdown(markdown, {
+  const extracted = extractCardsFromMarkdown(markdown, {
     notePath,
     settings,
   });
+  const { cards } = extracted;
+  const lints = [...extracted.lints, ...extracted.warnings];
 
   if (cards.length === 0) {
     // Final-review fix #2 (spec §4.2): a note that previously synced an

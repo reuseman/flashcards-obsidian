@@ -1,4 +1,8 @@
-import { PluginSettingTab, type SettingDefinitionItem } from "obsidian";
+import {
+  PluginSettingTab,
+  SecretComponent,
+  type SettingDefinitionItem,
+} from "obsidian";
 
 import {
   DEFAULT_SETTINGS,
@@ -11,6 +15,11 @@ type SettingsKey =
   | "contextSeparator"
   | "contextStrategy"
   | "defaultDeck"
+  | "folderBasedDecks"
+  | "folderBasedTags"
+  | "folderDeckPrefix"
+  | "highlightCloze.enabled"
+  | "inline.enabled"
   | "renderPreview.anchor"
   | "renderPreview.cloze"
   | "renderPreview.enabled"
@@ -58,6 +67,33 @@ export class FlashcardsSettingTab extends PluginSettingTab {
             },
           },
           {
+            name: "Folder decks",
+            desc: "Use the note folder as its deck when cards-deck is not set. Default: on.",
+            control: {
+              type: "toggle",
+              key: "folderBasedDecks",
+              defaultValue: DEFAULT_SETTINGS.folderBasedDecks,
+            },
+          },
+          {
+            name: "Folder deck prefix",
+            desc: "Optional parent for folder-derived decks. It does not change cards-deck. Default: empty.",
+            control: {
+              type: "text",
+              key: "folderDeckPrefix",
+              defaultValue: DEFAULT_SETTINGS.folderDeckPrefix,
+            },
+          },
+          {
+            name: "Folder tags",
+            desc: "Add one hierarchical tag from the note folder. Default: off.",
+            control: {
+              type: "toggle",
+              key: "folderBasedTags",
+              defaultValue: DEFAULT_SETTINGS.folderBasedTags,
+            },
+          },
+          {
             name: "Context separator",
             desc: "Text between context parts. Use \\n for a new line. Default: >.",
             control: {
@@ -73,6 +109,39 @@ export class FlashcardsSettingTab extends PluginSettingTab {
               type: "toggle",
               key: "confirmBeforeDelete",
               defaultValue: DEFAULT_SETTINGS.confirmBeforeDelete,
+            },
+          },
+          {
+            name: "Inline cards",
+            desc: "Create cards from Q :: A and Q ::: A. Default: on.",
+            control: {
+              type: "toggle",
+              key: "inline.enabled",
+              defaultValue: DEFAULT_SETTINGS.inline.enabled,
+            },
+          },
+          {
+            name: "Highlight clozes",
+            desc: "Create clozes from ==text==. Numbered clozes still work when this is off. Default: on.",
+            control: {
+              type: "toggle",
+              key: "highlightCloze.enabled",
+              defaultValue: DEFAULT_SETTINGS.highlightCloze.enabled,
+            },
+          },
+          {
+            name: "AnkiConnect API key",
+            desc: "Optional. Select a secret stored by Obsidian. Default: none.",
+            render: (setting) => {
+              setting.addComponent((el) =>
+                new SecretComponent(this.app, el)
+                  .setValue(this.plugin.settings.ankiConnectApiKeySecret)
+                  .onChange((value) =>
+                    this.plugin.updateSettings({
+                      ankiConnectApiKeySecret: value,
+                    }),
+                  ),
+              );
             },
           },
         ],
@@ -137,7 +206,14 @@ export class FlashcardsSettingTab extends PluginSettingTab {
       case "contextSeparator":
       case "contextStrategy":
       case "defaultDeck":
+      case "folderBasedDecks":
+      case "folderBasedTags":
+      case "folderDeckPrefix":
         return this.plugin.settings[key];
+      case "highlightCloze.enabled":
+        return this.plugin.settings.highlightCloze.enabled;
+      case "inline.enabled":
+        return this.plugin.settings.inline.enabled;
       case "renderPreview.enabled":
         return this.plugin.settings.renderPreview.enabled;
       case "renderPreview.anchor":
@@ -171,6 +247,34 @@ export class FlashcardsSettingTab extends PluginSettingTab {
       case "confirmBeforeDelete":
         if (typeof value === "boolean") {
           await this.plugin.updateSettings({ confirmBeforeDelete: value });
+        }
+        return;
+      case "folderBasedDecks":
+      case "folderBasedTags":
+        if (typeof value === "boolean") {
+          await this.plugin.updateSettings({ [key]: value });
+        }
+        return;
+      case "folderDeckPrefix":
+        if (typeof value === "string") {
+          await this.plugin.updateSettings({ folderDeckPrefix: value.trim() });
+        }
+        return;
+      case "highlightCloze.enabled":
+        if (typeof value === "boolean") {
+          await this.plugin.updateSettings({
+            highlightCloze: {
+              ...this.plugin.settings.highlightCloze,
+              enabled: value,
+            },
+          });
+        }
+        return;
+      case "inline.enabled":
+        if (typeof value === "boolean") {
+          await this.plugin.updateSettings({
+            inline: { ...this.plugin.settings.inline, enabled: value },
+          });
         }
         return;
       case "renderPreview.enabled":

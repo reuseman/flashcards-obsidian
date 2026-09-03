@@ -33,6 +33,34 @@ describe("folder-based deck resolution", () => {
       expect(result.cards[0]?.deckName).toBe("Languages::German");
     });
 
+    test("an optional prefix applies only to a folder-derived deck", () => {
+      const settings = { ...folderOn, folderDeckPrefix: "Obsidian::Study" };
+      const fromFolder = extractCardsFromMarkdown("Q:: A", {
+        notePath: "Languages/German/note.md",
+        settings,
+      });
+      const explicit = extractCardsFromMarkdown(
+        ["---", "cards-deck: Explicit", "---", "", "Q:: A"].join("\n"),
+        { notePath: "Languages/German/note.md", settings },
+      );
+
+      expect(fromFolder.cards[0]?.deckName).toBe(
+        "Obsidian::Study::Languages::German",
+      );
+      expect(explicit.cards[0]?.deckName).toBe("Explicit");
+    });
+
+    test("empty prefix segments are normalized", () => {
+      const result = extractCardsFromMarkdown("Q:: A", {
+        notePath: "Languages/German/note.md",
+        settings: { ...folderOn, folderDeckPrefix: " Root ::  Study :: " },
+      });
+
+      expect(result.cards[0]?.deckName).toBe(
+        "Root::Study::Languages::German",
+      );
+    });
+
     test("falls through to defaultDeck when folderBasedDecks=false even with folders", () => {
       const result = extractCardsFromMarkdown("Q:: A", {
         notePath: "Languages/German/note.md",

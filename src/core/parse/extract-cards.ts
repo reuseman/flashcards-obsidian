@@ -1,8 +1,7 @@
-import { fromMarkdown } from "mdast-util-from-markdown";
-import { gfmFromMarkdown } from "mdast-util-gfm";
-import { frontmatter } from "micromark-extension-frontmatter";
 import type {
   Heading,
+  List,
+  ListItem,
   Nodes,
   Paragraph,
   Parent,
@@ -14,9 +13,14 @@ import { visit } from "unist-util-visit";
 
 import type { FlashcardsSettings } from "../config/settings.js";
 import type { Flashcard } from "../domain/card.js";
-import { collectClozeSpans, intersectsSpan, type Span } from "./cloze-spans.js";
+import { intersectsSpan, type Span } from "./cloze-spans.js";
+import { parseClozeSyntax } from "./cloze-syntax.js";
 import { extractAtomicCards } from "./extract-atomic-cards.js";
 import { extractHashtagCards } from "./extract-hashtag-cards.js";
+import {
+  collectProtectedMarkdownSpans,
+  parseMarkdownTree,
+} from "./markdown-tree.js";
 import { parseNoteMetadata } from "./note-metadata.js";
 
 export interface ExtractCardsOptions {
@@ -44,22 +48,125 @@ export function extractCardsFromMarkdown(
     options.settings,
     metadata.cardDeck,
   );
-  const tree = fromMarkdown(markdown, {
-    extensions: [frontmatter(["yaml"])],
-    mdastExtensions: [gfmFromMarkdown()],
+  const folderTag = options.settings.folderBasedTags
+    ? folderHierarchyFromPath(options.notePath)
+    : null;
+  const resolvedTags = mergeTags(
+    options.settings.defaultTags,
+    metadata.tags,
+    folderTag === null ? [] : [folderTag],
+  );
+  const tree = parseMarkdownTree(markdown);
+
+  // Explicit containers are extracted first so their source ranges can block
+  // lower-precedence syntaxes inside their content. Atomic owns its first
+  // paragraph before hashtag gets a chance to claim the same text.
+  const atomic = extractAtomicCards(
+    metadata.frontmatter,
+    tree,
+    markdown,
+    options.settings.atomic.enabled,
+    {
+      notePath: options.notePath,
+      resolvedDeck,
+      tags: resolvedTags,
+    },
+    options.settings.highlightCloze.enabled,
+  );
+  cards.push(...atomic.cards);
+
+  const callout = extractCalloutCards(
+    markdown,
+    tree,
+    options.notePath,
+    resolvedDeck,
+    resolvedTags,
+  );
+  const atomicRanges = atomic.cards.map((card) => ({
+    end: card.source.endOffset,
+    start: card.source.startOffset,
+  }));
+  const acceptedCalloutCards = callout.cards.filter(
+    (card) =>
+      !intersectsSpan(
+        card.source.startOffset,
+        card.source.endOffset,
+        atomicRanges,
+      ),
+  );
+  cards.push(...acceptedCalloutCards);
+  warnings.push(...callout.warnings);
+
+  const hashtag = extractHashtagCards(markdown, tree, options.settings, {
+    defaultTags: resolvedTags,
+    metadataTags: [],
+    notePath: options.notePath,
+    resolvedDeck,
   });
+  const higherPrecedenceRanges = [...atomic.cards, ...acceptedCalloutCards].map((card) => ({
+    end: card.source.endOffset,
+    start: card.source.startOffset,
+  }));
+  const acceptedHashtagCards = hashtag.cards.filter(
+    (card) =>
+      !intersectsSpan(
+        card.source.startOffset,
+        card.source.endOffset,
+        higherPrecedenceRanges,
+      ),
+  );
+  cards.push(...acceptedHashtagCards);
+  warnings.push(...hashtag.warnings);
+
+  const explicitRanges = [
+    ...acceptedHashtagCards,
+    ...acceptedCalloutCards,
+    ...atomic.cards,
+  ].map((card) => ({
+    end: card.source.endOffset,
+    start: card.source.startOffset,
+  }));
+  const listCards = suppressBodyScans
+    ? []
+    : extractListCards(
+        markdown,
+        tree,
+        options.settings,
+        resolvedDeck,
+        resolvedTags,
+        explicitRanges,
+      );
+  cards.push(...listCards);
+  const claimedRanges = [...explicitRanges, ...listCards.map((card) => ({
+    end: card.source.endOffset,
+    start: card.source.startOffset,
+  }))];
+  const blockquoteRanges = collectNodeRanges(tree, "blockquote");
 
   visit(tree, (node, _index, parent) => {
     if (node.type === "code" && node.lang === "flashcard" && options.settings.fenced.enabled) {
+      const nodeStart = node.position?.start.offset ?? 0;
+      const nodeEnd = node.position?.end.offset ?? 0;
+      if (
+        intersectsSpan(nodeStart, nodeEnd, explicitRanges) ||
+        intersectsSpan(nodeStart, nodeEnd, blockquoteRanges)
+      ) {
+        return;
+      }
       const fields = parseFencedFields(node.value ?? "");
       const front = fields.front ?? "";
       const back = fields.back ?? "";
+      const type = fields.type || "basic";
 
-      if (!front) {
+      if (type !== "basic" && type !== "reversed" && type !== "cloze") {
+        warnings.push(
+          `Fenced flashcard block has unsupported \`type: ${type}\`; skipped.`,
+        );
+      } else if (!front) {
         warnings.push(
           "Fenced flashcard block missing required `front:` field; skipped.",
         );
-      } else if (!back) {
+      } else if (!back && type !== "cloze") {
         warnings.push(
           "Fenced flashcard block missing required `back:` field; skipped.",
         );
@@ -68,14 +175,18 @@ export function extractCardsFromMarkdown(
           answer: back,
           deckName: resolvedDeck,
           front,
-          kind: fields.type === "reversed" ? "reversed" : "basic",
+          kind: type === "cloze"
+            ? "cloze"
+            : type === "reversed"
+              ? "reversed"
+              : "basic",
           source: {
             endOffset: node.position?.end.offset ?? 0,
             line: node.position?.start.line ?? 1,
             startOffset: node.position?.start.offset ?? 0,
             syntax: "fenced",
           },
-          tags: mergeTags(options.settings.defaultTags, metadata.tags),
+          tags: resolvedTags,
         });
       }
     }
@@ -84,11 +195,31 @@ export function extractCardsFromMarkdown(
       if (parent?.type === "blockquote") {
         return;
       }
+      const nodeStart = node.position?.start.offset ?? 0;
+      const nodeEnd = node.position?.end.offset ?? 0;
+      if (
+        intersectsSpan(nodeStart, nodeEnd, claimedRanges) ||
+        intersectsSpan(nodeStart, nodeEnd, blockquoteRanges)
+      ) {
+        return;
+      }
 
       const paragraph = paragraphMarkdown(node, markdown);
       const value = stripTrailingAnchor(paragraph.value);
+      const clozeSyntax = parseClozeSyntax(value, paragraph.protectedSpans, {
+        auto: options.settings.highlightCloze.enabled,
+      });
+      if (options.settings.cloze.enabled && !suppressBodyScans) {
+        for (const error of clozeSyntax.errors) {
+          const relativeLine = value.slice(0, error.start).split("\n").length - 1;
+          const line = (node.position?.start.line ?? 1) + relativeLine;
+          warnings.push(
+            `Malformed cloze in ${options.notePath}:${line}: ${error.message}.`,
+          );
+        }
+      }
       const inline = options.settings.inline.enabled && !suppressBodyScans
-        ? parseInlineCard(value, options.settings, paragraph.inlineCodeSpans)
+        ? parseInlineCard(value, options.settings, paragraph.protectedSpans)
         : null;
       if (inline) {
         cards.push({
@@ -102,12 +233,16 @@ export function extractCardsFromMarkdown(
             startOffset: node.position?.start.offset ?? 0,
             syntax: inline.syntax,
           },
-          tags: mergeTags(options.settings.defaultTags, metadata.tags),
+          tags: resolvedTags,
         });
       }
 
       const cloze = options.settings.cloze.enabled && !suppressBodyScans
-        ? parseClozeCard(value, paragraph.inlineCodeSpans)
+        ? parseClozeCard(
+            value,
+            paragraph.protectedSpans,
+            options.settings.highlightCloze.enabled,
+          )
         : null;
       if (cloze) {
         cards.push({
@@ -121,36 +256,19 @@ export function extractCardsFromMarkdown(
             startOffset: node.position?.start.offset ?? 0,
             syntax: "cloze",
           },
-          tags: mergeTags(options.settings.defaultTags, metadata.tags),
+          tags: resolvedTags,
         });
       }
     }
   });
 
-  const hashtag = extractHashtagCards(markdown, tree, options.settings, {
-    defaultTags: options.settings.defaultTags,
-    metadataTags: metadata.tags,
-    notePath: options.notePath,
-    resolvedDeck,
-  });
-  cards.push(...hashtag.cards);
-  warnings.push(...hashtag.warnings);
-
-  const atomic = extractAtomicCards(
-    metadata.frontmatter,
-    tree,
-    markdown,
-    options.settings.atomic.enabled,
-    {
-      notePath: options.notePath,
-      resolvedDeck,
-      tags: mergeTags(options.settings.defaultTags, metadata.tags),
-    },
-  );
-  cards.push(...atomic.cards);
-
   return {
-    cards: applyContext(cards, tree, markdown, options),
+    cards: applyContext(
+      cards.sort((left, right) => left.source.startOffset - right.source.startOffset),
+      tree,
+      markdown,
+      options,
+    ),
     lints: atomic.lints,
     warnings,
   };
@@ -265,17 +383,202 @@ function noteTitle(notePath: string): string {
 }
 
 /**
- * Presence, not validity, of the `test:` key is the suppression trigger
- * (spec §4.5) — a typo in the value must not flip the note back to
- * legacy inline/cloze scanning.
+ * A `test:` key selects atomic authoring for implicit body syntax. Presence,
+ * not validity, is deliberate: a typo must not create accidental cards from
+ * prose that happens to contain `::` or cloze-like text.
  */
 function hasTestKey(rawFrontmatter: string | undefined): boolean {
   if (!rawFrontmatter) return false;
   return /^test:/m.test(rawFrontmatter);
 }
 
-function mergeTags(defaultTags: string[], metadataTags: string[]): string[] {
-  return [...new Set([...defaultTags, ...metadataTags])];
+function mergeTags(...groups: string[][]): string[] {
+  return [...new Set(groups.flat())];
+}
+
+interface CalloutExtractResult {
+  cards: Flashcard[];
+  warnings: string[];
+}
+
+function extractCalloutCards(
+  markdown: string,
+  tree: Root,
+  notePath: string,
+  resolvedDeck: string,
+  tags: string[],
+): CalloutExtractResult {
+  const cards: Flashcard[] = [];
+  const warnings: string[] = [];
+
+  visit(tree, "blockquote", (node, _index, parent) => {
+    if (parent?.type === "blockquote") return;
+    const start = node.position?.start.offset;
+    const end = node.position?.end.offset;
+    if (typeof start !== "number" || typeof end !== "number") return;
+
+    const lines = markdown
+      .slice(start, end)
+      .split("\n")
+      .map((line) => line.replace(/^[ \t]*>[ \t]?/, ""));
+    const marker = /^\[!CARD\][+-]?[ \t]*(?::[ \t]*)?(.*)$/i.exec(
+      lines[0] ?? "",
+    );
+    if (!marker) return;
+
+    const front = (marker[1] ?? "").trim();
+    if (!front) {
+      warnings.push(
+        `Card callout in ${notePath}:${node.position?.start.line ?? 1} has no question; skipped.`,
+      );
+      return;
+    }
+
+    cards.push({
+      answer: lines.slice(1).join("\n").trim(),
+      deckName: resolvedDeck,
+      front,
+      kind: "basic",
+      source: {
+        endOffset: end,
+        line: node.position?.start.line ?? 1,
+        startOffset: start,
+        syntax: "callout",
+      },
+      tags,
+    });
+  });
+
+  return { cards, warnings };
+}
+
+interface CollectedList {
+  node: List;
+  parent: Parent | null;
+}
+
+function extractListCards(
+  markdown: string,
+  tree: Root,
+  settings: FlashcardsSettings,
+  resolvedDeck: string,
+  tags: string[],
+  excludedRanges: Span[],
+): Flashcard[] {
+  const lists = collectUnquotedLists(tree);
+  const cards: Flashcard[] = [];
+  const inlineItemRanges: Span[] = [];
+
+  if (settings.inline.enabled) {
+    for (const { node: list } of lists) {
+      for (const item of list.children) {
+        const start = item.position?.start.offset;
+        const end = item.position?.end.offset;
+        if (
+          typeof start !== "number" ||
+          typeof end !== "number" ||
+          intersectsSpan(start, end, excludedRanges) ||
+          intersectsSpan(start, end, inlineItemRanges)
+        ) {
+          continue;
+        }
+        const paragraph = firstListItemParagraph(item);
+        if (!paragraph) continue;
+        const parsed = paragraphMarkdown(paragraph, markdown);
+        const inline = parseInlineCard(
+          stripTrailingAnchor(parsed.value),
+          settings,
+          parsed.protectedSpans,
+        );
+        if (!inline) continue;
+
+        const paragraphEnd = paragraph.position?.end.offset ?? end;
+        const childMarkdown = markdown.slice(paragraphEnd, end).trim();
+        cards.push({
+          answer: [inline.answer, childMarkdown].filter(Boolean).join("\n\n"),
+          deckName: resolvedDeck,
+          front: inline.front,
+          kind: inline.kind,
+          source: {
+            endOffset: end,
+            line: item.position?.start.line ?? 1,
+            startOffset: start,
+            syntax: "inline",
+          },
+          tags,
+        });
+        inlineItemRanges.push({ start, end });
+      }
+    }
+  }
+
+  if (settings.cloze.enabled) {
+    for (const { node: list, parent } of lists) {
+      if (parent?.type === "listItem") continue;
+      const start = list.position?.start.offset;
+      const end = list.position?.end.offset;
+      if (
+        typeof start !== "number" ||
+        typeof end !== "number" ||
+        intersectsSpan(start, end, excludedRanges) ||
+        intersectsSpan(start, end, inlineItemRanges)
+      ) {
+        continue;
+      }
+      const source = markdown.slice(start, end);
+      const syntax = parseClozeSyntax(
+        source,
+        collectProtectedMarkdownSpans(list, start),
+        { auto: settings.highlightCloze.enabled },
+      );
+      if (syntax.spans.length === 0) continue;
+      cards.push({
+        answer: "",
+        deckName: resolvedDeck,
+        front: source,
+        kind: "cloze",
+        source: {
+          endOffset: end,
+          line: list.position?.start.line ?? 1,
+          startOffset: start,
+          syntax: "cloze",
+        },
+        tags,
+      });
+    }
+  }
+
+  return cards;
+}
+
+function firstListItemParagraph(item: ListItem): Paragraph | undefined {
+  const first = item.children[0];
+  return first?.type === "paragraph" ? first : undefined;
+}
+
+function collectUnquotedLists(tree: Root): CollectedList[] {
+  const lists: CollectedList[] = [];
+  const walk = (node: Nodes, parent: Parent | null): void => {
+    if (node.type === "blockquote") return;
+    if (node.type === "list") lists.push({ node, parent });
+    if (hasChildren(node)) {
+      for (const child of node.children as Nodes[]) walk(child, node);
+    }
+  };
+  walk(tree, null);
+  return lists;
+}
+
+function collectNodeRanges(tree: Root, type: Nodes["type"]): Span[] {
+  const ranges: Span[] = [];
+  visit(tree, type, (node) => {
+    const start = node.position?.start.offset;
+    const end = node.position?.end.offset;
+    if (typeof start === "number" && typeof end === "number") {
+      ranges.push({ start, end });
+    }
+  });
+  return ranges;
 }
 
 interface FencedFields {
@@ -325,7 +628,12 @@ function parseInlineCard(
   settings: FlashcardsSettings,
   protectedSpans: Span[],
 ): { answer: string; front: string; kind: "basic" | "reversed"; syntax: "inline" } | null {
-  const excludedSpans = [...collectClozeSpans(line), ...protectedSpans];
+  const excludedSpans = [
+    ...parseClozeSyntax(line, protectedSpans, {
+      auto: settings.highlightCloze.enabled,
+    }).spans,
+    ...protectedSpans,
+  ];
 
   const reverseIndex = findSeparator(line, settings.inlineReverseSeparator, excludedSpans);
   if (reverseIndex >= 0) {
@@ -367,10 +675,15 @@ function findSeparator(line: string, separator: string, clozeSpans: Span[]): num
   return -1;
 }
 
-function parseClozeCard(line: string, protectedSpans: Span[]): string | null {
-  const hasUnprotectedCloze = collectClozeSpans(line).some(
-    (span) => !intersectsSpan(span.start, span.end, protectedSpans),
-  );
+function parseClozeCard(
+  line: string,
+  protectedSpans: Span[],
+  highlightClozeEnabled: boolean,
+): string | null {
+  const hasUnprotectedCloze =
+    parseClozeSyntax(line, protectedSpans, {
+      auto: highlightClozeEnabled,
+    }).spans.length > 0;
   if (hasUnprotectedCloze) {
     return line;
   }
@@ -379,7 +692,7 @@ function parseClozeCard(line: string, protectedSpans: Span[]): string | null {
 }
 
 interface ParagraphMarkdown {
-  inlineCodeSpans: Span[];
+  protectedSpans: Span[];
   value: string;
 }
 
@@ -388,7 +701,7 @@ function paragraphMarkdown(node: Paragraph, source: string): ParagraphMarkdown {
   const end = node.position?.end.offset;
   if (typeof start !== "number" || typeof end !== "number") {
     return {
-      inlineCodeSpans: [],
+      protectedSpans: [],
       value: phrasingToVisibleText(node.children, source).trim(),
     };
   }
@@ -396,31 +709,12 @@ function paragraphMarkdown(node: Paragraph, source: string): ParagraphMarkdown {
   const raw = source.slice(start, end);
   const leadingWhitespace = raw.length - raw.trimStart().length;
   const value = raw.trim();
-  const inlineCodeSpans: Span[] = [];
-  collectInlineCodeSpans(node, start + leadingWhitespace, inlineCodeSpans);
+  const protectedSpans = collectProtectedMarkdownSpans(
+    node,
+    start + leadingWhitespace,
+  );
 
-  return { inlineCodeSpans, value };
-}
-
-function collectInlineCodeSpans(
-  node: Nodes,
-  contentStart: number,
-  spans: Span[],
-): void {
-  if (node.type === "inlineCode") {
-    const start = node.position?.start.offset;
-    const end = node.position?.end.offset;
-    if (typeof start === "number" && typeof end === "number") {
-      spans.push({ start: start - contentStart, end: end - contentStart });
-    }
-    return;
-  }
-
-  if (hasChildren(node)) {
-    for (const child of node.children as Nodes[]) {
-      collectInlineCodeSpans(child, contentStart, spans);
-    }
-  }
+  return { protectedSpans, value };
 }
 
 /**
@@ -512,14 +806,17 @@ function resolveDeckName(
   }
 
   if (settings.folderBasedDecks) {
-    const folderDeck = folderDeckFromPath(notePath);
-    if (folderDeck !== null) return folderDeck;
+    const folderDeck = folderHierarchyFromPath(notePath);
+    if (folderDeck !== null) {
+      const prefix = normalizeHierarchy(settings.folderDeckPrefix);
+      return prefix === null ? folderDeck : `${prefix}::${folderDeck}`;
+    }
   }
 
   return settings.defaultDeck;
 }
 
-function folderDeckFromPath(notePath: string): string | null {
+function folderHierarchyFromPath(notePath: string): string | null {
   let p = notePath;
   if (p.startsWith("./")) p = p.slice(2);
   if (p.startsWith("/")) p = p.slice(1);
@@ -534,4 +831,12 @@ function folderDeckFromPath(notePath: string): string | null {
 
   if (segments.length === 0) return null;
   return segments.join("::");
+}
+
+function normalizeHierarchy(value: string): string | null {
+  const segments = value
+    .split("::")
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0);
+  return segments.length === 0 ? null : segments.join("::");
 }

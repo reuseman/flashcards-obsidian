@@ -11,6 +11,7 @@ import { DEFAULT_SETTINGS } from "../../src/core/config/settings.js";
 import type { FlashcardsSettings } from "../../src/core/config/settings.js";
 import type { MarkdownNote } from "../../src/application/ports.js";
 import type { ObsidianMarkdownRepository } from "../../src/adapters/obsidian/obsidian-markdown-repository.js";
+import { previewSyncPlan } from "../../src/application/preview-sync-plan.js";
 import { bootAllV2, makeFakeFetch } from "../_utils/fake-fetch.js";
 
 /**
@@ -68,6 +69,18 @@ function makeFakeRepository(initial: string): FakeRepoHandle {
 }
 
 describe("previewSyncPlan (application) — shared cue-matching preview path", () => {
+  it("surfaces parser warnings as sync-time lints", () => {
+    const preview = previewSyncPlan({
+      markdown: "The {1:answer is not closed.",
+      notePath: NOTE_PATH,
+      settings: settingsWith(),
+    });
+
+    expect(preview.lints).toEqual([
+      expect.stringMatching(/Malformed cloze.*missing `}`/),
+    ]);
+  });
+
   it("reports zero pending create/update/delete for an already-synced atomic note", async () => {
     const md = [
       "---",

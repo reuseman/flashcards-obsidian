@@ -5,9 +5,11 @@ const setIcon = vi.hoisted(() => vi.fn());
 vi.mock("obsidian", () => ({ setIcon }));
 
 import {
+  computeActiveNoteStatus,
   renderActiveNoteStatus,
   renderPendingV1,
 } from "../../../src/adapters/obsidian/status-bar.js";
+import { DEFAULT_SETTINGS } from "../../../src/core/config/settings.js";
 
 interface FakeElement {
   attributes: Record<string, string>;
@@ -85,5 +87,23 @@ describe("Obsidian status-bar rendering", () => {
     expect(element.children.at(-1)?.text).toBe("Vault: 3 pending migration");
     expect(element.attributes["aria-label"]).toContain("3 flashcards");
     expect(setIcon).toHaveBeenCalledWith(element.children[0], "alert-triangle");
+  });
+});
+
+describe("active-note card count", () => {
+  it("shows the total parsed cards together with pending changes", () => {
+    expect(
+      computeActiveNoteStatus(
+        ["First:: One", "", "Second:: Two"].join("\n"),
+        "Note.md",
+        DEFAULT_SETTINGS,
+      ),
+    ).toBe("Note: 2 cards, 2 new");
+  });
+
+  it("uses the singular label for one card", () => {
+    expect(
+      computeActiveNoteStatus("First:: One", "Note.md", DEFAULT_SETTINGS),
+    ).toBe("Note: 1 card, 1 new");
   });
 });
