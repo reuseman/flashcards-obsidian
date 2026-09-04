@@ -1,66 +1,41 @@
-import { executeSyncPlan } from "./sync/execute-sync-plan.js";
+import type { FlashcardsSettings } from "../core/config/settings.js";
+import { applyTextEdits } from "../core/edits/apply-text-edits.js";
+import { writebackSyncResults } from "../core/edits/writeback-sync-results.js";
+import { NoopLogger, type Logger } from "../core/logging/logger.js";
+import {
+  createNoopPerfTrace,
+  type PerfTrace,
+} from "../core/logging/perf-trace.js";
 import type { ExecuteSyncPlanResult } from "../core/sync/sync-execution.js";
+import type {
+  PendingDeletion,
+  PendingKindRecreation,
+  PendingRebind,
+} from "../core/sync/sync-plan.js";
 import type {
   AnkiGateway,
   MarkdownNote,
   MarkdownRepository,
   SyncExecutionSession,
 } from "./ports.js";
-import type { FlashcardsSettings } from "../core/config/settings.js";
-import { NoopLogger, type Logger } from "../core/logging/logger.js";
-import { createNoopPerfTrace, type PerfTrace } from "../core/logging/perf-trace.js";
-import { applyTextEdits } from "../core/edits/apply-text-edits.js";
-import {
-  computeCardHash,
-  computeRenderedFieldsHash,
-} from "../core/edits/card-hash.js";
-import { writeCardFrontmatter } from "../core/edits/write-card-frontmatter.js";
-import { writebackSyncResults } from "../core/edits/writeback-sync-results.js";
-import { extractMedia, type MediaRef } from "../core/render/extract-media.js";
-import {
-  rewriteMedia,
-  type MediaRewriteMap,
-} from "../core/render/rewrite-media.js";
-import { renderCardForAnki } from "../core/render/render-card.js";
-import { buildSyncPlan } from "../core/sync/build-sync-plan.js";
-import type { PendingDeletion, PendingRebind } from "../core/sync/sync-plan.js";
-import type { PendingKindRecreation } from "../core/sync/sync-plan.js";
-import { reconcileExistingCards } from "./sync/reconcile-existing-cards.js";
-import type { LiveAnkiState } from "./sync/load-live-anki-state.js";
+import { applyDeleteSafety } from "./sync/apply-delete-safety.js";
 import {
   buildSyncNoteCacheCandidate,
   type SyncNoteCacheCandidate,
 } from "./sync/cache-state.js";
+import { executeSyncPlan } from "./sync/execute-sync-plan.js";
+import type { LiveAnkiState } from "./sync/load-live-anki-state.js";
 import {
-  defaultGenerateBlockId,
-  previewSyncPlan,
-} from "./preview-sync-plan.js";
+  dropCardsWithUnresolvedMedia,
+  prepareCardContent,
+  type CardMediaError,
+  type MediaPipeline,
+  type MediaPipelineResult,
+} from "./sync/prepare-card-content.js";
+import { prepareNoteSource } from "./sync/prepare-note-source.js";
+import { reconcileExistingCards } from "./sync/reconcile-existing-cards.js";
 
-/**
- * Outcome of the per-note media phase. `resolved` maps original short
- * filenames to their content-hashed final name + kind (image|audio); cards
- * whose refs touch an entry in `errors` are dropped from this run.
- *
- * Resolution is eager so the desired Anki fields include current media
- * content hashes. Upload is deferred until reconciliation proves that at
- * least one card needs to be created or updated.
- */
-export interface MediaPipelineResult {
-  rewriteMap: MediaRewriteMap;
-  errors: Array<{ filename: string; reason: "not-found" | "read-failed" }>;
-  /** Upload resolved bytes only when at least one Anki field needs them. */
-  upload?: () => Promise<void>;
-}
-
-export type MediaPipeline = (
-  refs: MediaRef[],
-  sourcePath: string,
-) => Promise<MediaPipelineResult>;
-
-export interface CardMediaError {
-  blockId: string;
-  errors: Array<{ filename: string; reason: "not-found" | "read-failed" }>;
-}
+export type { CardMediaError, MediaPipeline, MediaPipelineResult };
 
 export interface SyncNoteInput {
   ankiClient: AnkiGateway;
@@ -101,60 +76,41 @@ export interface SyncNoteResult {
   writebackEditsApplied: number;
 }
 
-const HAS_WIKILINK_RE = /!?\[\[[^\]\r\n]+\]\]/;
-
 function logLints(logger: Logger, notePath: string, lints: string[]): void {
   for (const lint of lints) {
-    if (lint.startsWith("error:")) {
-      logger.error(lint, { notePath });
-    } else {
-      logger.warn(lint, { notePath });
-    }
+    if (lint.startsWith("error:")) logger.error(lint, { notePath });
+    else logger.warn(lint, { notePath });
   }
 }
 
+/** Synchronize one Markdown note while keeping Obsidian authoritative. */
 export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
-  const {
-    ankiClient,
-    generateBlockId = defaultGenerateBlockId,
-    note,
-    repository,
-    resolveLink,
-    settings,
-    vaultName,
-  } = input;
-  const logger: Logger = input.logger ?? new NoopLogger();
-  const trace: PerfTrace = input.perfTrace ?? createNoopPerfTrace();
+  const logger = input.logger ?? new NoopLogger();
+  const trace = input.perfTrace ?? createNoopPerfTrace();
+  logger.info("syncNote start", { notePath: input.note.path });
 
-  logger.info("syncNote start", { notePath: note.path });
+  const source = await prepareNoteSource({
+    ...(input.confirmRebinds ? { confirmRebinds: input.confirmRebinds } : {}),
+    ...(input.generateBlockId
+      ? { generateBlockId: input.generateBlockId }
+      : {}),
+    logger,
+    note: input.note,
+    repository: input.repository,
+    settings: input.settings,
+    trace,
+  });
+  logLints(logger, input.note.path, source.lints);
 
-  // Phase A — local edits.
-  const preview = trace.span("extract", () =>
-    previewSyncPlan({
-      generateBlockId,
-      markdown: note.markdown,
-      notePath: note.path,
-      settings,
-    }),
-  );
-  const { cards, frontmatter, identifiedCards, insertEdits, lints } = preview;
-  const atomicCues = identifiedCards.flatMap((card) =>
-    card.source.syntax === "atomic" && card.kind !== "cloze"
-      ? [card.front.trim().toLowerCase().replace(/\s+/g, " ")]
-      : [],
-  );
-  logLints(logger, note.path, lints);
-
-  // Zero cards normally means "nothing to do", but a cue-bearing orphan
-  // (spec §4.2, final-review fix #2) must still reach delete-safety below —
-  // `previewSyncPlan` already folded that into `preview.plan` when relevant.
-  if (cards.length === 0 && preview.plan.delete.length === 0) {
-    logger.debug("syncNote skipped (no flashcards parsed)", { notePath: note.path });
+  if (source.skip) {
+    logger.debug("syncNote skipped (no flashcards parsed)", {
+      notePath: input.note.path,
+    });
     return {
-      atomicCues,
+      atomicCues: source.atomicCues,
       identityWritesApplied: 0,
-      lints,
-      notePath: note.path,
+      lints: source.lints,
+      notePath: input.note.path,
       parsedCardCount: 0,
       recoveredMissingCount: 0,
       status: "skipped",
@@ -163,265 +119,85 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
   }
 
   logger.debug("syncNote parsed cards", {
-    notePath: note.path,
-    parsedCardCount: cards.length,
+    notePath: input.note.path,
+    parsedCardCount: source.parsedCardCount,
   });
-
-  // Cue-rephrase rebind pairing (spec §4.7, WI-11). Resolved BEFORE the
-  // frontmatter writeback below so a confirmed rebind never materializes a
-  // throwaway entry for the atomic CREATE's transient blockId — instead the
-  // CREATE's card is re-pointed at the orphan's blockId and the plan is
-  // rebuilt, which routes it through the ordinary Rule-4 UPDATE path (correct
-  // oldHash, no duplicate frontmatter entry, cue naturally recomputed).
-  let plan = preview.plan;
-  const rebindCandidates = plan.rebinds ?? [];
-  if (rebindCandidates.length === 1) {
-    const rebind = rebindCandidates[0]!;
-    const confirmed = input.confirmRebinds
-      ? await input.confirmRebinds(rebindCandidates)
-      : false; // safe default: no confirmer wired ⇒ ordinary delete-safety flow.
-    if (confirmed) {
-      const createOp = plan.create.find(
-        (op) => op.card.source.syntax === "atomic",
-      )!;
-      const idx = identifiedCards.indexOf(createOp.card);
-      if (idx < 0) {
-        // Should be structurally impossible — `createOp.card` came from
-        // `identifiedCards` via `buildSyncPlan` without copying. Never
-        // silently drop a user-confirmed rebind: log and fall through to the
-        // ordinary (unrebound) plan instead.
-        logger.error("syncNote rebind: createOp.card not found in identifiedCards", {
-          notePath: note.path,
-          blockId: rebind.blockId,
-        });
-      } else {
-        identifiedCards[idx] = { ...createOp.card, blockId: rebind.blockId };
-        plan = buildSyncPlan({
-          cards: identifiedCards,
-          computeHash: computeCardHash,
-          frontmatter,
-        });
-      }
-    }
-  }
-
-  const markdownA = applyTextEdits(note.markdown, insertEdits);
-
-  const writeFm = writeCardFrontmatter({
-    cards: identifiedCards,
-    markdown: markdownA,
+  const content = await prepareCardContent({
+    cards: source.identifiedCards,
+    markdown: input.note.markdown,
+    ...(input.mediaPipeline ? { mediaPipeline: input.mediaPipeline } : {}),
+    notePath: input.note.path,
+    ...(input.resolveLink ? { resolveLink: input.resolveLink } : {}),
+    settings: input.settings,
+    trace,
+    vaultName: input.vaultName,
   });
-  const markdownB = applyTextEdits(markdownA, writeFm.edits);
-
-  const identityWritesApplied = insertEdits.length + writeFm.edits.length;
-
-  if (markdownB !== note.markdown) {
-    await repository.saveNote(note, markdownB);
-  }
-
-  // Resolve media before live reconciliation, even when the Markdown source
-  // hash is unchanged. Content-hashed filenames make media-byte changes part
-  // of the desired rendered fields without making them part of card identity.
-  // Upload stays deferred until reconciliation proves a create/update needs it.
-  const mediaErrors: CardMediaError[] = [];
-  const allRefs: MediaRef[] = trace.span("media.resolve", () =>
-    extractMedia(note.markdown),
-  );
-  let mediaMap: MediaRewriteMap = {};
-  let mediaResolutionErrors: MediaPipelineResult["errors"] = [];
-  let uploadResolvedMedia: (() => Promise<void>) | undefined;
-  if (input.mediaPipeline && allRefs.length > 0) {
-    const outcome = await trace.span("media.prepare", async () =>
-      input.mediaPipeline!(allRefs, note.path),
-    );
-    mediaMap = outcome.rewriteMap;
-    mediaResolutionErrors = outcome.errors;
-    uploadResolvedMedia = outcome.upload;
-  }
-  const hasDynamicDependencies =
-    allRefs.length > 0 || HAS_WIKILINK_RE.test(note.markdown);
-
-  const preparedCardsByBlockId = new Map(
-    identifiedCards.map((card) => {
-      const prepared = {
-        ...card,
-        answer: rewriteMedia(card.answer, mediaMap),
-        ...(card.context !== undefined
-          ? { context: rewriteMedia(card.context, mediaMap) }
-          : {}),
-        front: rewriteMedia(card.front, mediaMap),
-      };
-      return [card.blockId, prepared] as const;
-    }),
-  );
-  const renderedCardsByBlockId = new Map(
-    [...preparedCardsByBlockId].map(([blockId, card]) => {
-      const rendered = renderCardForAnki(card, {
-        deckName: card.deckName ?? "",
-        highlightClozeEnabled: settings.highlightCloze.enabled,
-        notePath: note.path,
-        tags: card.tags,
-        vaultName,
-        ...(resolveLink ? { resolveLink } : {}),
-      });
-      return [blockId, rendered] as const;
-    }),
-  );
-  const desiredFieldHashes = new Map(
-    [...renderedCardsByBlockId].map(([blockId, rendered]) => [
-      blockId,
-      computeRenderedFieldsHash(rendered.fields),
-    ]),
-  );
-
   let recoveredMissingCount = 0;
+  const resultBase = {
+    atomicCues: source.atomicCues,
+    identityWritesApplied: source.identityWritesApplied,
+    lints: source.lints,
+    notePath: input.note.path,
+    parsedCardCount: source.parsedCardCount,
+  };
+
   try {
     const reconciled = await reconcileExistingCards({
-      cards: identifiedCards,
-      client: ankiClient,
+      cards: source.identifiedCards,
+      client: input.ankiClient,
       ...(input.confirmKindRecreations
         ? { confirmKindRecreations: input.confirmKindRecreations }
         : {}),
-      frontmatter,
+      frontmatter: source.frontmatter,
       ...(input.liveState ? { liveState: input.liveState } : {}),
-      plan,
-      desiredFieldHashes,
-      preparedCardsByBlockId,
+      plan: source.plan,
+      desiredFieldHashes: content.desiredFieldHashes,
+      preparedCardsByBlockId: content.preparedCardsByBlockId,
     });
-    plan = reconciled.plan;
+    source.plan = reconciled.plan;
     recoveredMissingCount = reconciled.recoveredMissingCount;
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    logger.error("syncNote failed while checking existing Anki notes", {
-      notePath: note.path,
-      error: msg,
-    });
-    return {
-      atomicCues,
-      error: msg,
-      identityWritesApplied,
-      lints,
-      notePath: note.path,
-      parsedCardCount: cards.length,
+  } catch (error) {
+    return failedResult(
+      resultBase,
       recoveredMissingCount,
-      status: "failed",
-      writebackEditsApplied: 0,
-    };
-  }
-
-  // Phase B — diff and sync. `preview.plan` (or the rebind-resolved plan
-  // above) was built against the frontmatter read from `note.markdown`
-  // (pre-writeback); this is equivalent to reading it from `markdownB`
-  // because `writeCardFrontmatter` only ever appends nid-less entries, and
-  // `buildSyncPlan` treats "no entry" and "entry without nid" identically
-  // (both CREATE).
-
-  // Delete-safety gate (spec §4.5). A sync must never SILENTLY delete an Anki
-  // card. Creates and updates always proceed regardless of the decision.
-  if (plan.delete.length >= 1) {
-    const noteDeck =
-      identifiedCards.find((c) => c.deckName !== undefined)?.deckName ??
-      settings.defaultDeck;
-    const pending: PendingDeletion[] = plan.delete.map((op) => ({
-      blockId: op.blockId,
-      deckName: noteDeck,
-      nid: op.nid,
-    }));
-    for (const d of pending) {
-      logger.info("syncNote pending deletion", {
-        notePath: note.path,
-        blockId: d.blockId,
-        nid: d.nid,
-        deckName: d.deckName,
-      });
-    }
-
-    if (settings.confirmBeforeDelete) {
-      const confirmed = input.confirmDeletions
-        ? await input.confirmDeletions(pending)
-        : false; // safe default: no confirmer wired ⇒ skip deletes.
-      if (!confirmed) {
-        plan.delete = [];
-      }
-    }
-  }
-
-  // Drop only creates/updates whose own source range contains unresolved
-  // media. Deletes remain safe and independent of local media availability.
-  if (mediaResolutionErrors.length > 0) {
-    const erroredNames = new Set(
-      mediaResolutionErrors.map((error) => error.filename),
+      error,
+      logger,
+      "checking existing Anki notes",
     );
-    const cardHasError = (
-      startOffset: number,
-      endOffset: number,
-    ): Array<{ filename: string; reason: "not-found" | "read-failed" }> => {
-      const hits: Array<{
-        filename: string;
-        reason: "not-found" | "read-failed";
-      }> = [];
-      for (const ref of allRefs) {
-        if (
-          ref.start >= startOffset &&
-          ref.end <= endOffset &&
-          erroredNames.has(ref.filename)
-        ) {
-          const error = mediaResolutionErrors.find(
-            (candidate) => candidate.filename === ref.filename,
-          );
-          if (error) hits.push(error);
-        }
-      }
-      return hits;
-    };
-
-    const keepCardWithResolvedMedia = (op: {
-      card: { blockId: string; source: { startOffset: number; endOffset: number } };
-    }): boolean => {
-      const errors = cardHasError(
-        op.card.source.startOffset,
-        op.card.source.endOffset,
-      );
-      if (errors.length === 0) return true;
-      mediaErrors.push({ blockId: op.card.blockId, errors });
-      logger.warn("card dropped: unresolved media", {
-        blockId: op.card.blockId,
-        errors,
-      });
-      return false;
-    };
-
-    plan.create = plan.create.filter(keepCardWithResolvedMedia);
-    plan.update = plan.update.filter(keepCardWithResolvedMedia);
   }
 
-  // Short-circuit: media phase may have emptied the plan entirely.
-  const stillEmpty =
-    plan.create.length === 0 &&
-    plan.update.length === 0 &&
-    plan.delete.length === 0;
-  if (stillEmpty) {
+  await applyDeleteSafety({
+    cards: source.identifiedCards,
+    ...(input.confirmDeletions ? { confirm: input.confirmDeletions } : {}),
+    logger,
+    notePath: input.note.path,
+    plan: source.plan,
+    settings: input.settings,
+  });
+  const mediaErrors = dropCardsWithUnresolvedMedia(
+    source.plan,
+    content,
+    logger,
+  );
+
+  if (isEmptyPlan(source.plan)) {
     logger.info("syncNote ok (no plan ops after reconciliation)", {
-      notePath: note.path,
-      identityWritesApplied,
+      notePath: input.note.path,
+      identityWritesApplied: source.identityWritesApplied,
       mediaErrors: mediaErrors.length,
     });
     const cacheCandidate = buildSyncNoteCacheCandidate({
-      atomicCues,
-      cards: identifiedCards,
-      desiredFieldHashes,
-      finalMarkdown: markdownB,
-      hasDynamicDependencies,
-      lints,
+      atomicCues: source.atomicCues,
+      cards: source.identifiedCards,
+      desiredFieldHashes: content.desiredFieldHashes,
+      finalMarkdown: source.markdown,
+      hasDynamicDependencies: content.hasDynamicDependencies,
+      lints: source.lints,
     });
     return {
-      atomicCues,
+      ...resultBase,
       ...(cacheCandidate ? { cacheCandidate } : {}),
-      identityWritesApplied,
-      lints,
       ...(mediaErrors.length > 0 ? { mediaErrors } : {}),
-      notePath: note.path,
-      parsedCardCount: cards.length,
       recoveredMissingCount,
       status: "ok",
       writebackEditsApplied: 0,
@@ -429,92 +205,142 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
   }
 
   logger.debug("syncNote sync plan", {
-    notePath: note.path,
-    creates: plan.create.length,
-    updates: plan.update.length,
-    deletes: plan.delete.length,
+    notePath: input.note.path,
+    creates: source.plan.create.length,
+    updates: source.plan.update.length,
+    deletes: source.plan.delete.length,
   });
 
   let results: ExecuteSyncPlanResult;
   try {
     if (
-      uploadResolvedMedia !== undefined &&
-      (plan.create.length > 0 || plan.update.length > 0)
+      content.upload &&
+      (source.plan.create.length > 0 || source.plan.update.length > 0)
     ) {
-      await trace.span("media.upload", uploadResolvedMedia);
+      await trace.span("media.upload", content.upload);
     }
-    results = await trace.span("anki.sync", async () =>
+    results = await trace.span("anki.sync", () =>
       executeSyncPlan({
-        client: ankiClient,
+        client: input.ankiClient,
         ...(input.executionSession
           ? { executionSession: input.executionSession }
           : {}),
-        highlightClozeEnabled: settings.highlightCloze.enabled,
+        highlightClozeEnabled: input.settings.highlightCloze.enabled,
         logger,
-        notePath: note.path,
-        plan,
-        renderedCardsByBlockId,
-        ...(resolveLink ? { resolveLink } : {}),
-        vaultName,
+        notePath: input.note.path,
+        plan: source.plan,
+        renderedCardsByBlockId: content.renderedCardsByBlockId,
+        ...(input.resolveLink ? { resolveLink: input.resolveLink } : {}),
+        vaultName: input.vaultName,
       }),
     );
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    logger.error("syncNote failed in Phase B", { notePath: note.path, error: msg });
-    return {
-      atomicCues,
-      error: msg,
-      identityWritesApplied,
-      lints,
-      notePath: note.path,
-      parsedCardCount: cards.length,
+  } catch (error) {
+    return failedResult(
+      resultBase,
       recoveredMissingCount,
-      status: "failed",
-      writebackEditsApplied: 0,
-    };
+      error,
+      logger,
+      "sync execution",
+    );
   }
 
   const writeback = trace.span("writeback", () =>
-    writebackSyncResults({ markdown: markdownB, results }),
+    writebackSyncResults({ markdown: source.markdown, results }),
   );
-  const markdownC = applyTextEdits(markdownB, writeback.edits);
-
-  if (markdownC !== markdownB) {
-    await repository.saveNote(note, markdownC);
+  const finalMarkdown = applyTextEdits(source.markdown, writeback.edits);
+  if (finalMarkdown !== source.markdown) {
+    await input.repository.saveNote(input.note, finalMarkdown);
   }
 
   const cacheCandidate = buildSyncNoteCacheCandidate({
-    atomicCues,
-    cards: identifiedCards,
-    desiredFieldHashes,
-    finalMarkdown: markdownC,
-    hasDynamicDependencies,
-    lints,
+    atomicCues: source.atomicCues,
+    cards: source.identifiedCards,
+    desiredFieldHashes: content.desiredFieldHashes,
+    finalMarkdown,
+    hasDynamicDependencies: content.hasDynamicDependencies,
+    lints: source.lints,
     results,
   });
-
-  logger.info("syncNote ok", {
-    notePath: note.path,
-    okCreates: results.creates.filter((c) => c.status === "ok").length,
-    okUpdates: results.updates.filter((u) => u.status === "ok").length,
-    okDeletes: results.deletes.filter((d) => d.status === "ok").length,
-    failedOps:
-      results.creates.filter((c) => c.status === "failed").length +
-      results.updates.filter((u) => u.status === "failed").length +
-      results.deletes.filter((d) => d.status === "failed").length,
-  });
+  logSuccess(logger, input.note.path, results);
 
   return {
-    atomicCues,
+    ...resultBase,
     ...(cacheCandidate ? { cacheCandidate } : {}),
     ankiResults: results,
-    identityWritesApplied,
-    lints,
     ...(mediaErrors.length > 0 ? { mediaErrors } : {}),
-    notePath: note.path,
-    parsedCardCount: cards.length,
     recoveredMissingCount,
     status: "ok",
     writebackEditsApplied: writeback.edits.length,
   };
+}
+
+type ResultBase = Pick<
+  SyncNoteResult,
+  | "atomicCues"
+  | "identityWritesApplied"
+  | "lints"
+  | "notePath"
+  | "parsedCardCount"
+>;
+
+function failedResult(
+  base: ResultBase,
+  recoveredMissingCount: number,
+  error: unknown,
+  logger: Logger,
+  stage: string,
+): SyncNoteResult {
+  const message = error instanceof Error ? error.message : String(error);
+  logger.error(`syncNote failed during ${stage}`, {
+    notePath: base.notePath,
+    error: message,
+  });
+  return {
+    ...base,
+    error: message,
+    recoveredMissingCount,
+    status: "failed",
+    writebackEditsApplied: 0,
+  };
+}
+
+function isEmptyPlan(plan: {
+  create: unknown[];
+  delete: unknown[];
+  update: unknown[];
+}): boolean {
+  return (
+    plan.create.length === 0 &&
+    plan.update.length === 0 &&
+    plan.delete.length === 0
+  );
+}
+
+function logSuccess(
+  logger: Logger,
+  notePath: string,
+  results: ExecuteSyncPlanResult,
+): void {
+  const okCreates = results.creates.filter(
+    (item) => item.status === "ok",
+  ).length;
+  const okUpdates = results.updates.filter(
+    (item) => item.status === "ok",
+  ).length;
+  const okDeletes = results.deletes.filter(
+    (item) => item.status === "ok",
+  ).length;
+  logger.info("syncNote ok", {
+    notePath,
+    okCreates,
+    okUpdates,
+    okDeletes,
+    failedOps:
+      results.creates.length +
+      results.updates.length +
+      results.deletes.length -
+      okCreates -
+      okUpdates -
+      okDeletes,
+  });
 }
