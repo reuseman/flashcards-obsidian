@@ -54,6 +54,29 @@ describe("extractCardsFromMarkdown", () => {
     );
   });
 
+  test("does not render a trailing v2 anchor owned by an inline list item", () => {
+    const markdown = [
+      "- Question:: Short answer",
+      "",
+      "  More detail.",
+      "",
+      "  - Nested detail.",
+      "^q-bv92",
+    ].join("\n");
+    const result = extractCardsFromMarkdown(markdown, {
+      notePath: "List.md",
+      settings: DEFAULT_SETTINGS,
+    });
+
+    expect(result.cards).toHaveLength(1);
+    expect(result.cards[0]).toMatchObject({
+      answer: "Short answer\n\nMore detail.\n\n  - Nested detail.",
+      front: "Question",
+      kind: "basic",
+    });
+    expect(result.cards[0]?.answer).not.toContain("^q-bv92");
+  });
+
   test("a list containing clozes becomes one cloze note", () => {
     const markdown = [
       "- The ==heart== pumps blood.",
@@ -70,6 +93,28 @@ describe("extractCardsFromMarkdown", () => {
       front: markdown,
       kind: "cloze",
     });
+  });
+
+  test("does not render a trailing v2 anchor owned by a cloze list", () => {
+    const markdown = [
+      "- The ==heart== pumps blood.",
+      "- The lungs exchange gases.",
+      "^q-qdmm",
+    ].join("\n");
+    const result = extractCardsFromMarkdown(markdown, {
+      notePath: "List.md",
+      settings: DEFAULT_SETTINGS,
+    });
+
+    expect(result.cards).toHaveLength(1);
+    expect(result.cards[0]).toMatchObject({
+      front: [
+        "- The ==heart== pumps blood.",
+        "- The lungs exchange gases.",
+      ].join("\n"),
+      kind: "cloze",
+    });
+    expect(result.cards[0]?.front).not.toContain("^q-qdmm");
   });
 
   test("separate inline list items remain separate cards", () => {

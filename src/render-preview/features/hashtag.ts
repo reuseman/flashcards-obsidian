@@ -13,7 +13,7 @@ export const createHashtag: FeatureFactory = (
   const basic = settings.hashtag.basicTag;
   const escBasic = escapeRegex(basic);
   const re = new RegExp(
-    `#${escBasic}(?:-reverse|/reverse)?(?![\\w-])`,
+    `#${escBasic}(?:-reminder|-reverse|/reverse)?(?![\\w-])`,
     "g",
   );
 

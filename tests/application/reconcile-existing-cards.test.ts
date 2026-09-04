@@ -159,7 +159,12 @@ describe("reconcileExistingCards", () => {
 
   it("adds an UPDATE when a live Anki field changed after the last sync", async () => {
     const c = card();
-    const syncedFields = { Front: "<p>Q</p>", Back: "<p>A</p>", Source: "source" };
+    const syncedFields = {
+      Front: "<p>Q</p>",
+      Back: "<p>A</p>",
+      Context: "",
+      Source: "source",
+    };
     const result = await reconcileExistingCards({
       cards: [c],
       client: gateway({
@@ -170,7 +175,8 @@ describe("reconcileExistingCards", () => {
             fields: {
               Front: { order: 0, value: "manual edit" },
               Back: { order: 1, value: "<p>A</p>" },
-              Source: { order: 2, value: "source" },
+              Context: { order: 2, value: "" },
+              Source: { order: 3, value: "source" },
             },
             modelName: "Obsidian-basic",
             noteId: NID,
@@ -188,6 +194,7 @@ describe("reconcileExistingCards", () => {
         existing: expect.objectContaining({
           fields: {
             Back: "<p>A</p>",
+            Context: "",
             Front: "manual edit",
             Source: "source",
           },
@@ -199,7 +206,12 @@ describe("reconcileExistingCards", () => {
 
   it("does not update fields when their live hash matches the last sync", async () => {
     const c = card();
-    const fields = { Front: "<p>Q</p>", Back: "<p>A</p>", Source: "source" };
+    const fields = {
+      Front: "<p>Q</p>",
+      Back: "<p>A</p>",
+      Context: "",
+      Source: "source",
+    };
     const result = await reconcileExistingCards({
       cards: [c],
       client: gateway({
@@ -210,7 +222,8 @@ describe("reconcileExistingCards", () => {
             fields: {
               Front: { order: 0, value: fields.Front },
               Back: { order: 1, value: fields.Back },
-              Source: { order: 2, value: fields.Source },
+              Context: { order: 2, value: fields.Context },
+              Source: { order: 3, value: fields.Source },
             },
             modelName: "Obsidian-basic",
             noteId: NID,
@@ -249,6 +262,48 @@ describe("reconcileExistingCards", () => {
 
     expect(result.plan.update[0]).toEqual(
       expect.objectContaining({ existing: expect.objectContaining({ modelName: "Obsidian-basic" }) }),
+    );
+    expect(result.plan.update[0]!.recreate).toBeUndefined();
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it("migrates a v1 spaced note to reminder in place without asking", async () => {
+    const c = card({ answer: "", front: "Keep it simple.", kind: "reminder" });
+    const update = {
+      card: c,
+      newHash: computeCardHash(c),
+      nid: NID,
+      oldHash: "oldhash",
+    };
+    const confirm = vi.fn();
+    const result = await reconcileExistingCards({
+      cards: [c],
+      client: gateway({
+        cardsInfo: vi.fn(async () => [
+          { cardId: 91, deckName: "Default", note: NID },
+        ]),
+        notesInfo: vi.fn(async () => [
+          {
+            cards: [91],
+            fields: {
+              Prompt: { order: 0, value: "<p>Keep it simple.</p>" },
+              Source: { order: 1, value: "old source" },
+            },
+            modelName: "Obsidian-spaced",
+            noteId: NID,
+            tags: [],
+          },
+        ]),
+      }),
+      confirmKindRecreations: confirm,
+      frontmatter: frontmatter(c),
+      plan: plan([update]),
+    });
+
+    expect(result.plan.update[0]).toEqual(
+      expect.objectContaining({
+        existing: expect.objectContaining({ modelName: "Obsidian-spaced" }),
+      }),
     );
     expect(result.plan.update[0]!.recreate).toBeUndefined();
     expect(confirm).not.toHaveBeenCalled();
@@ -336,8 +391,8 @@ describe("syncNote — stale nid recovery", () => {
       modelFieldAdd: vi.fn(async () => undefined),
       modelFieldNames: vi.fn(async (name: string) =>
         name.endsWith("cloze")
-          ? ["Text", "Extra", "Source"]
-          : ["Front", "Back", "Source"],
+          ? ["Text", "Extra", "Context", "Source"]
+          : ["Front", "Back", "Context", "Source"],
       ),
       modelNames: vi.fn(async () => [
         "Obsidian-basic",

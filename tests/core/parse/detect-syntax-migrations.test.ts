@@ -38,6 +38,27 @@ describe("read-only v2 syntax migration diagnostics", () => {
     ]);
   });
 
+  test.each(["#card-spaced", "#card/spaced"])(
+    "reports the v1 reminder marker %s with its v2 replacement",
+    (marker) => {
+      const result = detectSyntaxMigrations(`Read this again. ${marker}`);
+
+      expect(result).toEqual([
+        expect.objectContaining({
+          column: 18,
+          kind: "legacy-spaced-card",
+          line: 1,
+          replacement: expect.stringContaining("#card-reminder"),
+        }),
+      ]);
+    },
+  );
+
+  test("ignores v1 reminder text inside code", () => {
+    expect(detectSyntaxMigrations("`#card-spaced`\n\n```md\n#card-spaced\n```"))
+      .toEqual([]);
+  });
+
   test("reports malformed supported cloze syntax at its exact location", () => {
     const result = detectSyntaxMigrations("Prefix\n\nThe {2:answer is open.");
 

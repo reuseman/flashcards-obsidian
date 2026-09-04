@@ -5,6 +5,7 @@ import { AnkiConnectClient } from "../../src/adapters/anki/anki-connect-client.j
 import {
   ANKI_MODEL_BASIC,
   ANKI_MODEL_CLOZE,
+  ANKI_MODEL_REMINDER,
   ANKI_MODEL_REVERSED,
 } from "../../src/core/render/render-card.js";
 import { DEFAULT_SETTINGS } from "../../src/core/config/settings.js";
@@ -45,7 +46,7 @@ import { bootAllV2, makeFakeFetch, ok } from "../_utils/fake-fetch.js";
  * Both phase-A edit steps always run; both are idempotent.
  */
 
-const ALL_MODELS = [ANKI_MODEL_BASIC, ANKI_MODEL_REVERSED, ANKI_MODEL_CLOZE];
+const ALL_MODELS = [ANKI_MODEL_BASIC, ANKI_MODEL_REVERSED, ANKI_MODEL_CLOZE, ANKI_MODEL_REMINDER];
 const VAULT = "MyVault";
 const NOTE_PATH = "notes/sample.md";
 
@@ -171,9 +172,10 @@ describe("syncNote — new note happy path", () => {
     expect(result.ankiResults!.creates).toHaveLength(2);
     expect(result.ankiResults!.creates.every((c) => c.status === "ok")).toBe(true);
 
-    // Anki call sequence: bootstrap (modelNames + 3 modelFieldNames) then 2 addNotes.
+    // Anki call sequence: bootstrap (modelNames + 4 modelFieldNames) then 2 addNotes.
     expect(calls.map((c) => c.action)).toEqual([
       "modelNames",
+      "modelFieldNames",
       "modelFieldNames",
       "modelFieldNames",
       "modelFieldNames",

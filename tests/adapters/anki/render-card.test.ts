@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { IdentifiedFlashcard } from "../../../src/core/domain/card.js";
 import {
+  ANKI_CONTEXT_TEMPLATE,
   ANKI_MODEL_BASIC,
   ANKI_MODEL_CLOZE,
+  ANKI_MODEL_REMINDER,
   ANKI_MODEL_REVERSED,
   getAnkiModelSpecs,
   renderCardForAnki,
@@ -65,8 +67,8 @@ const CTX = {
 // ============================================================================
 
 describe("getAnkiModelSpecs", () => {
-  it("returns exactly 3 model specs", () => {
-    expect(getAnkiModelSpecs()).toHaveLength(3);
+  it("returns exactly 4 model specs", () => {
+    expect(getAnkiModelSpecs()).toHaveLength(4);
   });
 
   it("wraps long code in the default CSS for every new managed model", () => {
@@ -83,6 +85,12 @@ describe("getAnkiModelSpecs", () => {
     }
   });
 
+  it("styles prompt context separately from question and answer content", () => {
+    for (const spec of getAnkiModelSpecs()) {
+      expect(spec.css).toContain(".flashcards-context");
+    }
+  });
+
   it("model names match the exported constants", () => {
     const names = getAnkiModelSpecs().map((s) => s.modelName);
     expect(names).toEqual(
@@ -90,62 +98,82 @@ describe("getAnkiModelSpecs", () => {
         ANKI_MODEL_BASIC,
         ANKI_MODEL_REVERSED,
         ANKI_MODEL_CLOZE,
+        ANKI_MODEL_REMINDER,
       ]),
     );
     expect(ANKI_MODEL_BASIC).toBe("Obsidian-basic");
     expect(ANKI_MODEL_REVERSED).toBe("Obsidian-basic-reversed");
     expect(ANKI_MODEL_CLOZE).toBe("Obsidian-cloze");
+    expect(ANKI_MODEL_REMINDER).toBe("Obsidian-reminder");
   });
 
-  it("Obsidian-Basic: fields [Front, Back, Source], isCloze false, 1 template", () => {
+  it("Obsidian-Basic: includes a separate Context field", () => {
     const spec = getAnkiModelSpecs().find(
       (s) => s.modelName === ANKI_MODEL_BASIC,
     )!;
-    expect(spec.inOrderFields).toEqual(["Front", "Back", "Source"]);
+    expect(spec.inOrderFields).toEqual(["Front", "Back", "Context", "Source"]);
     expect(spec.isCloze).toBe(false);
     expect(spec.cardTemplates).toHaveLength(1);
     expect(spec.cardTemplates[0]!.Front).toBe(
-      '<section class="flashcards-question">{{Front}}</section>',
+      `${ANKI_CONTEXT_TEMPLATE}<section class="flashcards-question">{{Front}}</section>`,
     );
     expect(spec.cardTemplates[0]!.Back).toBe(
       '{{FrontSide}}<hr id="answer" class="flashcards-answer-divider"><section class="flashcards-answer">{{Back}}</section><footer class="flashcards-source-footer">{{Source}}</footer>',
     );
   });
 
-  it("Obsidian-Reversed: fields [Front, Back, Source], isCloze false, 2 templates", () => {
+  it("Obsidian-Reversed: both question directions render Context", () => {
     const spec = getAnkiModelSpecs().find(
       (s) => s.modelName === ANKI_MODEL_REVERSED,
     )!;
-    expect(spec.inOrderFields).toEqual(["Front", "Back", "Source"]);
+    expect(spec.inOrderFields).toEqual(["Front", "Back", "Context", "Source"]);
     expect(spec.isCloze).toBe(false);
     expect(spec.cardTemplates).toHaveLength(2);
     expect(spec.cardTemplates[0]!.Front).toBe(
-      '<section class="flashcards-question">{{Front}}</section>',
+      `${ANKI_CONTEXT_TEMPLATE}<section class="flashcards-question">{{Front}}</section>`,
     );
     expect(spec.cardTemplates[0]!.Back).toBe(
       '{{FrontSide}}<hr id="answer" class="flashcards-answer-divider"><section class="flashcards-answer">{{Back}}</section><footer class="flashcards-source-footer">{{Source}}</footer>',
     );
     expect(spec.cardTemplates[1]!.Front).toBe(
-      '<section class="flashcards-question">{{Back}}</section>',
+      `${ANKI_CONTEXT_TEMPLATE}<section class="flashcards-question">{{Back}}</section>`,
     );
     expect(spec.cardTemplates[1]!.Back).toBe(
       '{{FrontSide}}<hr id="answer" class="flashcards-answer-divider"><section class="flashcards-answer">{{Front}}</section><footer class="flashcards-source-footer">{{Source}}</footer>',
     );
   });
 
-  it("Obsidian-Cloze: fields [Text, Extra, Source], isCloze true, 1 template", () => {
+  it("Obsidian-Cloze: renders Context on its question and answer templates", () => {
     const spec = getAnkiModelSpecs().find(
       (s) => s.modelName === ANKI_MODEL_CLOZE,
     )!;
-    expect(spec.inOrderFields).toEqual(["Text", "Extra", "Source"]);
+    expect(spec.inOrderFields).toEqual(["Text", "Extra", "Context", "Source"]);
     expect(spec.isCloze).toBe(true);
     expect(spec.cardTemplates).toHaveLength(1);
     expect(spec.cardTemplates[0]!.Front).toBe(
-      '<section class="flashcards-question">{{cloze:Text}}</section>',
+      `${ANKI_CONTEXT_TEMPLATE}<section class="flashcards-question">{{cloze:Text}}</section>`,
     );
     expect(spec.cardTemplates[0]!.Back).toBe(
-      '<section class="flashcards-question">{{cloze:Text}}</section>{{#Extra}}<hr id="answer" class="flashcards-answer-divider"><section class="flashcards-answer">{{Extra}}</section>{{/Extra}}<footer class="flashcards-source-footer">{{Source}}</footer>',
+      `${ANKI_CONTEXT_TEMPLATE}<section class="flashcards-question">{{cloze:Text}}</section>{{#Extra}}<hr id="answer" class="flashcards-answer-divider"><section class="flashcards-answer">{{Extra}}</section>{{/Extra}}<footer class="flashcards-source-footer">{{Source}}</footer>`,
     );
+  });
+
+  it("Obsidian-Reminder: stores one Content field and asks only about timing", () => {
+    const spec = getAnkiModelSpecs().find(
+      (candidate) => candidate.modelName === ANKI_MODEL_REMINDER,
+    )!;
+
+    expect(spec.inOrderFields).toEqual(["Content", "Context", "Source"]);
+    expect(spec.isCloze).toBe(false);
+    expect(spec.cardTemplates).toHaveLength(1);
+    expect(spec.cardTemplates[0]!.Front).toBe(
+      `${ANKI_CONTEXT_TEMPLATE}<section class="flashcards-reminder">{{Content}}</section>`,
+    );
+    expect(spec.cardTemplates[0]!.Back).toContain("{{FrontSide}}");
+    expect(spec.cardTemplates[0]!.Back).toContain(
+      "How soon should this come back?",
+    );
+    expect(spec.cardTemplates[0]!.Back).toContain("{{Source}}");
   });
 
   it("`{{Source}}` token appears only on Back side, never on Front, across all templates", () => {
@@ -157,12 +185,48 @@ describe("getAnkiModelSpecs", () => {
     }
   });
 
-  it("CSS is identical across all 3 specs", () => {
+  it("renders Context directly on every question side without adding it to basic/reversed answer content", () => {
+    for (const spec of getAnkiModelSpecs()) {
+      for (const tpl of spec.cardTemplates) {
+        expect(tpl.Front).toContain(ANKI_CONTEXT_TEMPLATE);
+        if (spec.modelName === ANKI_MODEL_CLOZE) {
+          expect(tpl.Back).toContain(ANKI_CONTEXT_TEMPLATE);
+        } else {
+          expect(tpl.Back).not.toContain("{{Context}}");
+          expect(tpl.Back).toContain("{{FrontSide}}");
+        }
+      }
+    }
+  });
+
+  it("CSS is identical across all specs", () => {
     const specs = getAnkiModelSpecs();
     const cssValues = specs.map((s) => s.css);
     expect(cssValues[0]).toBeDefined();
     expect(cssValues[1]).toBe(cssValues[0]);
     expect(cssValues[2]).toBe(cssValues[0]);
+    expect(cssValues[3]).toBe(cssValues[0]);
+  });
+});
+
+describe("renderCardForAnki — reminder", () => {
+  it("renders content, context, and source without an answer field", () => {
+    const out = renderCardForAnki(
+      baseCard({
+        answer: "",
+        context: "Engineering principles",
+        front: "Keep the feedback loop short.",
+        kind: "reminder",
+      }),
+      CTX,
+    );
+
+    expect(out.modelName).toBe(ANKI_MODEL_REMINDER);
+    expect(out.fields).toEqual({
+      Content: "<p>Keep the feedback loop short.</p>",
+      Context: "<p>Engineering principles</p>",
+      Source: expect.stringContaining("Edit source in Obsidian"),
+    });
   });
 });
 
@@ -259,6 +323,7 @@ describe("renderCardForAnki — basic card markdown→HTML", () => {
     expect(out.modelName).toBe(ANKI_MODEL_BASIC);
     expect(out.fields.Front).toBe("<p>a question</p>");
     expect(out.fields.Back).toBe("<p>an answer</p>");
+    expect(out.fields.Context).toBe("");
   });
 
   it("`**bold**` → <strong>", () => {
@@ -307,19 +372,28 @@ describe("renderCardForAnki — basic card markdown→HTML", () => {
 // ============================================================================
 
 describe("renderCardForAnki — reversed", () => {
-  it("uses Obsidian-Reversed model and Front/Back/Source fields", () => {
+  it("keeps Context separate from both reversible content fields", () => {
     const out = renderCardForAnki(
-      baseCard({ answer: "B", front: "A", kind: "reversed" }),
+      baseCard({
+        answer: "The flag of France.",
+        context: "Image in reversed",
+        front: "![[flag.png]]",
+        kind: "reversed",
+      }),
       CTX,
     );
     expect(out.modelName).toBe(ANKI_MODEL_REVERSED);
     expect(Object.keys(out.fields).sort()).toEqual([
       "Back",
+      "Context",
       "Front",
       "Source",
     ]);
-    expect(out.fields.Front).toBe("<p>A</p>");
-    expect(out.fields.Back).toBe("<p>B</p>");
+    expect(out.fields.Context).toBe("<p>Image in reversed</p>");
+    expect(out.fields.Front).toBe("<p>![[flag.png]]</p>");
+    expect(out.fields.Back).toBe("<p>The flag of France.</p>");
+    expect(out.fields.Front).not.toContain("Image in reversed");
+    expect(out.fields.Back).not.toContain("Image in reversed");
   });
 });
 
@@ -409,6 +483,7 @@ describe("renderCardForAnki — cloze conversion", () => {
     );
     expect(out.modelName).toBe(ANKI_MODEL_CLOZE);
     expect(Object.keys(out.fields).sort()).toEqual([
+      "Context",
       "Extra",
       "Source",
       "Text",

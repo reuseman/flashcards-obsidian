@@ -28,9 +28,9 @@ export interface BuildSyncPlanInput {
  *
  *   v1 (13-digit numeric blockIds):
  *     A. no fm entry            → SKIP (opt-in migration)
- *     B. fm hash present, differ → UPDATE (nid = parseInt(blockId))
+ *     B. fm hash present, differ → UPDATE (stored nid, else parseInt(blockId))
  *        fm hash match           → no-op
- *     C. fm entry, card gone    → DELETE (nid = parseInt(blockId))
+ *     C. fm entry, card gone    → DELETE (stored nid, else parseInt(blockId))
  */
 export function buildSyncPlan(input: BuildSyncPlanInput): SyncPlan {
   const { cards, computeHash, frontmatter } = input;
@@ -59,7 +59,7 @@ export function buildSyncPlan(input: BuildSyncPlanInput): SyncPlan {
       update.push({
         card,
         newHash,
-        nid: Number.parseInt(card.blockId, 10),
+        nid: fm.nid ?? Number.parseInt(card.blockId, 10),
         oldHash: fm.hash,
       });
       continue;
@@ -89,7 +89,7 @@ export function buildSyncPlan(input: BuildSyncPlanInput): SyncPlan {
       // Rule C.
       del.push({
         blockId: entry.blockId,
-        nid: Number.parseInt(entry.blockId, 10),
+        nid: entry.nid ?? Number.parseInt(entry.blockId, 10),
       });
       continue;
     }

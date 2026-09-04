@@ -1,4 +1,4 @@
-export type CardKind = "basic" | "cloze" | "reversed";
+export type CardKind = "basic" | "cloze" | "reminder" | "reversed";
 export type CardSyntax =
   | "inline"
   | "cloze"
@@ -16,6 +16,8 @@ export interface CardSource {
 
 export interface Flashcard {
   answer: string;
+  /** Prompt context such as the active heading path. Never answer content. */
+  context?: string;
   deckName?: string;
   front: string;
   kind: CardKind;

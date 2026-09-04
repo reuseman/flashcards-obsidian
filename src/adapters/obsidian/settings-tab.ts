@@ -54,7 +54,7 @@ export class FlashcardsSettingTab extends PluginSettingTab {
           },
           {
             name: "Context",
-            desc: "Text added before a card front. Default: headings.",
+            desc: "Text shown above the active review question. Default: headings.",
             control: {
               type: "dropdown",
               key: "contextStrategy",
@@ -95,7 +95,7 @@ export class FlashcardsSettingTab extends PluginSettingTab {
           },
           {
             name: "Context separator",
-            desc: "Text between context parts. Use \\n for a new line. Default: >.",
+            desc: "Text between nested context parts. Use \\n for a new line. Default: >.",
             control: {
               type: "text",
               key: "contextSeparator",
@@ -188,7 +188,7 @@ export class FlashcardsSettingTab extends PluginSettingTab {
           },
           {
             name: "Hashtag card",
-            desc: "Style #card and #card-reverse tags. Default: on.",
+            desc: "Style #card, #card-reverse, and #card-reminder tags. Default: on.",
             control: {
               type: "toggle",
               key: "renderPreview.hashtag",

@@ -38,6 +38,7 @@ describe("inspectManagedModelStyle", () => {
       fields: ["Front", "Back", "Source"],
       templates: CUSTOM_TEMPLATES,
     });
+    expect(plan.changes[0]?.missingContext).toBe(true);
     expect(plan.changes[0]?.desired.templates).toEqual({
       "My forward card": expect.objectContaining({
         Back: expect.stringContaining("flashcards-source-footer"),
@@ -117,7 +118,7 @@ describe("inspectManagedModelStyle", () => {
 });
 
 describe("applyManagedModelStyle", () => {
-  it("adds a missing Source field before applying templates and CSS", async () => {
+  it("adds missing Context and Source fields before applying templates and CSS", async () => {
     const spec = getAnkiModelSpecs().find(
       (candidate) => candidate.modelName === ANKI_MODEL_BASIC,
     )!;
@@ -137,19 +138,34 @@ describe("applyManagedModelStyle", () => {
             templates: CUSTOM_TEMPLATES,
           },
           desired: { css: spec.css!, templates: desiredTemplates },
+          missingContext: true,
           missingSource: true,
           modelName: ANKI_MODEL_BASIC,
         },
       ],
     };
-    const { calls, fetch } = makeFakeFetch([ok(null), ok(null), ok(null)]);
+    const { calls, fetch } = makeFakeFetch([
+      ok(null),
+      ok(null),
+      ok(null),
+      ok(null),
+    ]);
 
     await applyManagedModelStyle(new AnkiConnectClient({ fetch }), plan);
 
     expect(calls.map((call) => call.action)).toEqual([
       "modelFieldAdd",
+      "modelFieldAdd",
       "updateModelTemplates",
       "updateModelStyling",
     ]);
+    expect(calls[0]?.params).toMatchObject({
+      fieldName: "Context",
+      index: 2,
+    });
+    expect(calls[1]?.params).toMatchObject({
+      fieldName: "Source",
+      index: 3,
+    });
   });
 });

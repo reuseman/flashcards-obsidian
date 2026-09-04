@@ -156,7 +156,15 @@ function createHost() {
     (command) => command.id === "flashcards-apply-v2-anki-style",
   );
   if (!ankiStyle?.callback) throw new Error("Anki-style command missing.");
-  return { ankiStyle, current, host, logger, refreshStatusBars, syntaxCheck };
+  return {
+    ankiStyle,
+    commands,
+    current,
+    host,
+    logger,
+    refreshStatusBars,
+    syntaxCheck,
+  };
 }
 
 describe("Obsidian sync commands", () => {
@@ -186,6 +194,19 @@ describe("Obsidian sync commands", () => {
     mocks.confirmAnkiStyle.mockResolvedValue(false);
   });
 
+  it("names update commands after their one-way Anki destination", () => {
+    const { commands } = createHost();
+
+    expect(
+      commands.find(
+        (command) => command.id === "flashcards-sync-current-note",
+      )?.name,
+    ).toBe("Update Anki from current note");
+    expect(
+      commands.find((command) => command.id === "flashcards-sync-vault")?.name,
+    ).toBe("Update Anki from vault");
+  });
+
   it("passes the selected Obsidian secret to AnkiConnect", async () => {
     mocks.getActiveNote.mockResolvedValue(null);
     const { current, host } = createHost();
@@ -199,7 +220,7 @@ describe("Obsidian sync commands", () => {
     expect(mocks.ankiClientOptions[0]).toEqual({ apiKey: "secret-value" });
   });
 
-  it("repairs managed Source templates before syncing the current note", async () => {
+  it("repairs managed Context and Source templates before syncing the current note", async () => {
     mocks.getActiveNote.mockResolvedValue(null);
     const { current } = createHost();
 
@@ -362,13 +383,14 @@ function stylePlan() {
       {
         current: {
           css: "old",
-          fields: ["Front", "Back", "Source"],
+          fields: ["Front", "Back", "Context", "Source"],
           templates: { "Card 1": { Back: "old", Front: "old" } },
         },
         desired: {
           css: "new",
           templates: { "Card 1": { Back: "new", Front: "new" } },
         },
+        missingContext: false,
         missingSource: false,
         modelName: "Obsidian-basic",
       },

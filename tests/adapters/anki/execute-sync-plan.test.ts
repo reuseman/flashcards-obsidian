@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { AnkiConnectClient } from "../../../src/adapters/anki/anki-connect-client.js";
 import {
+  ANKI_CONTEXT_TEMPLATE,
   ANKI_MODEL_BASIC,
   ANKI_MODEL_CLOZE,
+  ANKI_MODEL_REMINDER,
   ANKI_MODEL_REVERSED,
   getAnkiModelSpecs,
 } from "../../../src/core/render/render-card.js";
@@ -136,31 +138,34 @@ function deleteOp(blockId: string, nid: number): DeleteOp {
   return { blockId, nid };
 }
 
-const ALL_MODELS = [ANKI_MODEL_BASIC, ANKI_MODEL_REVERSED, ANKI_MODEL_CLOZE];
+const ALL_MODELS = [ANKI_MODEL_BASIC, ANKI_MODEL_REVERSED, ANKI_MODEL_CLOZE, ANKI_MODEL_REMINDER];
 
 // v2-shaped field lists returned by modelFieldNames for each required model.
 // `Source` present means the extend-in-place upgrade is a no-op.
 const V2_FIELDS: Record<string, string[]> = {
-  [ANKI_MODEL_BASIC]: ["Front", "Back", "Source"],
-  [ANKI_MODEL_REVERSED]: ["Front", "Back", "Source"],
-  [ANKI_MODEL_CLOZE]: ["Text", "Extra", "Source"],
+  [ANKI_MODEL_BASIC]: ["Front", "Back", "Context", "Source"],
+  [ANKI_MODEL_REVERSED]: ["Front", "Back", "Context", "Source"],
+  [ANKI_MODEL_CLOZE]: ["Text", "Extra", "Context", "Source"],
+  [ANKI_MODEL_REMINDER]: ["Content", "Context", "Source"],
 };
 
-// Standard bootstrap when all 3 required models are already present AND already
+// Standard bootstrap when all 4 required models are already present AND already
 // v2-shaped (have Source field). Sequence: modelNames, then modelFieldNames for
-// each of the 3 models in REQUIRED_MODELS order.
+// each of the 4 models in REQUIRED_MODELS order.
 function bootAllV2(): FakeResponseSpec[] {
   return [
     ok(ALL_MODELS),
     ok(V2_FIELDS[ANKI_MODEL_BASIC]),
     ok(V2_FIELDS[ANKI_MODEL_REVERSED]),
     ok(V2_FIELDS[ANKI_MODEL_CLOZE]),
+    ok(V2_FIELDS[ANKI_MODEL_REMINDER]),
   ];
 }
 
 // Action sequence emitted by `bootAllV2`.
 const BOOT_ACTIONS_ALL_V2 = [
   "modelNames",
+  "modelFieldNames",
   "modelFieldNames",
   "modelFieldNames",
   "modelFieldNames",
@@ -182,7 +187,7 @@ function emptyPlan(overrides: Partial<SyncPlan> = {}): SyncPlan {
 // ---------------------------------------------------------------------------
 
 describe("executeSyncPlan — bootstrap models", () => {
-  it("probes fields (no createModel, no extend) when all 3 are present and v2-shaped", async () => {
+  it("probes fields (no createModel, no extend) when all 4 are present and v2-shaped", async () => {
     const { calls, fetch } = makeFakeFetch(bootAllV2());
     const client = makeClient(fetch);
 
@@ -196,12 +201,13 @@ describe("executeSyncPlan — bootstrap models", () => {
     expect(calls.map((c) => c.action)).toEqual(BOOT_ACTIONS_ALL_V2);
   });
 
-  it("creates exactly the missing model (no field-probe for it) when 1 of 3 is absent", async () => {
+  it("creates exactly the missing model (no field-probe for it) when 1 of 4 is absent", async () => {
     const { calls, fetch } = makeFakeFetch([
-      ok([ANKI_MODEL_BASIC, ANKI_MODEL_REVERSED]),
+      ok([ANKI_MODEL_BASIC, ANKI_MODEL_REVERSED, ANKI_MODEL_REMINDER]),
       ok(V2_FIELDS[ANKI_MODEL_BASIC]),
       ok(V2_FIELDS[ANKI_MODEL_REVERSED]),
       ok({ id: 1 }), // createModel for cloze
+      ok(V2_FIELDS[ANKI_MODEL_REMINDER]),
     ]);
     const client = makeClient(fetch);
 
@@ -217,6 +223,7 @@ describe("executeSyncPlan — bootstrap models", () => {
       "modelFieldNames",
       "modelFieldNames",
       "createModel",
+      "modelFieldNames",
     ]);
 
     const expectedSpec = getAnkiModelSpecs().find(
@@ -225,12 +232,13 @@ describe("executeSyncPlan — bootstrap models", () => {
     expect(calls[3]!.params).toEqual(expectedSpec);
   });
 
-  it("creates all 3 models when none are present (no field probes)", async () => {
+  it("creates all 4 models when none are present (no field probes)", async () => {
     const { calls, fetch } = makeFakeFetch([
       ok([]),
       ok({ id: 1 }),
       ok({ id: 2 }),
       ok({ id: 3 }),
+      ok({ id: 4 }),
     ]);
     const client = makeClient(fetch);
 
@@ -243,6 +251,7 @@ describe("executeSyncPlan — bootstrap models", () => {
 
     expect(calls.map((c) => c.action)).toEqual([
       "modelNames",
+      "createModel",
       "createModel",
       "createModel",
       "createModel",
@@ -253,24 +262,24 @@ describe("executeSyncPlan — bootstrap models", () => {
     expect(new Set(createdNames)).toEqual(new Set(ALL_MODELS));
   });
 
-  // Extend-in-place: a v1 model is present but lacks the `Source` field.
-  // Normal sync must add and render the field without opting the user into
-  // the v2 design. CSS and existing template HTML are left alone.
-  it("adds Source to a v1-shaped model without replacing its template", async () => {
+  // Extend-in-place: an earlier managed model already has Source but not the
+  // new Context field. Normal sync adds it without replacing custom content.
+  it("adds Context to an earlier v2 model without replacing custom content", async () => {
     const legacyTemplates = {
       "Custom forward": {
-        Back: "{{FrontSide}}<hr>{{Back}}<script>custom()</script>",
+        Back: "{{FrontSide}}<hr>{{Back}}<script>custom()</script>{{Source}}",
         Front: "{{Front}}<div>{{Tags}}</div>",
       },
     };
     const { calls, fetch } = makeFakeFetch([
       ok(ALL_MODELS),
-      ok(["Front", "Back"]), // basic — v1 shape, no Source
+      ok(["Front", "Back", "Source"]),
       ok(legacyTemplates),
-      ok(null), // modelFieldAdd basic
+      ok(null), // modelFieldAdd Context
       ok(null), // updateModelTemplates basic
       ok(V2_FIELDS[ANKI_MODEL_REVERSED]),
       ok(V2_FIELDS[ANKI_MODEL_CLOZE]),
+      ok(V2_FIELDS[ANKI_MODEL_REMINDER]),
     ]);
     const client = makeClient(fetch);
 
@@ -289,10 +298,11 @@ describe("executeSyncPlan — bootstrap models", () => {
       "updateModelTemplates",
       "modelFieldNames",
       "modelFieldNames",
+      "modelFieldNames",
     ]);
     expect(calls[3]!.params).toEqual({
       modelName: ANKI_MODEL_BASIC,
-      fieldName: "Source",
+      fieldName: "Context",
       index: 2,
     });
     const updParams = calls[4]!.params as {
@@ -300,25 +310,28 @@ describe("executeSyncPlan — bootstrap models", () => {
     };
     expect(updParams.model.name).toBe(ANKI_MODEL_BASIC);
     expect(updParams.model.templates["Custom forward"]!.Front).toBe(
-      legacyTemplates["Custom forward"].Front,
+      `${ANKI_CONTEXT_TEMPLATE}${legacyTemplates["Custom forward"].Front}`,
     );
     expect(updParams.model.templates["Custom forward"]!.Back).toBe(
-      `${legacyTemplates["Custom forward"].Back}\n<br><br>{{Source}}`,
+      legacyTemplates["Custom forward"].Back,
     );
   });
 
-  it("extends all 3 v1-shaped models when none of them have Source", async () => {
+  it("extends all 4 earlier-shaped models when they lack Context and Source", async () => {
     const { calls, fetch } = makeFakeFetch([
       ok(ALL_MODELS),
       ok(["Front", "Back"]), // basic
       ok({ "Card 1": { Back: "{{Back}}", Front: "{{Front}}" } }),
-      ok(null), ok(null),    // extend basic
+      ok(null), ok(null), ok(null), // extend basic
       ok(["Front", "Back"]), // reversed
       ok({ "Card 1": { Back: "{{Back}}", Front: "{{Front}}" } }),
-      ok(null), ok(null),    // extend reversed
+      ok(null), ok(null), ok(null), // extend reversed
       ok(["Text", "Extra"]), // cloze
       ok({ "Card 1": { Back: "{{cloze:Text}}", Front: "{{cloze:Text}}" } }),
-      ok(null), ok(null),    // extend cloze
+      ok(null), ok(null), ok(null), // extend cloze
+      ok(["Content"]), // reminder
+      ok({ "Card 1": { Back: "{{FrontSide}}", Front: "{{Content}}" } }),
+      ok(null), ok(null), ok(null), // extend reminder
     ]);
     const client = makeClient(fetch);
 
@@ -334,17 +347,25 @@ describe("executeSyncPlan — bootstrap models", () => {
       "modelFieldNames",
       "modelTemplates",
       "modelFieldAdd",
-      "updateModelTemplates",
-      "modelFieldNames",
-      "modelTemplates",
       "modelFieldAdd",
       "updateModelTemplates",
       "modelFieldNames",
       "modelTemplates",
+      "modelFieldAdd",
+      "modelFieldAdd",
+      "updateModelTemplates",
+      "modelFieldNames",
+      "modelTemplates",
+      "modelFieldAdd",
+      "modelFieldAdd",
+      "updateModelTemplates",
+      "modelFieldNames",
+      "modelTemplates",
+      "modelFieldAdd",
       "modelFieldAdd",
       "updateModelTemplates",
     ]);
-    expect((calls[11]!.params as { modelName: string }).modelName).toBe(
+    expect((calls[13]!.params as { modelName: string }).modelName).toBe(
       ANKI_MODEL_CLOZE,
     );
   });
@@ -576,6 +597,39 @@ describe("executeSyncPlan — CREATE ops", () => {
     expect((noteParam.fields as Record<string, string>).Front).toContain("Capital");
   });
 
+  it("creates a reminder with only Content, Context, and Source fields", async () => {
+    const c = createOp(makeCard({
+      answer: "",
+      context: "Engineering principles",
+      front: "Keep the feedback loop short.",
+      kind: "reminder",
+    }));
+    const { calls, fetch } = makeFakeFetch([
+      ...bootAllV2(),
+      ok(["Default"]),
+      ok(1715),
+    ]);
+
+    const result = await executeSyncPlan({
+      client: makeClient(fetch),
+      notePath: NOTE_PATH,
+      plan: emptyPlan({ create: [c] }),
+      vaultName: VAULT,
+    });
+
+    expect(result.creates[0]).toEqual(
+      expect.objectContaining({ nid: 1715, status: "ok" }),
+    );
+    const addCall = calls.find((call) => call.action === "addNote")!;
+    const note = (addCall.params as { note: Record<string, unknown> }).note;
+    expect(note.modelName).toBe(ANKI_MODEL_REMINDER);
+    expect(note.fields).toEqual({
+      Content: "<p>Keep the feedback loop short.</p>",
+      Context: "<p>Engineering principles</p>",
+      Source: expect.stringContaining("Edit source in Obsidian"),
+    });
+  });
+
   it("addNote returning null → failed with exact duplicate error message; no nid", async () => {
     const c = createOp(makeCard({ blockId: "dup" }));
     const { fetch } = makeFakeFetch([
@@ -677,6 +731,49 @@ describe("executeSyncPlan — UPDATE ops", () => {
         tags: ["source", "leech"],
       }),
     });
+  });
+
+  it("converts a v1 spaced note to reminder without replacing its nid", async () => {
+    const u: UpdateOp = {
+      ...updateOp(
+        makeCard({
+          answer: "",
+          front: "Keep it simple.",
+          kind: "reminder",
+        }),
+        555,
+      ),
+      existing: {
+        cards: [{ cardId: 42, deckName: "Default" }],
+        modelName: "Obsidian-spaced",
+        tags: [],
+      },
+    };
+    const { calls, fetch } = makeFakeFetch([...bootAllV2(), ok(null)]);
+
+    const result = await executeSyncPlan({
+      client: makeClient(fetch),
+      notePath: NOTE_PATH,
+      plan: emptyPlan({ update: [u] }),
+      vaultName: VAULT,
+    });
+
+    expect(result.updates[0]).toEqual(
+      expect.objectContaining({ status: "ok" }),
+    );
+    expect(calls.find((call) => call.action === "updateNoteModel")!.params)
+      .toEqual({
+        note: {
+          fields: expect.objectContaining({
+            Content: "<p>Keep it simple.</p>",
+          }),
+          id: 555,
+          modelName: ANKI_MODEL_REMINDER,
+          tags: [],
+        },
+      });
+    expect(calls.some((call) => call.action === "addNote")).toBe(false);
+    expect(calls.some((call) => call.action === "deleteNotes")).toBe(false);
   });
 
   it("moves all cards for a deck-only update without rewriting note fields", async () => {
@@ -1067,10 +1164,11 @@ describe("executeSyncPlan — integration smoke", () => {
     const d = deleteOp("d1", 51);
 
     const { calls, fetch } = makeFakeFetch([
-      ok([ANKI_MODEL_BASIC, ANKI_MODEL_REVERSED]), // cloze missing
+      ok([ANKI_MODEL_BASIC, ANKI_MODEL_REVERSED, ANKI_MODEL_REMINDER]), // cloze missing
       ok(V2_FIELDS[ANKI_MODEL_BASIC]),
       ok(V2_FIELDS[ANKI_MODEL_REVERSED]),
       ok({ id: 9 }), // createModel cloze
+      ok(V2_FIELDS[ANKI_MODEL_REMINDER]),
       ok(["Existing"]), // NewDeck missing
       ok(1), // createDeck NewDeck
       ok(7001), // addNote c1
@@ -1091,6 +1189,7 @@ describe("executeSyncPlan — integration smoke", () => {
       "modelFieldNames",
       "modelFieldNames",
       "createModel",
+      "modelFieldNames",
       "deckNames",
       "createDeck",
       "addNote",

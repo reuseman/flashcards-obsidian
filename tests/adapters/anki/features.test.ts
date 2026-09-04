@@ -48,4 +48,41 @@ describe("test-vault/features snapshot coverage", () => {
       expect(card.fields.Front).not.toContain("[[note");
     }
   });
+
+  it.each([
+    "features/content/attachment.png",
+    "features/content/diagram.png",
+    "features/interactions/flag.png",
+  ])("keeps the visual image fixture %s large enough to inspect", (path) => {
+    const png = readFileSync(join(VAULT_ROOT, path));
+
+    expect(png.subarray(1, 4).toString("ascii")).toBe("PNG");
+    expect(png.readUInt32BE(16)).toBeGreaterThanOrEqual(320);
+    expect(png.readUInt32BE(20)).toBeGreaterThanOrEqual(180);
+  });
+
+  it.each([
+    "features/content/beep.wav",
+    "features/content/chime.wav",
+    "features/interactions/motif.wav",
+  ])("keeps the audio fixture %s long and loud enough to hear", (path) => {
+    const wav = readFileSync(join(VAULT_ROOT, path));
+
+    expect(wav.subarray(0, 4).toString("ascii")).toBe("RIFF");
+    expect(wav.subarray(8, 12).toString("ascii")).toBe("WAVE");
+    expect(wav.readUInt16LE(20)).toBe(1); // PCM
+    expect(wav.readUInt16LE(22)).toBe(1); // mono
+    expect(wav.readUInt16LE(34)).toBe(16);
+    expect(wav.subarray(36, 40).toString("ascii")).toBe("data");
+
+    const sampleRate = wav.readUInt32LE(24);
+    const dataLength = wav.readUInt32LE(40);
+    expect(dataLength / 2 / sampleRate).toBeGreaterThanOrEqual(1);
+
+    let peak = 0;
+    for (let offset = 44; offset + 1 < wav.length; offset += 2) {
+      peak = Math.max(peak, Math.abs(wav.readInt16LE(offset)));
+    }
+    expect(peak).toBeGreaterThanOrEqual(8_000);
+  });
 });

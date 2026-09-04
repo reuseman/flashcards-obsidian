@@ -18,6 +18,7 @@ export interface ManagedModelStyleTarget {
 export interface ManagedModelStyleChange {
   current: ManagedModelStyleSnapshot;
   desired: ManagedModelStyleTarget;
+  missingContext: boolean;
   missingSource: boolean;
   modelName: string;
 }
@@ -50,7 +51,7 @@ export async function inspectManagedModelStyle(
     const templates = await client.modelTemplates(spec.modelName);
     const { css } = await client.modelStyling(spec.modelName);
     const requiredContentFields = spec.inOrderFields.filter(
-      (field) => field !== "Source",
+      (field) => field !== "Context" && field !== "Source",
     );
     const missingContentFields = requiredContentFields.filter(
       (field) => !fields.includes(field),
@@ -85,8 +86,10 @@ export async function inspectManagedModelStyle(
     });
 
     const missingSource = !fields.includes("Source");
+    const missingContext = !fields.includes("Context");
     const desired = { css: spec.css ?? "", templates: desiredTemplates };
     if (
+      !missingContext &&
       !missingSource &&
       css === desired.css &&
       templatesEqual(templates, desired.templates)
@@ -97,6 +100,7 @@ export async function inspectManagedModelStyle(
     plan.changes.push({
       current: { css, fields, templates },
       desired,
+      missingContext,
       missingSource,
       modelName: spec.modelName,
     });
@@ -111,11 +115,18 @@ export async function applyManagedModelStyle(
   plan: ManagedModelStylePlan,
 ): Promise<void> {
   for (const change of plan.changes) {
+    const nextFields = [...change.current.fields];
+    if (change.missingContext) {
+      const sourceIndex = nextFields.indexOf("Source");
+      const contextIndex = sourceIndex === -1 ? nextFields.length : sourceIndex;
+      await client.modelFieldAdd(change.modelName, "Context", contextIndex);
+      nextFields.splice(contextIndex, 0, "Context");
+    }
     if (change.missingSource) {
       await client.modelFieldAdd(
         change.modelName,
         "Source",
-        change.current.fields.length,
+        nextFields.length,
       );
     }
     await client.updateModelTemplates(

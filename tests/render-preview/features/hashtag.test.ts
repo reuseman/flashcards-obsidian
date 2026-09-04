@@ -24,6 +24,13 @@ describe("hashtag feature", () => {
     expect(feat.detect("q #card/reverse")[0]).toMatchObject({ start: 2, end: 15 });
   });
 
+  test("matches `#card-reminder`", () => {
+    expect(feat.detect("remember this #card-reminder")[0]).toMatchObject({
+      start: 14,
+      end: 28,
+    });
+  });
+
   test("does NOT match `#card-extra` (longer continuation)", () => {
     expect(feat.detect("x #card-extra y")).toEqual([]);
   });

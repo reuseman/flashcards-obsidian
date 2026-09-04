@@ -29,14 +29,15 @@ function toBase32(digest: Buffer): string {
  * Stable content hash for a flashcard.
  *
  * Algorithm (locked):
- *  - input bytes: `kind + "\n" + front + "\n" + back` (UTF-8).
+ *  - input bytes: `kind + "\n" + context + "\n" + front + "\n" + back`
+ *    (UTF-8); absent context is the empty string.
  *  - sha256, take leading 40 bits (5 bytes), encode MSB-first as 8 chars
  *    from the Crockford-style alphabet.
  *
  * Tags, deckName, and source positions are intentionally excluded.
  */
 export function computeCardHash(card: Flashcard): string {
-  const input = `${card.kind}\n${card.front}\n${card.answer}`;
+  const input = `${card.kind}\n${card.context ?? ""}\n${card.front}\n${card.answer}`;
   const digest = createHash("sha256").update(input, "utf8").digest();
   return toBase32(digest);
 }

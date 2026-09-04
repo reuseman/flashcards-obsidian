@@ -5,6 +5,7 @@ import { AnkiConnectClient } from "../../src/adapters/anki/anki-connect-client.j
 import {
   ANKI_MODEL_BASIC,
   ANKI_MODEL_CLOZE,
+  ANKI_MODEL_REMINDER,
   ANKI_MODEL_REVERSED,
 } from "../../src/core/render/render-card.js";
 import { DEFAULT_SETTINGS } from "../../src/core/config/settings.js";
@@ -34,7 +35,7 @@ import { bootAllV2, makeFakeFetch, ok } from "../_utils/fake-fetch.js";
  *   - Trailing `## Related` content — must never leak into any card field.
  */
 
-const ALL_MODELS = [ANKI_MODEL_BASIC, ANKI_MODEL_REVERSED, ANKI_MODEL_CLOZE];
+const ALL_MODELS = [ANKI_MODEL_BASIC, ANKI_MODEL_REVERSED, ANKI_MODEL_CLOZE, ANKI_MODEL_REMINDER];
 const VAULT = "MyVault";
 const NOTE_PATH = "notes/TCP basics.md";
 const NOTE_TITLE = "TCP basics";
@@ -160,7 +161,7 @@ describe("golden atomic mixed note — WI-13 acceptance gate", () => {
 
     const cueCard = cards.find((c) => c.kind === "basic" && c.front === CUE);
     expect(cueCard).toBeDefined();
-    expect(cueCard?.answer).toBe(`${NOTE_TITLE}\n\n${FIRST_PARAGRAPH}`);
+    expect(cueCard?.answer).toBe(FIRST_PARAGRAPH);
 
     const reversedCard = cards.find((c) => c.kind === "reversed");
     expect(reversedCard).toBeDefined();
@@ -170,9 +171,9 @@ describe("golden atomic mixed note — WI-13 acceptance gate", () => {
     const clozeCard = cards.find((c) => c.kind === "cloze");
     expect(clozeCard).toBeDefined();
     expect(clozeCard?.front).toBe(FIRST_PARAGRAPH);
-    // Cloze back-composition contract: Text = first paragraph (with spans),
-    // Extra = note title.
-    expect(clozeCard?.answer).toBe(NOTE_TITLE);
+    // Text is the first paragraph (with spans); Extra stays empty unless a
+    // future explicit grammar gives the author a way to populate it.
+    expect(clozeCard?.answer).toBe("");
 
     const fencedCard = cards.find(
       (c) => (c.source.syntax as string) === "fenced",
@@ -234,8 +235,7 @@ describe("golden atomic mixed note — WI-13 acceptance gate", () => {
     expect(afterWithoutAnchors).toBe(before);
 
     // Tighten the cloze back-composition contract at the Anki payload level:
-    // the addNote call for the Obsidian-Cloze model must carry the note
-    // title in its Extra field.
+    // the plugin must not inject the note title into Extra.
     const clozeAddNote = calls.find(
       (c) =>
         c.action === "addNote" &&
@@ -246,7 +246,7 @@ describe("golden atomic mixed note — WI-13 acceptance gate", () => {
     const clozeFields = (
       clozeAddNote?.params.note as { fields?: Record<string, string> }
     )?.fields;
-    expect(clozeFields?.Extra).toContain(NOTE_TITLE);
+    expect(clozeFields?.Extra).toBe("");
   });
 
   it("writes `flashcards:` entries with a `cue` field for the 4 atomic cards only", async () => {

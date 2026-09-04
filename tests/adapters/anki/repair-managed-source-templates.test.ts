@@ -63,4 +63,36 @@ describe("repairManagedSourceTemplates", () => {
       calls.some((call) => call.action === "updateModelTemplates"),
     ).toBe(false);
   });
+
+  it("adds Context to the question side without duplicating it through FrontSide", async () => {
+    const custom = {
+      Card: {
+        Back: "{{FrontSide}}<hr>{{Back}}<br>{{Source}}",
+        Front: "<main>{{Front}}</main>",
+      },
+    };
+    const { calls, fetch } = makeFakeFetch([
+      ok([ANKI_MODEL_BASIC]),
+      ok(["Front", "Back", "Context", "Source"]),
+      ok(custom),
+      ok(null),
+    ]);
+
+    const result = await repairManagedSourceTemplates(
+      new AnkiConnectClient({ fetch }),
+    );
+
+    expect(result).toEqual({ modelsUpdated: 1, templatesUpdated: 1 });
+    const update = calls.find(
+      (call) => call.action === "updateModelTemplates",
+    );
+    const templates = (
+      update?.params as {
+        model: { templates: Record<string, { Back: string; Front: string }> };
+      }
+    ).model.templates;
+    expect(templates.Card?.Front).toContain("{{Context}}");
+    expect(templates.Card?.Front).toContain(custom.Card.Front);
+    expect(templates.Card?.Back).toBe(custom.Card.Back);
+  });
 });

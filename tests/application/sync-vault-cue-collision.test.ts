@@ -6,6 +6,7 @@ import { AnkiConnectClient } from "../../src/adapters/anki/anki-connect-client.j
 import {
   ANKI_MODEL_BASIC,
   ANKI_MODEL_CLOZE,
+  ANKI_MODEL_REMINDER,
   ANKI_MODEL_REVERSED,
 } from "../../src/core/render/render-card.js";
 import { DEFAULT_SETTINGS } from "../../src/core/config/settings.js";
@@ -25,7 +26,7 @@ import { bootAllV2, makeFakeFetch, ok } from "../_utils/fake-fetch.js";
  * AssertionErrors.
  */
 
-const ALL_MODELS = [ANKI_MODEL_BASIC, ANKI_MODEL_REVERSED, ANKI_MODEL_CLOZE];
+const ALL_MODELS = [ANKI_MODEL_BASIC, ANKI_MODEL_REVERSED, ANKI_MODEL_CLOZE, ANKI_MODEL_REMINDER];
 const VAULT = "MyVault";
 
 // Same normalized cue ("what is chlorophyll?") via trim + casefold + collapsed

@@ -6,6 +6,7 @@ import {
   ANKI_MODEL_BASIC,
   ANKI_MODEL_REVERSED,
   ANKI_MODEL_CLOZE,
+  ANKI_MODEL_REMINDER,
 } from "../../src/core/render/render-card.js";
 import { DEFAULT_SETTINGS } from "../../src/core/config/settings.js";
 import type { FlashcardsSettings } from "../../src/core/config/settings.js";
@@ -32,7 +33,7 @@ import { bootAllV2, makeFakeFetch, ok } from "../_utils/fake-fetch.js";
  *  - `write-card-frontmatter` persists `cue` for atomic entries.
  */
 
-const ALL_MODELS = [ANKI_MODEL_BASIC, ANKI_MODEL_REVERSED, ANKI_MODEL_CLOZE];
+const ALL_MODELS = [ANKI_MODEL_BASIC, ANKI_MODEL_REVERSED, ANKI_MODEL_CLOZE, ANKI_MODEL_REMINDER];
 const VAULT = "MyVault";
 
 interface FakeRepoHandle {
@@ -389,8 +390,8 @@ describe("syncNote — WI-9: title rename with a `title`/`reversed` item is trea
   });
 });
 
-describe("syncNote — WI-9: title rename with ONLY an authored-cue item is an ordinary UPDATE", () => {
-  it("renaming the note does not change an authored cue's identity — same nid, hash changes (title moved into the back)", async () => {
+describe("syncNote — WI-9: title rename with ONLY an authored-cue item keeps its identity", () => {
+  it("updates the Source path without injecting either title into the answer", async () => {
     const CUE = "An authored question that never mentions the title";
     const OLD_PATH = "notes/Original title.md";
     const md = [
@@ -404,7 +405,7 @@ describe("syncNote — WI-9: title rename with ONLY an authored-cue item is an o
     ].join("\n");
 
     const { repository, currentMarkdown } = makeFakeRepository(md);
-    const { fetch } = bootWithCreates(1);
+    const { calls: initialCalls, fetch } = bootWithCreates(1);
 
     await syncNote({
       ankiClient: new AnkiConnectClient({ fetch }),
@@ -416,12 +417,34 @@ describe("syncNote — WI-9: title rename with ONLY an authored-cue item is an o
     const inSync = currentMarkdown();
     const oldNid = parseCardFrontmatter(inSync).entries[0]?.nid;
     expect(oldNid).toBeDefined();
+    const createdFields = (
+      initialCalls.find((call) => call.action === "addNote")?.params.note as
+        | { fields?: Record<string, string> }
+        | undefined
+    )?.fields;
+    expect(createdFields).toBeDefined();
+    expect(createdFields?.Source).toContain("notes%2FOriginal%20title.md");
+    const liveFields = Object.fromEntries(
+      Object.entries(createdFields!).map(([name, value]) => [name, { value }]),
+    );
 
     const NEW_PATH = "notes/Renamed title.md";
-    const { calls, fetch: fetch2 } = makeFakeFetch([
-      ...bootAllV2(ALL_MODELS),
-      ok(true), // updateNoteFields — the authored-cue card's back embeds the title
-    ]);
+    const { calls, fetch: fetch2 } = makeFakeFetch(
+      [
+        ok([
+          {
+            cards: [],
+            fields: liveFields,
+            modelName: ANKI_MODEL_BASIC,
+            noteId: oldNid,
+            tags: ["obsidian"],
+          },
+        ]),
+        ...bootAllV2(ALL_MODELS),
+        ok(true), // updateNoteFields — Source now points at the renamed note
+      ],
+      { useDefaultReconciliationResponses: false },
+    );
     const { repository: repo2, currentMarkdown: after2 } = makeFakeRepository(inSync);
 
     await syncNote({
@@ -433,6 +456,7 @@ describe("syncNote — WI-9: title rename with ONLY an authored-cue item is an o
     });
 
     // The cue itself is untouched by the rename → same nid, ordinary UPDATE.
+    // Only the rendered Source path requires a field write.
     expect(calls.map((c) => c.action)).toContain("updateNoteFields");
     expect(calls.map((c) => c.action)).not.toContain("addNote");
     expect(calls.map((c) => c.action)).not.toContain("deleteNotes");
@@ -440,6 +464,16 @@ describe("syncNote — WI-9: title rename with ONLY an authored-cue item is an o
     const entries = parseCardFrontmatter(after2()).entries;
     expect(entries).toHaveLength(1);
     expect(entries[0]?.nid).toBe(oldNid);
+
+    const updatedFields = (
+      calls.find((call) => call.action === "updateNoteFields")?.params.note as
+        | { fields?: Record<string, string> }
+        | undefined
+    )?.fields;
+    expect(updatedFields?.Back).toBe("<p>Some first paragraph.</p>");
+    expect(updatedFields?.Back).not.toContain("Original title");
+    expect(updatedFields?.Back).not.toContain("Renamed title");
+    expect(updatedFields?.Source).toContain("notes%2FRenamed%20title.md");
 
     // I3: the authored-cue card's identity is cue-based, not a body anchor
     // — no `^q-xxxx` anchor may ever appear in the body.

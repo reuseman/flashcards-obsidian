@@ -39,9 +39,17 @@ class AnkiStyleConfirmModal extends Modal {
 
     const changes = this.contentEl.createEl("ul");
     for (const change of this.plan.changes) {
+      const addedFields = [
+        ...(change.missingContext ? ["Context"] : []),
+        ...(change.missingSource ? ["Source"] : []),
+      ];
       changes.createEl("li", {
         text: `${change.modelName}${
-          change.missingSource ? " — adds the Source field" : ""
+          addedFields.length > 0
+            ? ` — adds ${addedFields.join(" and ")} ${
+                addedFields.length === 1 ? "field" : "fields"
+              }`
+            : ""
         }`,
       });
     }

@@ -78,14 +78,14 @@ function extractRefs(md: string): Ref[] {
 	return refs;
 }
 
-/** Minimal valid PNG: IHDR + IDAT + IEND. 4x4 solid RGB, color from filename hash. */
+/** Visible fallback PNG: IHDR + IDAT + IEND, with a filename-derived pattern. */
 function makePng(filename: string): Buffer {
 	const hash = createHash("sha1").update(filename).digest();
 	const r = hash[0] ?? 0;
 	const g = hash[1] ?? 0;
 	const b = hash[2] ?? 0;
 
-	const W = 4, H = 4;
+	const W = 640, H = 360;
 	// Raw image: per-row filter byte (0) + RGB pixels
 	const raw = Buffer.alloc(H * (1 + W * 3));
 	for (let y = 0; y < H; y++) {
@@ -93,9 +93,26 @@ function makePng(filename: string): Buffer {
 		raw[rowStart] = 0; // filter: None
 		for (let x = 0; x < W; x++) {
 			const px = rowStart + 1 + x * 3;
-			raw[px] = r;
-			raw[px + 1] = g;
-			raw[px + 2] = b;
+			const border = x < 24 || x >= W - 24 || y < 24 || y >= H - 24;
+			const block = y >= 125 && y < 235 && (
+				(x >= 55 && x < 190) ||
+				(x >= 252 && x < 387) ||
+				(x >= 449 && x < 584)
+			);
+			const connector = y >= 176 && y < 184 && x >= 190 && x < 449;
+			if (border || connector) {
+				raw[px] = r;
+				raw[px + 1] = g;
+				raw[px + 2] = b;
+			} else if (block) {
+				raw[px] = 90 + (r % 120);
+				raw[px + 1] = 90 + (g % 120);
+				raw[px + 2] = 90 + (b % 120);
+			} else {
+				raw[px] = 246;
+				raw[px + 1] = 244;
+				raw[px + 2] = 238;
+			}
 		}
 	}
 	const idatData = deflateSync(raw, { level: 9 });
@@ -146,12 +163,14 @@ function crc32(buf: Buffer): number {
 	return (c ^ 0xffffffff) >>> 0;
 }
 
-/** 1s of silence: PCM, mono, 8 kHz, 8-bit unsigned (midpoint = 128). */
-function makeWav(): Buffer {
-	const sampleRate = 8000;
-	const bitsPerSample = 8;
+/** Audible deterministic PCM tone chosen by fixture filename. */
+function makeWav(filename: string): Buffer {
+	const sampleRate = 22050;
+	const bitsPerSample = 16;
 	const channels = 1;
-	const dataLen = sampleRate; // 1s
+	const durationSeconds = filename === "motif.wav" ? 1.55 : 1.25;
+	const sampleCount = Math.floor(sampleRate * durationSeconds);
+	const dataLen = sampleCount * (bitsPerSample / 8);
 	const byteRate = sampleRate * channels * (bitsPerSample / 8);
 	const blockAlign = channels * (bitsPerSample / 8);
 
@@ -169,7 +188,44 @@ function makeWav(): Buffer {
 	buf.writeUInt16LE(bitsPerSample, 34);
 	buf.write("data", 36);
 	buf.writeUInt32LE(dataLen, 40);
-	buf.fill(128, 44); // unsigned 8-bit silence = midpoint
+
+	const fade = (time: number, start: number, end: number): number => {
+		const attack = Math.min(1, Math.max(0, (time - start) / 0.012));
+		const release = Math.min(1, Math.max(0, (end - time) / 0.04));
+		return attack * release;
+	};
+	const tone = (time: number, start: number, end: number, hz: number): number =>
+		time >= start && time < end
+			? Math.sin(2 * Math.PI * hz * (time - start)) * fade(time, start, end)
+			: 0;
+
+	for (let i = 0; i < sampleCount; i++) {
+		const time = i / sampleRate;
+		let value: number;
+		if (filename === "beep.wav") {
+			value = 0.52 * (
+				tone(time, 0.12, 0.32, 880) + tone(time, 0.48, 0.68, 880)
+			);
+		} else if (filename === "chime.wav") {
+			const envelope = time >= 0.05 ? Math.exp(-(time - 0.05) * 2.8) : 0;
+			value = envelope * (
+				0.38 * tone(time, 0.05, 1.2, 660) +
+				0.22 * tone(time, 0.05, 1.2, 990) +
+				0.12 * tone(time, 0.05, 1.2, 1320)
+			);
+		} else if (filename === "motif.wav") {
+			value = 0.46 * (
+				tone(time, 0.05, 0.19, 392) +
+				tone(time, 0.28, 0.42, 392) +
+				tone(time, 0.51, 0.65, 392) +
+				tone(time, 0.74, 1.48, 311.13)
+			);
+		} else {
+			const frequency = 440 + (createHash("sha1").update(filename).digest()[0] ?? 0);
+			value = 0.45 * tone(time, 0.08, 1.1, frequency);
+		}
+		buf.writeInt16LE(Math.round(Math.max(-1, Math.min(1, value)) * 32767), 44 + i * 2);
+	}
 	return buf;
 }
 
@@ -194,18 +250,28 @@ function main(): void {
 	}
 
 	let created = 0;
+	let updated = 0;
 	let skipped = 0;
 	let bytes = 0;
 	const perKind: Record<Kind, number> = { image: 0, audio: 0 };
 
 	for (const [dest, ref] of destinations) {
+		const filename = dest.split("/").pop()!;
+		const data = ref.kind === "image" ? makePng(filename) : makeWav(filename);
 		if (existsSync(dest)) {
-			skipped++;
+			// Image fixtures may be curated diagrams or screenshots. Preserve them.
+			// Audio fixtures are generated test tones and stay reproducible here.
+			if (ref.kind === "image" || readFileSync(dest).equals(data)) {
+				skipped++;
+				continue;
+			}
+			writeFileSync(dest, data);
+			updated++;
+			bytes += data.length;
+			perKind[ref.kind]++;
 			continue;
 		}
 		mkdirSync(dirname(dest), { recursive: true });
-		const filename = dest.split("/").pop()!;
-		const data = ref.kind === "image" ? makePng(filename) : makeWav();
 		writeFileSync(dest, data);
 		created++;
 		bytes += data.length;
@@ -213,7 +279,7 @@ function main(): void {
 	}
 
 	console.log(
-		`created ${created} files (image: ${perKind.image}, audio: ${perKind.audio}, ${bytes} bytes), skipped ${skipped} existing`
+		`created ${created}, updated ${updated} files (image: ${perKind.image}, audio: ${perKind.audio}, ${bytes} bytes), skipped ${skipped}`
 	);
 }
 

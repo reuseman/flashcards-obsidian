@@ -22,19 +22,24 @@ describe("manual AUTO-fix examples", () => {
     const cards = extract("01-context-headings.md");
 
     expect(cards).toHaveLength(4);
-    expect(cards.map((card) => [card.source.syntax, card.front])).toEqual([
-      ["inline", "Computer science > Recursion > What is recursion?"],
+    expect(
+      cards.map((card) => [card.source.syntax, card.context, card.front]),
+    ).toEqual([
+      ["inline", "Computer science > Recursion", "What is recursion?"],
       [
         "cloze",
-        "Computer science > Recursion > Cloze > The ==base case== stops recursion.",
+        "Computer science > Recursion > Cloze",
+        "The ==base case== stops recursion.",
       ],
       [
         "fenced",
-        "Computer science > Recursion > Fenced card > What does a stack frame store?",
+        "Computer science > Recursion > Fenced card",
+        "What does a stack frame store?",
       ],
       [
         "hashtag",
-        "Computer science > Recursion > Hashtag card > What is tail recursion?",
+        "Computer science > Recursion > Hashtag card",
+        "What is tail recursion?",
       ],
     ]);
   });
@@ -52,8 +57,8 @@ describe("manual AUTO-fix examples", () => {
     expect(cards).toHaveLength(3);
     expect(cards[0]).toMatchObject({
       answer: "Use *reliable delivery* with `TCP`; use datagrams with `UDP`.",
-      front:
-        "Markdown preservation > What do **TCP** and [UDP](https://en.wikipedia.org/wiki/User_Datagram_Protocol) provide?",
+      context: "Markdown preservation",
+      front: "What do **TCP** and [UDP](https://en.wikipedia.org/wiki/User_Datagram_Protocol) provide?",
     });
     expect(cards[1]?.front).toContain("`pump()`");
     expect(cards[1]?.front).toContain("**==blood==**");
@@ -67,7 +72,9 @@ describe("manual AUTO-fix examples", () => {
 
     expect(cards).toHaveLength(1);
     expect(cards[0]).toMatchObject({
-      front: "Atomic cards > What is the main idea?",
+      answer: "The first paragraph becomes the answer of the atomic card.",
+      context: "Atomic cards",
+      front: "What is the main idea?",
       source: { syntax: "atomic" },
       tags: ["obsidian", "atomic-example"],
     });

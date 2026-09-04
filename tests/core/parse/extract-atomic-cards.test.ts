@@ -53,14 +53,14 @@ describe("extractCardsFromMarkdown — atomic `test:` grammar (WI-8)", () => {
       });
     });
 
-    it("an authored cue string produces one basic card: front = cue, back = title + blank line + first paragraph", () => {
+    it("an authored cue string produces one basic card: front = cue, back = first paragraph", () => {
       const CUE = "What does chlorophyll do?";
       const md = note(["test:", `  - "${CUE}"`], [FIRST_PARAGRAPH]);
       const cards = atomicCards(extract(md));
 
       expect(cards).toHaveLength(1);
       expect(cards[0]).toMatchObject({
-        answer: `${NOTE_TITLE}\n\n${FIRST_PARAGRAPH}`,
+        answer: FIRST_PARAGRAPH,
         front: CUE,
         kind: "basic",
       });
@@ -78,14 +78,14 @@ describe("extractCardsFromMarkdown — atomic `test:` grammar (WI-8)", () => {
       });
     });
 
-    it("`[cloze]` produces one cloze card: front = first paragraph incl. spans, answer = title", () => {
+    it("`[cloze]` produces one cloze card from the first paragraph without magic extra content", () => {
       const withSpan = "Chlorophyll is a ==pigment== that absorbs light.";
       const md = note(["test:", "  - cloze"], [withSpan]);
       const cards = atomicCards(extract(md));
 
       expect(cards).toHaveLength(1);
       expect(cards[0]).toMatchObject({
-        answer: NOTE_TITLE,
+        answer: "",
         front: withSpan,
         kind: "cloze",
       });
@@ -101,7 +101,7 @@ describe("extractCardsFromMarkdown — atomic `test:` grammar (WI-8)", () => {
       const cueCard = cards.find((c) => c.front === CUE);
       expect(titleCard).toMatchObject({ answer: FIRST_PARAGRAPH, kind: "basic" });
       expect(cueCard).toMatchObject({
-        answer: `${NOTE_TITLE}\n\n${FIRST_PARAGRAPH}`,
+        answer: FIRST_PARAGRAPH,
         kind: "basic",
       });
     });
@@ -116,7 +116,7 @@ describe("extractCardsFromMarkdown — atomic `test:` grammar (WI-8)", () => {
       const cards = atomicCards(extract(md));
 
       expect(cards).toHaveLength(2);
-      const expectedBack = `${NOTE_TITLE}\n\n${FIRST_PARAGRAPH}`;
+      const expectedBack = FIRST_PARAGRAPH;
       expect(cards.map((c) => c.front).sort()).toEqual([CUE_A, CUE_B].sort());
       for (const c of cards) {
         expect(c.answer).toBe(expectedBack);
@@ -150,7 +150,7 @@ describe("extractCardsFromMarkdown — atomic `test:` grammar (WI-8)", () => {
 
       expect(cards).toHaveLength(1);
       expect(cards[0]).toMatchObject({
-        answer: NOTE_TITLE,
+        answer: "",
         front: withSpan,
         kind: "cloze",
       });
@@ -163,7 +163,7 @@ describe("extractCardsFromMarkdown — atomic `test:` grammar (WI-8)", () => {
 
       expect(cards).toHaveLength(1);
       expect(cards[0]).toMatchObject({
-        answer: `${NOTE_TITLE}\n\n${FIRST_PARAGRAPH}`,
+        answer: FIRST_PARAGRAPH,
         front: CUE,
         kind: "basic",
       });
@@ -307,10 +307,10 @@ describe("extractCardsFromMarkdown — atomic `test:` grammar (WI-8)", () => {
       const cards = atomicCards(extract(md));
 
       expect(cards).toHaveLength(1);
-      // An authored cue's back is `title\n\nfirstParagraph`, unlike the
-      // reserved `title` item whose back is the first paragraph only.
+      // Authored cues and the reserved `title` item both use the first
+      // paragraph as literal answer content.
       expect(cards[0]).toMatchObject({
-        answer: `${NOTE_TITLE}\n\n${FIRST_PARAGRAPH}`,
+        answer: FIRST_PARAGRAPH,
         front: "Title",
         kind: "basic",
       });
@@ -387,7 +387,7 @@ describe("extractCardsFromMarkdown — atomic `test:` grammar (WI-8)", () => {
       const cueCard = cards.find((c) => c.front === CUE);
       expect(titleCard).toMatchObject({ answer: FIRST_PARAGRAPH, kind: "basic" });
       expect(cueCard).toMatchObject({
-        answer: `${NOTE_TITLE}\n\n${FIRST_PARAGRAPH}`,
+        answer: FIRST_PARAGRAPH,
         kind: "basic",
       });
     });
@@ -426,7 +426,7 @@ describe("extractCardsFromMarkdown — atomic `test:` grammar (WI-8)", () => {
       const titleCard = cards.find((c) => c.kind === "basic");
       const clozeCard = cards.find((c) => c.kind === "cloze");
       expect(titleCard).toMatchObject({ front: NOTE_TITLE, answer: withSpan });
-      expect(clozeCard).toMatchObject({ front: withSpan, answer: NOTE_TITLE });
+      expect(clozeCard).toMatchObject({ front: withSpan, answer: "" });
     });
   });
 
@@ -450,7 +450,7 @@ describe("extractCardsFromMarkdown — atomic `test:` grammar (WI-8)", () => {
 
       expect(cards).toHaveLength(1);
       expect(cards[0]).toMatchObject({
-        answer: `${NOTE_TITLE}\n\n${FIRST_PARAGRAPH}`,
+        answer: FIRST_PARAGRAPH,
         front: CUE,
         kind: "basic",
       });
@@ -512,7 +512,7 @@ describe("extractCardsFromMarkdown — atomic `test:` grammar (WI-8)", () => {
       const cueCard = cards.find((c) => c.front === CUE);
       expect(titleCard).toMatchObject({ answer: FIRST_PARAGRAPH, kind: "basic" });
       expect(cueCard).toMatchObject({
-        answer: `${NOTE_TITLE}\n\n${FIRST_PARAGRAPH}`,
+        answer: FIRST_PARAGRAPH,
         kind: "basic",
       });
     });

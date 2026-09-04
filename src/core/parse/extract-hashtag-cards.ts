@@ -1,7 +1,7 @@
 import type { Heading, Paragraph, Root, RootContent } from "mdast";
 
 import type { FlashcardsSettings } from "../config/settings.js";
-import type { Flashcard } from "../domain/card.js";
+import type { CardKind, Flashcard } from "../domain/card.js";
 
 export interface HashtagExtractContext {
   defaultTags: string[];
@@ -14,8 +14,6 @@ export interface HashtagExtractResult {
   cards: Flashcard[];
   warnings: string[];
 }
-
-type CardKind = "basic" | "reversed";
 
 interface TagSpec {
   kind: CardKind;
@@ -57,6 +55,7 @@ export function extractHashtagCards(
 
   const basic = `#${settings.hashtag.basicTag}`;
   const specs: TagSpec[] = [
+    { kind: "reminder", tag: `${basic}-reminder` },
     { kind: "reversed", tag: `${basic}-reverse` },
     { kind: "reversed", tag: `${basic}/reverse` },
     { kind: "basic", tag: basic },
@@ -80,6 +79,7 @@ export function extractHashtagCards(
 
         const previous = children[index - 1];
         if (
+          marker.kind !== "reminder" &&
           marker.standalone &&
           front.length === 0 &&
           previous?.type === "heading"
@@ -107,9 +107,11 @@ export function extractHashtagCards(
           continue;
         }
 
-        let answer = clean(
-          raw.slice(marker.answerStart, nextMarker?.questionStart ?? raw.length),
-        );
+        let answer = marker.kind === "reminder"
+          ? ""
+          : clean(
+              raw.slice(marker.answerStart, nextMarker?.questionStart ?? raw.length),
+            );
         let sourceEnd = nextMarker
           ? offsetStart(node) + nextMarker.questionStart
           : offsetEnd(node);
@@ -124,7 +126,11 @@ export function extractHashtagCards(
           }
         }
 
-        if (answer.length === 0 && nextMarker === undefined) {
+        if (
+          marker.kind !== "reminder" &&
+          answer.length === 0 &&
+          nextMarker === undefined
+        ) {
           const next = children[index + 1];
           if (next && !isExplicitCardStart(markdown, next, specs)) {
             answer = clean(sliceNode(markdown, next));
@@ -154,13 +160,9 @@ export function extractHashtagCards(
     );
     if (!marker) continue;
 
-    const section = collectHeadingSection(
-      markdown,
-      children,
-      index,
-      node,
-      specs,
-    );
+    const section = marker.kind === "reminder"
+      ? { endOffset: offsetEnd(node), text: "" }
+      : collectHeadingSection(markdown, children, index, node, specs);
     addCardOrWarning(
       cards,
       warnings,
@@ -188,10 +190,12 @@ function addCardOrWarning(
   sourceStart: number,
   sourceEnd: number,
 ): void {
-  if (front.length === 0 || answer.length === 0) {
+  if (front.length === 0 || (kind !== "reminder" && answer.length === 0)) {
     warnings.push(
-      `Skipped #card in ${context.notePath}:${node.position?.start.line ?? 1}: empty ${
-        front.length === 0 ? "question" : "answer"
+      `Skipped ${kind === "reminder" ? "reminder card" : "#card"} in ${context.notePath}:${node.position?.start.line ?? 1}: empty ${
+        front.length === 0
+          ? kind === "reminder" ? "content" : "question"
+          : "answer"
       }.`,
     );
     return;

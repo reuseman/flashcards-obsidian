@@ -7,6 +7,7 @@ import type { IdentifiedFlashcard } from "../../core/domain/card.js";
 import {
   ANKI_MODEL_BASIC,
   ANKI_MODEL_CLOZE,
+  ANKI_MODEL_REMINDER,
   ANKI_MODEL_REVERSED,
 } from "../../core/render/render-card.js";
 import type { ParsedCardFrontmatter } from "../../core/sync/parse-card-frontmatter.js";
@@ -27,8 +28,10 @@ export interface ReconcileExistingCardsInput {
   confirmKindRecreations?: (
     pending: PendingKindRecreation[],
   ) => Promise<boolean>;
+  desiredFieldHashes?: ReadonlyMap<string, string>;
   frontmatter: ParsedCardFrontmatter;
   plan: SyncPlan;
+  preparedCardsByBlockId?: ReadonlyMap<string, IdentifiedFlashcard>;
 }
 
 export interface ReconcileExistingCardsResult {
@@ -38,6 +41,7 @@ export interface ReconcileExistingCardsResult {
 
 function desiredModel(card: IdentifiedFlashcard): string {
   if (card.kind === "cloze") return ANKI_MODEL_CLOZE;
+  if (card.kind === "reminder") return ANKI_MODEL_REMINDER;
   if (card.kind === "reversed") return ANKI_MODEL_REVERSED;
   return ANKI_MODEL_BASIC;
 }
@@ -47,9 +51,12 @@ function crossesClozeBoundary(fromModel: string, toModel: string): boolean {
 }
 
 function ownedFieldNames(modelName: string): string[] {
+  if (modelName === ANKI_MODEL_REMINDER) {
+    return ["Content", "Context", "Source"];
+  }
   return modelName === ANKI_MODEL_CLOZE
-    ? ["Text", "Extra", "Source"]
-    : ["Front", "Back", "Source"];
+    ? ["Text", "Extra", "Context", "Source"]
+    : ["Front", "Back", "Context", "Source"];
 }
 
 function readOwnedFields(
@@ -77,6 +84,18 @@ function readOwnedFields(
 export async function reconcileExistingCards(
   input: ReconcileExistingCardsInput,
 ): Promise<ReconcileExistingCardsResult> {
+  const plan: SyncPlan = {
+    ...input.plan,
+    create: input.plan.create.map((op) => ({
+      ...op,
+      card: input.preparedCardsByBlockId?.get(op.card.blockId) ?? op.card,
+    })),
+    delete: [...input.plan.delete],
+    update: input.plan.update.map((op) => ({
+      ...op,
+      card: input.preparedCardsByBlockId?.get(op.card.blockId) ?? op.card,
+    })),
+  };
   const entryByBlockId = new Map(
     input.frontmatter.entries.map((entry) => [entry.blockId, entry]),
   );
@@ -87,7 +106,7 @@ export async function reconcileExistingCards(
   });
 
   if (bindings.length === 0) {
-    return { plan: input.plan, recoveredMissingCount: 0 };
+    return { plan, recoveredMissingCount: 0 };
   }
 
   const requestedNids = [...new Set(bindings.map((binding) => binding.nid))];
@@ -113,22 +132,18 @@ export async function reconcileExistingCards(
     ),
   );
 
-  const plan: SyncPlan = {
-    ...input.plan,
-    create: [...input.plan.create],
-    delete: [...input.plan.delete],
-    update: input.plan.update.map((op) => ({ ...op })),
-  };
   let recoveredMissingCount = 0;
   const pending: PendingKindRecreation[] = [];
   const pendingBlockIds = new Set<string>();
 
   for (const { card, entry, nid } of bindings) {
+    const preparedCard =
+      input.preparedCardsByBlockId?.get(card.blockId) ?? card;
     const noteInfo = noteByNid.get(nid);
     if (!noteInfo) {
       plan.update = plan.update.filter((op) => op.card.blockId !== card.blockId);
       if (!plan.create.some((op) => op.card.blockId === card.blockId)) {
-        plan.create.push({ card, hash: computeCardHash(card) });
+        plan.create.push({ card: preparedCard, hash: computeCardHash(card) });
       }
       recoveredMissingCount += 1;
       continue;
@@ -142,16 +157,23 @@ export async function reconcileExistingCards(
           : [];
       },
     );
-    const targetModel = desiredModel(card);
+    const targetModel = desiredModel(preparedCard);
     const currentModel = noteInfo.modelName ?? targetModel;
     const deckMismatch = existingCards.some(
       (existingCard) => existingCard.deckName !== card.deckName,
     );
     const modelMismatch = currentModel !== targetModel;
     const liveFields = readOwnedFields(noteInfo.fields, currentModel);
+    const liveFieldsHash =
+      liveFields === undefined
+        ? undefined
+        : computeRenderedFieldsHash(liveFields);
+    const desiredFieldsHash = input.desiredFieldHashes?.get(card.blockId);
     const fieldMismatch =
-      liveFields !== undefined &&
-      entry?.sync !== computeRenderedFieldsHash(liveFields);
+      liveFieldsHash !== undefined &&
+      (desiredFieldsHash !== undefined
+        ? liveFieldsHash !== desiredFieldsHash
+        : entry?.sync !== liveFieldsHash);
     const liveTags = Array.isArray(noteInfo.tags) ? [...noteInfo.tags] : [];
     const tagMismatch = !sameTagSet(
       liveTags,
@@ -162,7 +184,7 @@ export async function reconcileExistingCards(
     if (!update && (deckMismatch || modelMismatch || tagMismatch || fieldMismatch)) {
       const hash = computeCardHash(card);
       update = {
-        card,
+        card: preparedCard,
         newHash: hash,
         nid,
         oldHash: entry?.hash ?? hash,

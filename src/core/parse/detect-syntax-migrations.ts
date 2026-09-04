@@ -8,6 +8,7 @@ import {
 export type SyntaxMigrationKind =
   | "legacy-curly-cloze"
   | "legacy-hashtag-continuation"
+  | "legacy-spaced-card"
   | "malformed-cloze";
 
 export interface SyntaxMigrationDiagnostic {
@@ -35,6 +36,29 @@ export function detectSyntaxMigrations(
 
     const source = markdown.slice(start, end);
     const protectedSpans = collectProtectedMarkdownSpans(node, start);
+
+    for (const match of source.matchAll(/#card(?:-|\/)spaced(?![\w/-])/g)) {
+      const matchStart = match.index;
+      if (
+        matchStart === undefined ||
+        intersectsSpan(
+          matchStart,
+          matchStart + match[0].length,
+          protectedSpans,
+        )
+      ) {
+        continue;
+      }
+      diagnostics.push(
+        diagnosticAt(
+          markdown,
+          start + matchStart,
+          "legacy-spaced-card",
+          `The v1 reminder syntax \`${match[0]}\` is not parsed by v2.`,
+          "Replace it with `#card-reminder`. The existing card anchor keeps the link to its Anki note.",
+        ),
+      );
+    }
 
     if (source.trim() === "^") {
       diagnostics.push(

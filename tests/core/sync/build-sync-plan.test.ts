@@ -31,9 +31,11 @@ import type {
  *
  * v1-anchor rules (13-digit numeric blockIds):
  *   A. Parsed v1 card, no fm entry          → SKIP (opt-in migration).
- *   B. Parsed v1 card, fm hash present, hashes differ → UPDATE with nid = parseInt(blockId).
+ *   B. Parsed v1 card, fm hash present, hashes differ → UPDATE with stored nid,
+ *      falling back to parseInt(blockId).
  *      Hashes match → no-op.
- *   C. fm entry (numeric key), no parsed card → DELETE with nid = parseInt(blockId).
+ *   C. fm entry (numeric key), no parsed card → DELETE with stored nid,
+ *      falling back to parseInt(blockId).
  *
  * Order stability:
  *   - create / update preserve input `cards` order.
@@ -219,6 +221,30 @@ describe("buildSyncPlan — v1 rule B (fm hash present)", () => {
       },
     ]);
   });
+
+  test("a recovered v1 binding updates the stored replacement nid", () => {
+    const card = id("1700000000001");
+    const plan = buildSyncPlan({
+      cards: [card],
+      computeHash: stubHash(),
+      frontmatter: fm([
+        {
+          blockId: "1700000000001",
+          hash: "oldhash",
+          nid: 1788507933645,
+        },
+      ]),
+    });
+
+    expect(plan.update).toEqual([
+      {
+        card,
+        newHash: "newhash-1700000000001",
+        nid: 1788507933645,
+        oldHash: "oldhash",
+      },
+    ]);
+  });
 });
 
 describe("buildSyncPlan — v1 rule C (numeric key, no parsed card → DELETE)", () => {
@@ -230,6 +256,24 @@ describe("buildSyncPlan — v1 rule C (numeric key, no parsed card → DELETE)",
     });
     expect(plan.delete).toEqual([
       { blockId: "1700000000002", nid: 1700000000002 },
+    ]);
+  });
+
+  test("a recovered v1 binding deletes the stored replacement nid", () => {
+    const plan = buildSyncPlan({
+      cards: [],
+      computeHash: stubHash(),
+      frontmatter: fm([
+        {
+          blockId: "1700000000002",
+          hash: "old",
+          nid: 1788507933999,
+        },
+      ]),
+    });
+
+    expect(plan.delete).toEqual([
+      { blockId: "1700000000002", nid: 1788507933999 },
     ]);
   });
 });

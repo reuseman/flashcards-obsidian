@@ -110,7 +110,8 @@ describe("hashtag card Markdown-node boundaries", () => {
     });
     expect(result.cards[1]).toMatchObject({
       answer: "Second answer.",
-      front: "First > Second",
+      context: "First",
+      front: "Second",
     });
   });
 

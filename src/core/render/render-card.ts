@@ -24,6 +24,7 @@ import { visit } from "unist-util-visit";
 export const ANKI_MODEL_BASIC = "Obsidian-basic";
 export const ANKI_MODEL_REVERSED = "Obsidian-basic-reversed";
 export const ANKI_MODEL_CLOZE = "Obsidian-cloze";
+export const ANKI_MODEL_REMINDER = "Obsidian-reminder";
 
 const DEFAULT_CSS = `/* flashcards-obsidian-managed:start */
 .card {
@@ -57,6 +58,9 @@ const DEFAULT_CSS = `/* flashcards-obsidian-managed:start */
 }
 
 .flashcards-question,
+.flashcards-reminder,
+.flashcards-reminder-guidance,
+.flashcards-context,
 .flashcards-answer,
 .flashcards-source-footer,
 .flashcards-answer-divider {
@@ -65,11 +69,33 @@ const DEFAULT_CSS = `/* flashcards-obsidian-managed:start */
   margin-left: auto;
 }
 
+.flashcards-context {
+  margin-bottom: 0.55rem;
+  color: var(--flashcards-muted);
+  font-size: 0.78em;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.flashcards-context p {
+  margin: 0;
+}
+
 .flashcards-question {
   font-size: 1.18em;
   font-weight: 600;
   letter-spacing: -0.018em;
   line-height: 1.4;
+}
+
+.flashcards-reminder {
+  font-size: 1.08em;
+}
+
+.flashcards-reminder-guidance {
+  color: var(--flashcards-muted);
+  font-size: 0.86em;
+  font-weight: 650;
 }
 
 .flashcards-answer-divider {
@@ -175,18 +201,19 @@ blockquote {
 /* flashcards-obsidian-managed:end */
 `;
 
-const BASIC_FRONT_TEMPLATE =
-  '<section class="flashcards-question">{{Front}}</section>';
+export const ANKI_CONTEXT_TEMPLATE =
+  '{{#Context}}<aside class="flashcards-context">{{Context}}</aside>{{/Context}}';
+const BASIC_FRONT_TEMPLATE = `${ANKI_CONTEXT_TEMPLATE}<section class="flashcards-question">{{Front}}</section>`;
 const BASIC_BACK_TEMPLATE =
   '{{FrontSide}}<hr id="answer" class="flashcards-answer-divider"><section class="flashcards-answer">{{Back}}</section><footer class="flashcards-source-footer">{{Source}}</footer>';
-const REVERSED_FRONT_TEMPLATE =
-  '<section class="flashcards-question">{{Back}}</section>';
+const REVERSED_FRONT_TEMPLATE = `${ANKI_CONTEXT_TEMPLATE}<section class="flashcards-question">{{Back}}</section>`;
 const REVERSED_BACK_TEMPLATE =
   '{{FrontSide}}<hr id="answer" class="flashcards-answer-divider"><section class="flashcards-answer">{{Front}}</section><footer class="flashcards-source-footer">{{Source}}</footer>';
-const CLOZE_FRONT_TEMPLATE =
-  '<section class="flashcards-question">{{cloze:Text}}</section>';
-const CLOZE_BACK_TEMPLATE =
-  '<section class="flashcards-question">{{cloze:Text}}</section>{{#Extra}}<hr id="answer" class="flashcards-answer-divider"><section class="flashcards-answer">{{Extra}}</section>{{/Extra}}<footer class="flashcards-source-footer">{{Source}}</footer>';
+const CLOZE_FRONT_TEMPLATE = `${ANKI_CONTEXT_TEMPLATE}<section class="flashcards-question">{{cloze:Text}}</section>`;
+const CLOZE_BACK_TEMPLATE = `${ANKI_CONTEXT_TEMPLATE}<section class="flashcards-question">{{cloze:Text}}</section>{{#Extra}}<hr id="answer" class="flashcards-answer-divider"><section class="flashcards-answer">{{Extra}}</section>{{/Extra}}<footer class="flashcards-source-footer">{{Source}}</footer>`;
+const REMINDER_FRONT_TEMPLATE = `${ANKI_CONTEXT_TEMPLATE}<section class="flashcards-reminder">{{Content}}</section>`;
+const REMINDER_BACK_TEMPLATE =
+  '{{FrontSide}}<hr id="answer" class="flashcards-answer-divider"><section class="flashcards-reminder-guidance">How soon should this come back?</section><footer class="flashcards-source-footer">{{Source}}</footer>';
 
 export interface RenderContext {
   /** Convert `==text==` to an Anki cloze. Default: true. */
@@ -204,8 +231,10 @@ export interface RenderedFields {
   // RenderedFields flow into the AnkiConnect `Record<string, string>` field
   // map without an unsafe cast.
   [field: string]: string;
+  Content: string;
   Front: string;
   Back: string;
+  Context: string;
   Text: string;
   Extra: string;
   Source: string;
@@ -222,7 +251,7 @@ export function getAnkiModelSpecs(): AnkiCreateModelSpec[] {
   return [
     {
       modelName: ANKI_MODEL_BASIC,
-      inOrderFields: ["Front", "Back", "Source"],
+      inOrderFields: ["Front", "Back", "Context", "Source"],
       isCloze: false,
       css: DEFAULT_CSS,
       cardTemplates: [
@@ -235,7 +264,7 @@ export function getAnkiModelSpecs(): AnkiCreateModelSpec[] {
     },
     {
       modelName: ANKI_MODEL_REVERSED,
-      inOrderFields: ["Front", "Back", "Source"],
+      inOrderFields: ["Front", "Back", "Context", "Source"],
       isCloze: false,
       css: DEFAULT_CSS,
       cardTemplates: [
@@ -253,7 +282,7 @@ export function getAnkiModelSpecs(): AnkiCreateModelSpec[] {
     },
     {
       modelName: ANKI_MODEL_CLOZE,
-      inOrderFields: ["Text", "Extra", "Source"],
+      inOrderFields: ["Text", "Extra", "Context", "Source"],
       isCloze: true,
       css: DEFAULT_CSS,
       cardTemplates: [
@@ -261,6 +290,19 @@ export function getAnkiModelSpecs(): AnkiCreateModelSpec[] {
           Name: "Card 1",
           Front: CLOZE_FRONT_TEMPLATE,
           Back: CLOZE_BACK_TEMPLATE,
+        },
+      ],
+    },
+    {
+      modelName: ANKI_MODEL_REMINDER,
+      inOrderFields: ["Content", "Context", "Source"],
+      isCloze: false,
+      css: DEFAULT_CSS,
+      cardTemplates: [
+        {
+          Name: "Card 1",
+          Front: REMINDER_FRONT_TEMPLATE,
+          Back: REMINDER_BACK_TEMPLATE,
         },
       ],
     },
@@ -365,6 +407,7 @@ export function renderCardForAnki(
           sourcePath: ctx.notePath,
           resolveLink,
         });
+  const context = card.context === undefined ? "" : md(rewrite(card.context));
 
   if (card.kind === "cloze") {
     const text = md(
@@ -374,7 +417,25 @@ export function renderCardForAnki(
     return {
       deckName: ctx.deckName,
       modelName: ANKI_MODEL_CLOZE,
-      fields: { Text: text, Extra: extra, Source: source } as RenderedFields,
+      fields: {
+        Text: text,
+        Extra: extra,
+        Context: context,
+        Source: source,
+      } as RenderedFields,
+      tags: ctx.tags,
+    };
+  }
+
+  if (card.kind === "reminder") {
+    return {
+      deckName: ctx.deckName,
+      modelName: ANKI_MODEL_REMINDER,
+      fields: {
+        Content: md(rewrite(card.front)),
+        Context: context,
+        Source: source,
+      } as RenderedFields,
       tags: ctx.tags,
     };
   }
@@ -387,6 +448,7 @@ export function renderCardForAnki(
     fields: {
       Front: md(rewrite(card.front)),
       Back: md(rewrite(card.answer)),
+      Context: context,
       Source: source,
     } as RenderedFields,
     tags: ctx.tags,

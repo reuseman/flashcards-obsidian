@@ -6,6 +6,7 @@ import {
   ANKI_MODEL_BASIC,
   ANKI_MODEL_REVERSED,
   ANKI_MODEL_CLOZE,
+  ANKI_MODEL_REMINDER,
 } from "../../src/core/render/render-card.js";
 import { DEFAULT_SETTINGS } from "../../src/core/config/settings.js";
 import type { FlashcardsSettings } from "../../src/core/config/settings.js";
@@ -38,7 +39,7 @@ import { bootAllV2, makeFakeFetch, ok } from "../_utils/fake-fetch.js";
  * atomic orphan + one atomic CREATE (the pairing precondition).
  */
 
-const ALL_MODELS = [ANKI_MODEL_BASIC, ANKI_MODEL_REVERSED, ANKI_MODEL_CLOZE];
+const ALL_MODELS = [ANKI_MODEL_BASIC, ANKI_MODEL_REVERSED, ANKI_MODEL_CLOZE, ANKI_MODEL_REMINDER];
 const VAULT = "MyVault";
 const NOTE_PATH = "notes/Rebind me.md";
 const TITLE = "Rebind me";

@@ -1,6 +1,8 @@
 import {
+  ANKI_CONTEXT_TEMPLATE,
   ANKI_MODEL_BASIC,
   ANKI_MODEL_CLOZE,
+  ANKI_MODEL_REMINDER,
   ANKI_MODEL_REVERSED,
 } from "../../core/render/render-card.js";
 import type {
@@ -12,6 +14,7 @@ const MANAGED_MODELS = [
   ANKI_MODEL_BASIC,
   ANKI_MODEL_REVERSED,
   ANKI_MODEL_CLOZE,
+  ANKI_MODEL_REMINDER,
 ];
 const SOURCE_TOKEN = "{{Source}}";
 
@@ -21,9 +24,9 @@ export interface SourceTemplateRepairResult {
 }
 
 /**
- * Repairs models that have a Source field but do not render it. Existing
- * template HTML is kept byte-for-byte; only a missing token is appended to
- * the Back side. Models without the field are left to the normal v1 upgrade.
+ * Repairs additive wrappers for managed Context and Source fields. Existing
+ * template HTML is kept byte-for-byte inside the wrapper. Models without the
+ * fields are left to the normal in-place field upgrade.
  */
 export async function repairManagedSourceTemplates(
   client: AnkiConnectClient,
@@ -35,10 +38,15 @@ export async function repairManagedSourceTemplates(
   for (const modelName of MANAGED_MODELS) {
     if (!existing.has(modelName)) continue;
     const fields = await client.modelFieldNames(modelName);
-    if (!fields.includes("Source")) continue;
+    const hasContext = fields.includes("Context");
+    const hasSource = fields.includes("Source");
+    if (!hasContext && !hasSource) continue;
 
     const current = await client.modelTemplates(modelName);
-    const repaired = appendMissingSourceTokens(current);
+    const repaired = appendMissingManagedTokens(current, {
+      context: hasContext,
+      source: hasSource,
+    });
     if (repaired.updated === 0) continue;
 
     await client.updateModelTemplates(modelName, repaired.templates);
@@ -49,7 +57,10 @@ export async function repairManagedSourceTemplates(
   return { modelsUpdated, templatesUpdated };
 }
 
-function appendMissingSourceTokens(templates: AnkiModelTemplates): {
+function appendMissingManagedTokens(
+  templates: AnkiModelTemplates,
+  fields: { context: boolean; source: boolean },
+): {
   templates: AnkiModelTemplates;
   updated: number;
 } {
@@ -57,15 +68,23 @@ function appendMissingSourceTokens(templates: AnkiModelTemplates): {
   const next: AnkiModelTemplates = {};
 
   for (const [name, template] of Object.entries(templates)) {
-    if (template.Back.includes(SOURCE_TOKEN)) {
-      next[name] = template;
-      continue;
+    let front = template.Front;
+    let back = template.Back;
+    if (fields.context && !front.includes("{{Context}}")) {
+      front = `${ANKI_CONTEXT_TEMPLATE}${front}`;
     }
-    updated++;
-    next[name] = {
-      Back: `${template.Back}\n<br><br>${SOURCE_TOKEN}`,
-      Front: template.Front,
-    };
+    if (
+      fields.context &&
+      !back.includes("{{Context}}") &&
+      !back.includes("{{FrontSide}}")
+    ) {
+      back = `${ANKI_CONTEXT_TEMPLATE}${back}`;
+    }
+    if (fields.source && !back.includes(SOURCE_TOKEN)) {
+      back = `${back}\n<br><br>${SOURCE_TOKEN}`;
+    }
+    if (front !== template.Front || back !== template.Back) updated++;
+    next[name] = { Back: back, Front: front };
   }
 
   return { templates: next, updated };

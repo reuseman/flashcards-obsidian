@@ -123,11 +123,11 @@ function buildCard(
     kind = "reversed";
   } else if (item === RESERVED_CLOZE) {
     front = firstParagraph;
-    answer = title;
+    answer = "";
     kind = "cloze";
   } else {
     front = item;
-    answer = `${title}\n\n${firstParagraph}`;
+    answer = firstParagraph;
     kind = "basic";
   }
 

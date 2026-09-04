@@ -100,6 +100,6 @@ export function renderPendingV1(el: HTMLElement, count: number): void {
   el.createSpan({ text: `Vault: ${count} pending migration` });
   el.setAttribute(
     "aria-label",
-    `${count} flashcards across the vault are from an older version of the plugin and are awaiting migration. Run "Flashcards: Sync vault" to be offered the migration.`,
+    `${count} flashcards across the vault are from an older version of the plugin and are awaiting migration. Run "Flashcards: Update Anki from vault" to be offered the migration.`,
   );
 }

@@ -154,19 +154,28 @@ export function extractCardsFromMarkdown(
         return;
       }
       const fields = parseFencedFields(node.value ?? "");
-      const front = fields.front ?? "";
+      const front = fields.type === "reminder"
+        ? fields.content ?? ""
+        : fields.front ?? "";
       const back = fields.back ?? "";
       const type = fields.type || "basic";
 
-      if (type !== "basic" && type !== "reversed" && type !== "cloze") {
+      if (
+        type !== "basic" &&
+        type !== "reversed" &&
+        type !== "cloze" &&
+        type !== "reminder"
+      ) {
         warnings.push(
           `Fenced flashcard block has unsupported \`type: ${type}\`; skipped.`,
         );
       } else if (!front) {
         warnings.push(
-          "Fenced flashcard block missing required `front:` field; skipped.",
+          type === "reminder"
+            ? "Fenced reminder block missing required `content:` field; skipped."
+            : "Fenced flashcard block missing required `front:` field; skipped.",
         );
-      } else if (!back && type !== "cloze") {
+      } else if (!back && type !== "cloze" && type !== "reminder") {
         warnings.push(
           "Fenced flashcard block missing required `back:` field; skipped.",
         );
@@ -179,7 +188,9 @@ export function extractCardsFromMarkdown(
             ? "cloze"
             : type === "reversed"
               ? "reversed"
-              : "basic",
+              : type === "reminder"
+                ? "reminder"
+                : "basic",
           source: {
             endOffset: node.position?.end.offset ?? 0,
             line: node.position?.start.line ?? 1,
@@ -304,7 +315,7 @@ function applyContext(
       return card;
     }
 
-    return { ...card, front: `${context}${separator}${card.front}` };
+    return { ...card, context };
   });
 }
 
@@ -349,7 +360,12 @@ function cleanHeadingText(
     phrasingToVisibleText(heading.children, markdown).trim(),
   );
   const basicTag = `#${settings.hashtag.basicTag}`;
-  for (const tag of [`${basicTag}-reverse`, `${basicTag}/reverse`, basicTag]) {
+  for (const tag of [
+    `${basicTag}-reminder`,
+    `${basicTag}-reverse`,
+    `${basicTag}/reverse`,
+    basicTag,
+  ]) {
     if (text.endsWith(tag)) {
       const before = text.slice(0, -tag.length);
       if (before.length === 0 || /\s$/.test(before)) {
@@ -493,7 +509,9 @@ function extractListCards(
         if (!inline) continue;
 
         const paragraphEnd = paragraph.position?.end.offset ?? end;
-        const childMarkdown = markdown.slice(paragraphEnd, end).trim();
+        const childMarkdown = stripTrailingAnchor(
+          markdown.slice(paragraphEnd, end).trim(),
+        );
         cards.push({
           answer: [inline.answer, childMarkdown].filter(Boolean).join("\n\n"),
           deckName: resolvedDeck,
@@ -525,7 +543,7 @@ function extractListCards(
       ) {
         continue;
       }
-      const source = markdown.slice(start, end);
+      const source = stripTrailingAnchor(markdown.slice(start, end));
       const syntax = parseClozeSyntax(
         source,
         collectProtectedMarkdownSpans(list, start),
@@ -583,11 +601,12 @@ function collectNodeRanges(tree: Root, type: Nodes["type"]): Span[] {
 
 interface FencedFields {
   back?: string;
+  content?: string;
   front?: string;
   type?: string;
 }
 
-const FENCED_KEY_RE = /^(front|back|type):(.*)$/;
+const FENCED_KEY_RE = /^(front|back|content|type):(.*)$/;
 
 /**
  * A field value spans the text after `key:` plus every following line until the

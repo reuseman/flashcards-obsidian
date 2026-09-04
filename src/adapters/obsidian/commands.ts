@@ -58,7 +58,7 @@ export function registerPluginCommands(plugin: PluginHost): void {
       return true;
     },
     id: "flashcards-sync-current-note",
-    name: "Sync current note",
+    name: "Update Anki from current note",
   });
 
   plugin.addCommand({
@@ -66,7 +66,7 @@ export function registerPluginCommands(plugin: PluginHost): void {
       void runWithMigrationCheck(plugin, "vault");
     },
     id: "flashcards-sync-vault",
-    name: "Sync vault",
+    name: "Update Anki from vault",
   });
 }
 
@@ -272,13 +272,13 @@ function createMediaPipeline(
 ): MediaPipeline {
   return async (refs, sourcePath) => {
     const resolution = await resolveMedia(plugin.app, sourcePath, refs);
-    await uploadMedia(ankiClient, resolution.resolved.values());
     return {
       rewriteMap: buildMediaRewriteMap(refs, resolution.resolved),
       errors: resolution.errors.map((e) => ({
         filename: e.filename,
         reason: e.reason,
       })),
+      upload: () => uploadMedia(ankiClient, resolution.resolved.values()),
     };
   };
 }
@@ -302,7 +302,7 @@ async function dispatch(
       new Notice(
         `Updated ${repair.templatesUpdated} Anki ${
           repair.templatesUpdated === 1 ? "template" : "templates"
-        } to show Source links.`,
+        } to show managed Context or Source fields.`,
       );
     }
     if (target === "current") {

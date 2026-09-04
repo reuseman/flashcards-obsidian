@@ -25,8 +25,14 @@ export interface FakeFetchHandle {
   readonly calls: RecordedCall[];
 }
 
+export interface FakeFetchOptions {
+  /** Set false when a test queues exact notesInfo/cardsInfo responses. */
+  readonly useDefaultReconciliationResponses?: boolean;
+}
+
 export function makeFakeFetch(
   responses: readonly FakeResponseSpec[],
+  options: FakeFetchOptions = {},
 ): FakeFetchHandle {
   const queue = [...responses];
   const calls: RecordedCall[] = [];
@@ -49,7 +55,10 @@ export function makeFakeFetch(
     // tests are concerned with the mutation queued below, so provide a stable
     // live-note default without consuming their response queue. Focused stale,
     // model, and deck tests use a purpose-built gateway instead.
-    if (parsed.action === "notesInfo") {
+    if (
+      options.useDefaultReconciliationResponses !== false &&
+      parsed.action === "notesInfo"
+    ) {
       const notes = Array.isArray((parsed.params as { notes?: unknown })?.notes)
         ? ((parsed.params as { notes: unknown[] }).notes)
         : [];
@@ -64,7 +73,10 @@ export function makeFakeFetch(
         status: 200,
       } as unknown as Response;
     }
-    if (parsed.action === "cardsInfo") {
+    if (
+      options.useDefaultReconciliationResponses !== false &&
+      parsed.action === "cardsInfo"
+    ) {
       return {
         json: async () => ({ error: null, result: [] }),
         ok: true,
@@ -97,18 +109,19 @@ export function err(error: string): FakeResponseSpec {
 }
 
 /**
- * Stubs the model-bootstrap chatter: modelNames followed by 3 v2-shaped
- * modelFieldNames responses (Source field present, no extend-in-place
- * upgrade fires). Caller passes the model name list expected by the
- * bootstrap.
+ * Stubs the model-bootstrap chatter: modelNames followed by 4 v2-shaped
+ * modelFieldNames responses (Context and Source fields present, no
+ * extend-in-place upgrade fires). Caller passes the model name list expected
+ * by the bootstrap.
  */
 export function bootAllV2(
   modelNames: readonly string[],
 ): FakeResponseSpec[] {
   return [
     ok(modelNames),
-    ok(["Front", "Back", "Source"]),
-    ok(["Front", "Back", "Source"]),
-    ok(["Text", "Extra", "Source"]),
+    ok(["Front", "Back", "Context", "Source"]),
+    ok(["Front", "Back", "Context", "Source"]),
+    ok(["Text", "Extra", "Context", "Source"]),
+    ok(["Content", "Context", "Source"]),
   ];
 }

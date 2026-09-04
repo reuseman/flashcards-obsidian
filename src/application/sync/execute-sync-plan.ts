@@ -1,7 +1,9 @@
 import type { ExecuteSyncPlanInput } from "../ports.js";
 import {
+  ANKI_CONTEXT_TEMPLATE,
   ANKI_MODEL_BASIC,
   ANKI_MODEL_CLOZE,
+  ANKI_MODEL_REMINDER,
   ANKI_MODEL_REVERSED,
   getAnkiModelSpecs,
   renderCardForAnki,
@@ -19,7 +21,31 @@ const REQUIRED_MODELS = [
   ANKI_MODEL_BASIC,
   ANKI_MODEL_REVERSED,
   ANKI_MODEL_CLOZE,
+  ANKI_MODEL_REMINDER,
 ];
+const CONTEXT_TOKEN = "{{Context}}";
+
+function extendManagedTemplates(
+  templates: Record<string, { Back: string; Front: string }>,
+): Record<string, { Back: string; Front: string }> {
+  return Object.fromEntries(
+    Object.entries(templates).map(([templateName, template]) => {
+      const front = template.Front.includes(CONTEXT_TOKEN)
+        ? template.Front
+        : `${ANKI_CONTEXT_TEMPLATE}${template.Front}`;
+      let back = template.Back.includes("{{Source}}")
+        ? template.Back
+        : `${template.Back}\n<br><br>{{Source}}`;
+      if (
+        !back.includes(CONTEXT_TOKEN) &&
+        !back.includes("{{FrontSide}}")
+      ) {
+        back = `${ANKI_CONTEXT_TEMPLATE}${back}`;
+      }
+      return [templateName, { Back: back, Front: front }];
+    }),
+  );
+}
 
 function errorMessage(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -93,25 +119,31 @@ export async function executeSyncPlan(
       continue;
     }
     const fields = await client.modelFieldNames(name);
-    if (!fields.includes("Source")) {
-      logger.info("bootstrap: extending v1 model with Source field", {
+    const missingContext = !fields.includes("Context");
+    const missingSource = !fields.includes("Source");
+    if (missingContext || missingSource) {
+      logger.info("bootstrap: extending managed model fields", {
         model: name,
         existingFields: fields,
+        missingContext,
+        missingSource,
       });
       const templates = await client.modelTemplates(name);
-      await client.modelFieldAdd(name, "Source", fields.length);
-      const withSource = Object.fromEntries(
-        Object.entries(templates).map(([templateName, template]) => [
-          templateName,
-          template.Back.includes("{{Source}}")
-            ? template
-            : {
-                Back: `${template.Back}\n<br><br>{{Source}}`,
-                Front: template.Front,
-              },
-        ]),
+      const nextFields = [...fields];
+      if (missingContext) {
+        const sourceIndex = nextFields.indexOf("Source");
+        const contextIndex =
+          sourceIndex === -1 ? nextFields.length : sourceIndex;
+        await client.modelFieldAdd(name, "Context", contextIndex);
+        nextFields.splice(contextIndex, 0, "Context");
+      }
+      if (missingSource) {
+        await client.modelFieldAdd(name, "Source", nextFields.length);
+      }
+      await client.updateModelTemplates(
+        name,
+        extendManagedTemplates(templates),
       );
-      await client.updateModelTemplates(name, withSource);
     } else {
       logger.debug("bootstrap: model already v2-shaped", { model: name });
     }
