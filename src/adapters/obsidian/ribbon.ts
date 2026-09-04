@@ -4,9 +4,11 @@ import type { PluginHost } from "./plugin-host.js";
 
 const ICON_ID = "flashcards-card-stack";
 const ICON_SVG = [
-  '<path d="M4 18V6a2 2 0 0 1 2-2h2"/>',
-  '<rect x="8" y="2" width="12" height="20" rx="2"/>',
-  '<path d="M11 7h6M11 11h4"/>',
+  '<g fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">',
+  '<path d="M18 77V27c0-8 6-14 14-14h8"/>',
+  '<rect x="36" y="8" width="50" height="84" rx="9"/>',
+  '<path d="M50 34h22M50 52h15"/>',
+  "</g>",
 ].join("");
 
 /** Add the current-note sync action to Obsidian's left ribbon. */

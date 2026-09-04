@@ -26,7 +26,7 @@ describe("flashcards ribbon", () => {
     expect(registerFlashcardsRibbon(plugin, onClick)).toBe(element);
     expect(obsidian.addIcon).toHaveBeenCalledWith(
       "flashcards-card-stack",
-      expect.stringContaining("<rect"),
+      expect.stringMatching(/stroke="currentColor".*<rect x="36"/),
     );
     expect(addRibbonIcon).toHaveBeenCalledWith(
       "flashcards-card-stack",
