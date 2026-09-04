@@ -1,6 +1,6 @@
 import type { AnkiGateway, MarkdownNote, MarkdownRepository } from "./ports.js";
+import type { SyncExecutionSession } from "./ports.js";
 import type { FlashcardsSettings } from "../core/config/settings.js";
-import { extractCardsFromMarkdown } from "../core/parse/extract-cards.js";
 import type {
   PendingDeletion,
   PendingKindRecreation,
@@ -14,48 +14,26 @@ import {
   type MediaPipeline,
   type SyncNoteResult,
 } from "./sync-note.js";
+import {
+  loadLiveAnkiState,
+  uniqueKnownNids,
+  type LiveAnkiState,
+} from "./sync/load-live-anki-state.js";
 
 /**
  * Cue-collision lint (design §4.8, item 4): identical normalized cue on
- * DIFFERENT notes, vault-level sync only — a single-note sync has no
- * visibility into other notes' cues, so this can never live in `syncNote`.
- * Re-extracts each note (already parsed once inside `syncNote`, but there is
- * no cheap way to share that result across the black-box call without
- * threading extra plumbing through it) purely to gather cue candidates.
+ * different notes. Evidence comes from each note's first extraction pass or
+ * from a verified incremental-cache entry.
  */
-function normalizeCue(text: string): string {
-  return text.trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-// Cheap prefilter: only notes that could plausibly carry an atomic card are
-// worth the extraction re-run at all.
-const HAS_TEST_KEY_RE = /^test:/m;
-
 function detectCueCollisions(
-  notes: MarkdownNote[],
-  settings: FlashcardsSettings,
+  evidence: Array<{ cues: string[]; notePath: string }>,
 ): string[] {
   const cueToNotePaths = new Map<string, Set<string>>();
 
-  for (const note of notes) {
-    if (!HAS_TEST_KEY_RE.test(note.markdown)) continue;
-    let cards;
-    try {
-      ({ cards } = extractCardsFromMarkdown(note.markdown, {
-        notePath: note.path,
-        settings,
-      }));
-    } catch {
-      // Defensive: a single poisoned note must never crash the whole
-      // vault-level lint pass — the per-note sync loop already reported it
-      // as `failed` if it also threw there.
-      continue;
-    }
-    for (const card of cards) {
-      if (card.source.syntax !== "atomic" || card.kind === "cloze") continue;
-      const cue = normalizeCue(card.front);
+  for (const item of evidence) {
+    for (const cue of item.cues) {
       const notePaths = cueToNotePaths.get(cue) ?? new Set<string>();
-      notePaths.add(note.path);
+      notePaths.add(item.notePath);
       cueToNotePaths.set(cue, notePaths);
     }
   }
@@ -73,21 +51,51 @@ function detectCueCollisions(
 
 export interface SyncVaultInput {
   ankiClient: AnkiGateway;
+  cachedAtomicCues?: Array<{ cues: string[]; notePath: string }>;
   confirmDeletions?: (pending: PendingDeletion[]) => Promise<boolean>;
   confirmKindRecreations?: (
     pending: PendingKindRecreation[],
   ) => Promise<boolean>;
   confirmRebinds?: (pending: PendingRebind[]) => Promise<boolean>;
+  executionSession?: SyncExecutionSession;
   generateBlockId?: () => string;
   logger?: Logger;
   mediaPipeline?: MediaPipeline;
-  notes?: MarkdownNote[];
+  notes?: Iterable<MarkdownNote> | AsyncIterable<MarkdownNote>;
+  /** Benchmark/diagnostic hook; not used by normal synchronization. */
+  onBatchLoaded?: (noteCount: number, markdownBytes: number) => void;
   onProgress?: (current: number, total: number, notePath: string) => void;
   repository: MarkdownRepository;
   resolveLink?: (target: string, sourcePath: string) => string | null;
   settings: FlashcardsSettings;
+  /** Required for accurate progress when `notes` is an async iterable. */
+  processedNoteCount?: number;
   skippedUnchangedNoteCount?: number;
   vaultName: string;
+}
+
+const NOTE_BATCH_SIZE = 256;
+const NOTE_BATCH_MARKDOWN_CHAR_LIMIT = 4 * 1024 * 1024;
+
+async function* noteBatches(
+  notes: Iterable<MarkdownNote> | AsyncIterable<MarkdownNote>,
+): AsyncGenerator<MarkdownNote[]> {
+  let batch: MarkdownNote[] = [];
+  let markdownChars = 0;
+  for await (const note of notes) {
+    if (
+      batch.length > 0 &&
+      (batch.length === NOTE_BATCH_SIZE ||
+        markdownChars + note.markdown.length > NOTE_BATCH_MARKDOWN_CHAR_LIMIT)
+    ) {
+      yield batch;
+      batch = [];
+      markdownChars = 0;
+    }
+    batch.push(note);
+    markdownChars += note.markdown.length;
+  }
+  if (batch.length > 0) yield batch;
 }
 
 export interface NoteMediaErrors {
@@ -119,16 +127,20 @@ export async function syncVault(
 ): Promise<SyncVaultResult> {
   const {
     ankiClient,
+    cachedAtomicCues = [],
     confirmDeletions,
     confirmKindRecreations,
     confirmRebinds,
+    executionSession: providedExecutionSession,
     generateBlockId,
     mediaPipeline,
     notes: providedNotes,
+    onBatchLoaded,
     onProgress,
     repository,
     resolveLink,
     settings,
+    processedNoteCount: declaredProcessedNoteCount,
     skippedUnchangedNoteCount = 0,
     vaultName,
   } = input;
@@ -136,13 +148,14 @@ export async function syncVault(
   const trace = createPerfTrace(logger, settings.perfTracing === true, "syncVault");
 
   const notes = providedNotes ?? (await repository.getAllMarkdownNotes());
-  const processedNoteCount = notes.length;
-  const total = processedNoteCount;
-  const noteCount = processedNoteCount + skippedUnchangedNoteCount;
+  const expectedProcessedNoteCount =
+    declaredProcessedNoteCount ?? (Array.isArray(notes) ? notes.length : 0);
+  const total = expectedProcessedNoteCount;
+  const expectedNoteCount = expectedProcessedNoteCount + skippedUnchangedNoteCount;
 
   logger.info("syncVault start", {
-    noteCount,
-    processedNoteCount,
+    noteCount: expectedNoteCount,
+    processedNoteCount: expectedProcessedNoteCount,
     skippedUnchangedNoteCount,
   });
 
@@ -152,9 +165,33 @@ export async function syncVault(
   let totalUpdates = 0;
   let totalDeletes = 0;
   let failedNotes = 0;
+  const executionSession: SyncExecutionSession = providedExecutionSession ?? {};
 
-  for (let i = 0; i < notes.length; i++) {
-    const note = notes[i]!;
+  let current = 0;
+  for await (const batch of noteBatches(notes)) {
+    if (onBatchLoaded !== undefined) {
+      const encoder = new TextEncoder();
+      onBatchLoaded(
+        batch.length,
+        batch.reduce(
+          (bytes, note) => bytes + encoder.encode(note.markdown).byteLength,
+          0,
+        ),
+      );
+    }
+    let liveState: LiveAnkiState | undefined;
+    try {
+      liveState = await loadLiveAnkiState(
+        ankiClient,
+        uniqueKnownNids(batch),
+      );
+    } catch (error) {
+      logger.warn("syncVault batched Anki preflight failed; using note fallback", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    for (const note of batch) {
     let result: SyncNoteResult;
     try {
       result = await syncNote({
@@ -162,8 +199,10 @@ export async function syncVault(
         ...(confirmDeletions ? { confirmDeletions } : {}),
         ...(confirmKindRecreations ? { confirmKindRecreations } : {}),
         ...(confirmRebinds ? { confirmRebinds } : {}),
+        executionSession,
         ...(generateBlockId ? { generateBlockId } : {}),
         logger,
+        ...(liveState ? { liveState } : {}),
         ...(mediaPipeline ? { mediaPipeline } : {}),
         note,
         perfTrace: trace,
@@ -205,8 +244,13 @@ export async function syncVault(
     }
 
     perNote.push(result);
-    onProgress?.(i + 1, total, note.path);
+    current += 1;
+    onProgress?.(current, total || current, note.path);
+    }
   }
+
+  const processedNoteCount = perNote.length;
+  const noteCount = processedNoteCount + skippedUnchangedNoteCount;
 
   logger.info("syncVault end", {
     noteCount,
@@ -224,7 +268,13 @@ export async function syncVault(
     logger.warn("syncVault failures", { failures });
   }
 
-  const collisionLints = detectCueCollisions(notes, settings);
+  const collisionLints = detectCueCollisions([
+    ...cachedAtomicCues,
+    ...perNote.map((result) => ({
+      cues: result.atomicCues ?? [],
+      notePath: result.notePath,
+    })),
+  ]);
   for (const lint of collisionLints) {
     logger.warn(lint);
   }

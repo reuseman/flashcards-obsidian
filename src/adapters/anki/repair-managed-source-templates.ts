@@ -7,8 +7,15 @@ import {
 } from "../../core/render/render-card.js";
 import type {
   AnkiModelTemplates,
-  AnkiConnectClient,
 } from "./anki-connect-client.js";
+import type {
+  AnkiGateway,
+  SyncExecutionSession,
+} from "../../application/ports.js";
+import {
+  sessionModelFields,
+  sessionModelNames,
+} from "../../application/sync/sync-execution-session.js";
 
 const MANAGED_MODELS = [
   ANKI_MODEL_BASIC,
@@ -29,15 +36,16 @@ export interface SourceTemplateRepairResult {
  * fields are left to the normal in-place field upgrade.
  */
 export async function repairManagedSourceTemplates(
-  client: AnkiConnectClient,
+  client: AnkiGateway,
+  executionSession: SyncExecutionSession = {},
 ): Promise<SourceTemplateRepairResult> {
-  const existing = new Set(await client.modelNames());
+  const existing = await sessionModelNames(client, executionSession);
   let modelsUpdated = 0;
   let templatesUpdated = 0;
 
   for (const modelName of MANAGED_MODELS) {
     if (!existing.has(modelName)) continue;
-    const fields = await client.modelFieldNames(modelName);
+    const fields = await sessionModelFields(client, executionSession, modelName);
     const hasContext = fields.includes("Context");
     const hasSource = fields.includes("Source");
     if (!hasContext && !hasSource) continue;

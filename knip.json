@@ -1,0 +1,12 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "scripts/**/*.ts",
+    "tests/**/*.test.ts",
+    "tests/**/*.bench.ts",
+    "tests/perf/_fixtures/generate.ts"
+  ],
+  "ignoreDependencies": ["mdast"],
+  "ignoreExportsUsedInFile": true,
+  "project": ["src/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts"]
+}

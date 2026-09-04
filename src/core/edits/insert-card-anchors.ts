@@ -2,8 +2,6 @@ import type { Flashcard, IdentifiedFlashcard } from "../domain/card.js";
 import type { TextEdit } from "./apply-text-edits.js";
 
 const BLOCK_ID_ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";
-const V2_ANCHOR_RE = /\^q-[abcdefghijkmnpqrstuvwxyz23456789]{4}\b/;
-const V1_ANCHOR_RE = /\^\d{13}\b/;
 const V2_ANCHOR_AT_END_RE = /\^q-[abcdefghijkmnpqrstuvwxyz23456789]{4}$/;
 const V1_ANCHOR_AT_END_RE = /\^\d{13}$/;
 const V2_ANCHOR_GLOBAL_RE = /\^q-[abcdefghijkmnpqrstuvwxyz23456789]{4}\b/g;
@@ -128,5 +126,3 @@ function buildEdit(markdown: string, card: Flashcard, blockId: string): TextEdit
     text: `\n^${blockId}`,
   };
 }
-
-export const __INTERNAL = { V1_ANCHOR_RE, V2_ANCHOR_RE };

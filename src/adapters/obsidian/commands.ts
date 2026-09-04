@@ -30,6 +30,7 @@ import {
   syncVault,
   type SyncVaultResult,
 } from "../../application/sync-vault.js";
+import type { SyncExecutionSession } from "../../application/ports.js";
 
 type Target = "current" | "vault";
 
@@ -296,8 +297,12 @@ async function dispatch(
     ? createDeleteConfirmer(plugin.app, ankiClient)
     : undefined;
   const confirmKindRecreations = createKindRecreationConfirmer(plugin.app);
+  const executionSession: SyncExecutionSession = {};
   try {
-    const repair = await repairManagedSourceTemplates(ankiClient);
+    const repair = await repairManagedSourceTemplates(
+      ankiClient,
+      executionSession,
+    );
     if (repair.templatesUpdated > 0) {
       new Notice(
         `Updated ${repair.templatesUpdated} Anki ${
@@ -318,6 +323,7 @@ async function dispatch(
           ankiClient,
           ...(confirmDeletions ? { confirmDeletions } : {}),
           confirmKindRecreations,
+          executionSession,
           logger: plugin.logger,
           mediaPipeline,
           note,
@@ -340,17 +346,21 @@ async function dispatch(
           `${plugin.app.vault.configDir}/plugins/${plugin.manifest.id}`;
         const incremental = await prepareIncrementalVaultSync({
           adapter: plugin.app.vault.adapter,
+          ankiClient,
           indexPath: `${pluginDirectory}/vault-scan-index.json`,
           repository,
           settingsKey: JSON.stringify({
             pluginVersion: plugin.manifest.version,
             settings: plugin.settings,
+            vaultName,
           }),
         });
         result = await syncVault({
           ankiClient,
+          cachedAtomicCues: incremental.cachedAtomicCues,
           ...(confirmDeletions ? { confirmDeletions } : {}),
           confirmKindRecreations,
+          executionSession,
           logger: plugin.logger,
           mediaPipeline,
           notes: incremental.notes,
@@ -361,6 +371,7 @@ async function dispatch(
           repository,
           resolveLink,
           settings: plugin.settings,
+          processedNoteCount: incremental.processedNoteCount,
           skippedUnchangedNoteCount:
             incremental.skippedUnchangedNoteCount,
           vaultName,
@@ -428,7 +439,7 @@ function summarizeVault(result: SyncVaultResult): string {
   return (
     `Vault sync: ${result.noteCount} notes` +
     (result.skippedUnchangedNoteCount > 0
-      ? ` (${result.skippedUnchangedNoteCount} unchanged card-free skipped)`
+      ? ` (${result.skippedUnchangedNoteCount} unchanged verified notes skipped)`
       : "") +
     ", " +
     `+${result.totalCreates} ~${result.totalUpdates} -${result.totalDeletes}${failedSuffix}`

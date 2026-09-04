@@ -21,9 +21,8 @@ import { bootAllV2, makeFakeFetch, ok } from "../_utils/fake-fetch.js";
  * `warn` lint, VAULT-LEVEL SYNC ONLY — both cards still sync. A single-note
  * sync has no visibility into other notes' cues, so it must never fire it.
  *
- * `SyncVaultResult`/`SyncNoteResult` do not yet expose a `lints` field —
- * accessed via a defensive cast + `?? []` so assertions fail as real
- * AssertionErrors.
+ * Cue evidence is carried out of the first parse and may also come from an
+ * unchanged note that the incremental cache verified without reading.
  */
 
 const ALL_MODELS = [ANKI_MODEL_BASIC, ANKI_MODEL_REVERSED, ANKI_MODEL_CLOZE, ANKI_MODEL_REMINDER];
@@ -258,5 +257,31 @@ describe("cue collision — vault-level lint only (WI-12)", () => {
     );
     expect(collisionLintsA).toHaveLength(0);
     expect(collisionLintsB).toHaveLength(0);
+  });
+
+  it("detects a collision between a verified cached note and a parsed note", async () => {
+    const noteB = makeNote("b.md", note(CUE_B, FIRST_PARAGRAPH_B));
+    const repository = makeFakeRepo([noteB]);
+    const { fetch } = makeFakeFetch([
+      ...bootAllV2(ALL_MODELS),
+      ok(["Default"]),
+      ok(6001),
+    ]);
+
+    const result = await syncVault({
+      ankiClient: new AnkiConnectClient({ fetch }),
+      cachedAtomicCues: [{
+        cues: ["what is chlorophyll?"],
+        notePath: "cached/a.md",
+      }],
+      generateBlockId: seededGenerator(["q-bbbb"]),
+      repository,
+      settings: settingsWith(),
+      vaultName: VAULT,
+    });
+
+    expect(result.lints).toContain(
+      "warn: cue collision across notes — cached/a.md, b.md",
+    );
   });
 });

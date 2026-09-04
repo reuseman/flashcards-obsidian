@@ -12,7 +12,7 @@ import { DEFAULT_SETTINGS } from "../../src/core/config/settings.js";
 import type { FlashcardsSettings } from "../../src/core/config/settings.js";
 import type { MarkdownNote } from "../../src/application/ports.js";
 import type { ObsidianMarkdownRepository } from "../../src/adapters/obsidian/obsidian-markdown-repository.js";
-import { bootAllV2, makeFakeFetch, ok } from "../_utils/fake-fetch.js";
+import { bootAllV2, err, makeFakeFetch, ok } from "../_utils/fake-fetch.js";
 
 /**
  * Phase 7 slice 7b — pure module `sync-vault.ts`.
@@ -148,6 +148,34 @@ describe("syncVault — empty vault", () => {
   });
 });
 
+describe("syncVault — bounded note loading", () => {
+  it("consumes a lazy source in bounded batches", async () => {
+    const notes = Array.from({ length: 300 }, (_, index) =>
+      makeNote(`note-${index}.md`, "plain prose"),
+    );
+    async function* source(): AsyncGenerator<MarkdownNote> {
+      for (const note of notes) yield note;
+    }
+    const { repository } = makeFakeRepo([]);
+    const { calls, fetch } = makeFakeFetch([]);
+    const batches: number[] = [];
+
+    const result = await syncVault({
+      ankiClient: new AnkiConnectClient({ fetch }),
+      notes: source(),
+      onBatchLoaded: (count) => batches.push(count),
+      processedNoteCount: notes.length,
+      repository,
+      settings: settingsWith(),
+      vaultName: VAULT,
+    });
+
+    expect(batches).toEqual([256, 44]);
+    expect(result.processedNoteCount).toBe(300);
+    expect(calls).toEqual([]);
+  });
+});
+
 // ===========================================================================
 
 describe("syncVault — single note with 2 creates", () => {
@@ -187,16 +215,12 @@ describe("syncVault — sequential ordering", () => {
     const noteB = makeNote("b.md", ONE_CARD);
     const { repository } = makeFakeRepo([noteA, noteB]);
 
-    // 4 responses each (bootstrap + 1 addNote per note). If processing were
-    // parallel both notes would start their bootstrap before either finished,
-    // but the fake-fetch queue is shared. Sequential order = bootstrap-A,
-    // create-A, bootstrap-B, create-B.
+    // Infrastructure discovery is shared by the sequential vault session.
+    // Both writes remain ordered, while model/deck reads happen only once.
     const { calls, fetch } = makeFakeFetch([
       ...bootAllV2(ALL_MODELS),
       ok(["Default"]),
       ok(1001),
-      ...bootAllV2(ALL_MODELS),
-      ok(["Default"]),
       ok(1002),
     ]);
 
@@ -217,14 +241,56 @@ describe("syncVault — sequential ordering", () => {
       "modelFieldNames",
       "deckNames",
       "addNote",
-      "modelNames",
-      "modelFieldNames",
-      "modelFieldNames",
-      "modelFieldNames",
-      "modelFieldNames",
-      "deckNames",
       "addNote",
     ]);
+  });
+
+  it("creates one shared missing deck only once", async () => {
+    const noteA = makeNote("a.md", ONE_CARD);
+    const noteB = makeNote("b.md", ONE_CARD);
+    const { repository } = makeFakeRepo([noteA, noteB]);
+    const { calls, fetch } = makeFakeFetch([
+      ...bootAllV2(ALL_MODELS),
+      ok(["Default"]),
+      ok(42),
+      ok(1001),
+      ok(1002),
+    ]);
+
+    await syncVault({
+      ankiClient: new AnkiConnectClient({ fetch }),
+      generateBlockId: seededGenerator(["q-aaaa", "q-bbbb"]),
+      repository,
+      settings: settingsWith({ defaultDeck: "Shared" }),
+      vaultName: VAULT,
+    });
+
+    expect(calls.filter((call) => call.action === "deckNames")).toHaveLength(1);
+    expect(calls.filter((call) => call.action === "createDeck")).toHaveLength(1);
+  });
+
+  it("retries infrastructure discovery after a transient note failure", async () => {
+    const noteA = makeNote("a.md", ONE_CARD);
+    const noteB = makeNote("b.md", ONE_CARD);
+    const { repository } = makeFakeRepo([noteA, noteB]);
+    const { calls, fetch } = makeFakeFetch([
+      err("temporary model lookup failure"),
+      ...bootAllV2(ALL_MODELS),
+      ok(["Default"]),
+      ok(1002),
+    ]);
+
+    const result = await syncVault({
+      ankiClient: new AnkiConnectClient({ fetch }),
+      generateBlockId: seededGenerator(["q-aaaa", "q-bbbb"]),
+      repository,
+      settings: settingsWith(),
+      vaultName: VAULT,
+    });
+
+    expect(result.failedNotes).toBe(1);
+    expect(result.totalCreates).toBe(1);
+    expect(calls.filter((call) => call.action === "modelNames")).toHaveLength(2);
   });
 });
 

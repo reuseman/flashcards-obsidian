@@ -5,14 +5,9 @@ import type * as ExtractCardsModule from "../../src/core/parse/extract-cards.js"
 /**
  * Final-review fix #3 — the cue-collision lint pass must be infallible.
  *
- * `syncVault`'s `detectCueCollisions` (src/application/sync-vault.ts) calls
- * `extractCardsFromMarkdown` on EVERY note again, AFTER the main per-note
- * loop, OUTSIDE any try/catch. Nothing in the pure parse layer currently
- * throws on any real-world input, so this is simulated: `extractCardsFromMarkdown`
- * is mocked to throw for exactly one poisoned note path (mirrors a
- * pathological-extraction throw the per-note loop's own try/catch already
- * shields against), keeping the real implementation for every other note via
- * `importOriginal`.
+ * Cue evidence now comes from the main extraction rather than a second lint
+ * pass. A pathological extraction throw is still isolated to its note, and
+ * the remaining vault result must be returned normally.
  *
  * Locked expectation: a throwing extraction during the collision-lint pass
  * must NOT reject `syncVault` — the promise resolves, the poisoned note is
@@ -96,7 +91,7 @@ function seededGenerator(ids: string[]): () => string {
 const NORMAL_MARKDOWN = ["Q1::A1", ""].join("\n");
 const POISON_MARKDOWN = ["Q2::A2", ""].join("\n");
 
-describe("syncVault — cue-collision lint pass must not crash the vault sync on a throwing extraction", () => {
+describe("syncVault — cue extraction failure isolation", () => {
   it("resolves syncVault, keeps the poisoned note's `failed` status, and leaves the healthy note's totals intact", async () => {
     const normalNote = makeNote(NORMAL_PATH, NORMAL_MARKDOWN);
     const poisonNote = makeNote(POISON_PATH, POISON_MARKDOWN);

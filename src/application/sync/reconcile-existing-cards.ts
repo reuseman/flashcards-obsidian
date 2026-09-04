@@ -5,11 +5,10 @@ import {
 } from "../../core/edits/card-hash.js";
 import type { IdentifiedFlashcard } from "../../core/domain/card.js";
 import {
-  ANKI_MODEL_BASIC,
-  ANKI_MODEL_CLOZE,
-  ANKI_MODEL_REMINDER,
-  ANKI_MODEL_REVERSED,
-} from "../../core/render/render-card.js";
+  crossesClozeBoundary,
+  desiredManagedModel,
+  readManagedFields,
+} from "../../core/sync/managed-note-state.js";
 import type { ParsedCardFrontmatter } from "../../core/sync/parse-card-frontmatter.js";
 import type {
   ExistingAnkiCard,
@@ -21,6 +20,11 @@ import {
   desiredAnkiTags,
   sameTagSet,
 } from "../../core/sync/tag-ownership.js";
+import {
+  loadLiveAnkiState,
+  mergeLiveAnkiStates,
+  type LiveAnkiState,
+} from "./load-live-anki-state.js";
 
 export interface ReconcileExistingCardsInput {
   cards: IdentifiedFlashcard[];
@@ -30,6 +34,7 @@ export interface ReconcileExistingCardsInput {
   ) => Promise<boolean>;
   desiredFieldHashes?: ReadonlyMap<string, string>;
   frontmatter: ParsedCardFrontmatter;
+  liveState?: LiveAnkiState;
   plan: SyncPlan;
   preparedCardsByBlockId?: ReadonlyMap<string, IdentifiedFlashcard>;
 }
@@ -37,38 +42,6 @@ export interface ReconcileExistingCardsInput {
 export interface ReconcileExistingCardsResult {
   plan: SyncPlan;
   recoveredMissingCount: number;
-}
-
-function desiredModel(card: IdentifiedFlashcard): string {
-  if (card.kind === "cloze") return ANKI_MODEL_CLOZE;
-  if (card.kind === "reminder") return ANKI_MODEL_REMINDER;
-  if (card.kind === "reversed") return ANKI_MODEL_REVERSED;
-  return ANKI_MODEL_BASIC;
-}
-
-function crossesClozeBoundary(fromModel: string, toModel: string): boolean {
-  return (fromModel === ANKI_MODEL_CLOZE) !== (toModel === ANKI_MODEL_CLOZE);
-}
-
-function ownedFieldNames(modelName: string): string[] {
-  if (modelName === ANKI_MODEL_REMINDER) {
-    return ["Content", "Context", "Source"];
-  }
-  return modelName === ANKI_MODEL_CLOZE
-    ? ["Text", "Extra", "Context", "Source"]
-    : ["Front", "Back", "Context", "Source"];
-}
-
-function readOwnedFields(
-  fields: Record<string, { order?: number; value?: string }> | undefined,
-  modelName: string,
-): Record<string, string> | undefined {
-  if (fields === undefined) return undefined;
-  const out: Record<string, string> = {};
-  for (const name of ownedFieldNames(modelName)) {
-    out[name] = fields[name]?.value ?? "";
-  }
-  return out;
 }
 
 /**
@@ -110,27 +83,14 @@ export async function reconcileExistingCards(
   }
 
   const requestedNids = [...new Set(bindings.map((binding) => binding.nid))];
-  const noteInfos = await input.client.notesInfo(requestedNids);
-  const noteByNid = new Map(
-    noteInfos.flatMap((info) =>
-      typeof info?.noteId === "number" ? [[info.noteId, info] as const] : [],
-    ),
+  const missingNids = requestedNids.filter(
+    (nid) => input.liveState?.requestedNids.has(nid) !== true,
   );
-  const cardIds = [
-    ...new Set(
-      [...noteByNid.values()].flatMap((info) =>
-        Array.isArray(info.cards)
-          ? info.cards.filter((cardId): cardId is number => typeof cardId === "number")
-          : [],
-      ),
-    ),
-  ];
-  const cardInfos = cardIds.length > 0 ? await input.client.cardsInfo(cardIds) : [];
-  const cardById = new Map(
-    cardInfos.flatMap((info) =>
-      typeof info?.cardId === "number" ? [[info.cardId, info] as const] : [],
-    ),
-  );
+  const loaded = await loadLiveAnkiState(input.client, missingNids);
+  const liveState = input.liveState
+    ? mergeLiveAnkiStates(input.liveState, loaded)
+    : loaded;
+  const { cardById, noteByNid } = liveState;
 
   let recoveredMissingCount = 0;
   const pending: PendingKindRecreation[] = [];
@@ -157,13 +117,13 @@ export async function reconcileExistingCards(
           : [];
       },
     );
-    const targetModel = desiredModel(preparedCard);
+    const targetModel = desiredManagedModel(preparedCard);
     const currentModel = noteInfo.modelName ?? targetModel;
     const deckMismatch = existingCards.some(
       (existingCard) => existingCard.deckName !== card.deckName,
     );
     const modelMismatch = currentModel !== targetModel;
-    const liveFields = readOwnedFields(noteInfo.fields, currentModel);
+    const liveFields = readManagedFields(noteInfo.fields, currentModel);
     const liveFieldsHash =
       liveFields === undefined
         ? undefined

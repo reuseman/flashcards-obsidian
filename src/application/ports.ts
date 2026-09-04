@@ -16,6 +16,7 @@ import type {
   AnkiAddNoteParams,
   AnkiCreateModelSpec,
 } from "../core/sync/anki-contract.js";
+import type { RenderedCard } from "../core/render/render-card.js";
 
 export interface AnkiNoteInfo {
   cards?: number[];
@@ -93,6 +94,20 @@ export interface AnkiGateway {
   deleteNotes(nids: number[]): Promise<void>;
 }
 
+/**
+ * Disposable state shared by every note in one vault-sync invocation.
+ *
+ * It memoizes Anki infrastructure discovery only. Card identity and desired
+ * state remain in the source note, so discarding this object is always safe.
+ */
+export interface SyncExecutionSession {
+  decks?: Promise<Set<string>>;
+  modelFields?: Map<string, Promise<string[]>>;
+  modelNames?: Promise<Set<string>>;
+  modelsNeedingTemplateRepair?: Set<string>;
+  modelsReady?: Promise<void>;
+}
+
 // --- Sync execution port ---------------------------------------------------
 
 /**
@@ -104,10 +119,12 @@ export interface AnkiGateway {
  */
 export interface ExecuteSyncPlanInput {
   client: AnkiGateway;
+  executionSession?: SyncExecutionSession;
   highlightClozeEnabled?: boolean;
   logger?: Logger;
   notePath: string;
   plan: SyncPlan;
+  renderedCardsByBlockId?: ReadonlyMap<string, RenderedCard>;
   resolveLink?: (target: string, sourcePath: string) => string | null;
   vaultName: string;
 }

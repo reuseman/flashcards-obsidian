@@ -5,6 +5,7 @@ import { insertCardAnchors } from "../core/edits/insert-card-anchors.js";
 import { extractCardsFromMarkdown } from "../core/parse/extract-cards.js";
 import { buildSyncPlan } from "../core/sync/build-sync-plan.js";
 import { parseCardFrontmatter } from "../core/sync/parse-card-frontmatter.js";
+import type { ParsedCardFrontmatter } from "../core/sync/parse-card-frontmatter.js";
 import type { SyncPlan } from "../core/sync/sync-plan.js";
 import type { FlashcardsSettings } from "../core/config/settings.js";
 
@@ -36,6 +37,7 @@ export interface PreviewSyncPlanResult {
   cards: Flashcard[];
   create: number;
   delete: number;
+  frontmatter: ParsedCardFrontmatter;
   identifiedCards: IdentifiedFlashcard[];
   insertEdits: TextEdit[];
   lints: string[];
@@ -66,6 +68,7 @@ export function previewSyncPlan(
   });
   const { cards } = extracted;
   const lints = [...extracted.lints, ...extracted.warnings];
+  const frontmatter = parseCardFrontmatter(markdown);
 
   if (cards.length === 0) {
     // Final-review fix #2 (spec §4.2): a note that previously synced an
@@ -75,8 +78,7 @@ export function previewSyncPlan(
     // delete-safety, so we fall through to plan-building (with an empty
     // card set) instead of short-circuiting. Legacy zero-card notes that
     // never had a cue entry keep the unconditional skip.
-    const frontmatterCheck = parseCardFrontmatter(markdown);
-    const hasCueOrphan = frontmatterCheck.entries.some(
+    const hasCueOrphan = frontmatter.entries.some(
       (e) => e.cue !== undefined && e.nid !== undefined,
     );
     if (!hasCueOrphan) {
@@ -84,6 +86,7 @@ export function previewSyncPlan(
         cards: [],
         create: 0,
         delete: 0,
+        frontmatter,
         identifiedCards: [],
         insertEdits: [],
         lints,
@@ -94,12 +97,13 @@ export function previewSyncPlan(
     const plan = buildSyncPlan({
       cards: [],
       computeHash: computeCardHash,
-      frontmatter: frontmatterCheck,
+      frontmatter,
     });
     return {
       cards: [],
       create: plan.create.length,
       delete: plan.delete.length,
+      frontmatter,
       identifiedCards: [],
       insertEdits: [],
       lints,
@@ -116,7 +120,6 @@ export function previewSyncPlan(
   // (and therefore its `nid`, preserving scheduling). Map construction over
   // an array iterates in file order, so a duplicate cue's LAST occurrence in
   // the frontmatter wins the tie-break (matches sync-note's own history).
-  const frontmatter = parseCardFrontmatter(markdown);
   const existingCueEntries = new Map(
     frontmatter.entries
       .filter((e) => e.cue !== undefined)
@@ -144,6 +147,7 @@ export function previewSyncPlan(
     cards,
     create: plan.create.length,
     delete: plan.delete.length,
+    frontmatter,
     identifiedCards,
     insertEdits: insert.edits,
     lints,

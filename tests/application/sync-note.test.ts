@@ -171,6 +171,7 @@ describe("syncNote — new note happy path", () => {
     expect(result.ankiResults).toBeDefined();
     expect(result.ankiResults!.creates).toHaveLength(2);
     expect(result.ankiResults!.creates.every((c) => c.status === "ok")).toBe(true);
+    expect(result.cacheCandidate?.cards).toHaveLength(2);
 
     // Anki call sequence: bootstrap (modelNames + 4 modelFieldNames) then 2 addNotes.
     expect(calls.map((c) => c.action)).toEqual([

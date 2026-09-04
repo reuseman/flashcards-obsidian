@@ -4,6 +4,7 @@ import type {
   AnkiGateway,
   MarkdownNote,
   MarkdownRepository,
+  SyncExecutionSession,
 } from "./ports.js";
 import type { FlashcardsSettings } from "../core/config/settings.js";
 import { NoopLogger, type Logger } from "../core/logging/logger.js";
@@ -22,10 +23,14 @@ import {
 } from "../core/render/rewrite-media.js";
 import { renderCardForAnki } from "../core/render/render-card.js";
 import { buildSyncPlan } from "../core/sync/build-sync-plan.js";
-import { parseCardFrontmatter } from "../core/sync/parse-card-frontmatter.js";
 import type { PendingDeletion, PendingRebind } from "../core/sync/sync-plan.js";
 import type { PendingKindRecreation } from "../core/sync/sync-plan.js";
 import { reconcileExistingCards } from "./sync/reconcile-existing-cards.js";
+import type { LiveAnkiState } from "./sync/load-live-anki-state.js";
+import {
+  buildSyncNoteCacheCandidate,
+  type SyncNoteCacheCandidate,
+} from "./sync/cache-state.js";
 import {
   defaultGenerateBlockId,
   previewSyncPlan,
@@ -64,8 +69,10 @@ export interface SyncNoteInput {
     pending: PendingKindRecreation[],
   ) => Promise<boolean>;
   confirmRebinds?: (pending: PendingRebind[]) => Promise<boolean>;
+  executionSession?: SyncExecutionSession;
   generateBlockId?: () => string;
   logger?: Logger;
+  liveState?: LiveAnkiState;
   mediaPipeline?: MediaPipeline;
   note: MarkdownNote;
   perfTrace?: PerfTrace;
@@ -78,6 +85,10 @@ export interface SyncNoteInput {
 export type SyncNoteStatus = "ok" | "skipped" | "failed";
 
 export interface SyncNoteResult {
+  /** Normalized non-cloze atomic cues used by the vault collision check. */
+  atomicCues?: string[];
+  /** Present only when a warm sync may safely verify this note without reading it. */
+  cacheCandidate?: SyncNoteCacheCandidate;
   ankiResults?: ExecuteSyncPlanResult;
   error?: string;
   identityWritesApplied: number;
@@ -89,6 +100,8 @@ export interface SyncNoteResult {
   status: SyncNoteStatus;
   writebackEditsApplied: number;
 }
+
+const HAS_WIKILINK_RE = /!?\[\[[^\]\r\n]+\]\]/;
 
 function logLints(logger: Logger, notePath: string, lints: string[]): void {
   for (const lint of lints) {
@@ -124,7 +137,12 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
       settings,
     }),
   );
-  const { cards, identifiedCards, insertEdits, lints } = preview;
+  const { cards, frontmatter, identifiedCards, insertEdits, lints } = preview;
+  const atomicCues = identifiedCards.flatMap((card) =>
+    card.source.syntax === "atomic" && card.kind !== "cloze"
+      ? [card.front.trim().toLowerCase().replace(/\s+/g, " ")]
+      : [],
+  );
   logLints(logger, note.path, lints);
 
   // Zero cards normally means "nothing to do", but a cue-bearing orphan
@@ -133,6 +151,7 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
   if (cards.length === 0 && preview.plan.delete.length === 0) {
     logger.debug("syncNote skipped (no flashcards parsed)", { notePath: note.path });
     return {
+      atomicCues,
       identityWritesApplied: 0,
       lints,
       notePath: note.path,
@@ -180,7 +199,7 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
         plan = buildSyncPlan({
           cards: identifiedCards,
           computeHash: computeCardHash,
-          frontmatter: parseCardFrontmatter(note.markdown),
+          frontmatter,
         });
       }
     }
@@ -205,21 +224,22 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
   // of the desired rendered fields without making them part of card identity.
   // Upload stays deferred until reconciliation proves a create/update needs it.
   const mediaErrors: CardMediaError[] = [];
-  let allRefs: MediaRef[] = [];
+  const allRefs: MediaRef[] = trace.span("media.resolve", () =>
+    extractMedia(note.markdown),
+  );
   let mediaMap: MediaRewriteMap = {};
   let mediaResolutionErrors: MediaPipelineResult["errors"] = [];
   let uploadResolvedMedia: (() => Promise<void>) | undefined;
-  if (input.mediaPipeline) {
-    allRefs = trace.span("media.resolve", () => extractMedia(note.markdown));
-    if (allRefs.length > 0) {
-      const outcome = await trace.span("media.prepare", async () =>
-        input.mediaPipeline!(allRefs, note.path),
-      );
-      mediaMap = outcome.rewriteMap;
-      mediaResolutionErrors = outcome.errors;
-      uploadResolvedMedia = outcome.upload;
-    }
+  if (input.mediaPipeline && allRefs.length > 0) {
+    const outcome = await trace.span("media.prepare", async () =>
+      input.mediaPipeline!(allRefs, note.path),
+    );
+    mediaMap = outcome.rewriteMap;
+    mediaResolutionErrors = outcome.errors;
+    uploadResolvedMedia = outcome.upload;
   }
+  const hasDynamicDependencies =
+    allRefs.length > 0 || HAS_WIKILINK_RE.test(note.markdown);
 
   const preparedCardsByBlockId = new Map(
     identifiedCards.map((card) => {
@@ -234,7 +254,7 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
       return [card.blockId, prepared] as const;
     }),
   );
-  const desiredFieldHashes = new Map(
+  const renderedCardsByBlockId = new Map(
     [...preparedCardsByBlockId].map(([blockId, card]) => {
       const rendered = renderCardForAnki(card, {
         deckName: card.deckName ?? "",
@@ -244,8 +264,14 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
         vaultName,
         ...(resolveLink ? { resolveLink } : {}),
       });
-      return [blockId, computeRenderedFieldsHash(rendered.fields)] as const;
+      return [blockId, rendered] as const;
     }),
+  );
+  const desiredFieldHashes = new Map(
+    [...renderedCardsByBlockId].map(([blockId, rendered]) => [
+      blockId,
+      computeRenderedFieldsHash(rendered.fields),
+    ]),
   );
 
   let recoveredMissingCount = 0;
@@ -256,7 +282,8 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
       ...(input.confirmKindRecreations
         ? { confirmKindRecreations: input.confirmKindRecreations }
         : {}),
-      frontmatter: parseCardFrontmatter(note.markdown),
+      frontmatter,
+      ...(input.liveState ? { liveState: input.liveState } : {}),
       plan,
       desiredFieldHashes,
       preparedCardsByBlockId,
@@ -270,6 +297,7 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
       error: msg,
     });
     return {
+      atomicCues,
       error: msg,
       identityWritesApplied,
       lints,
@@ -378,7 +406,17 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
       identityWritesApplied,
       mediaErrors: mediaErrors.length,
     });
+    const cacheCandidate = buildSyncNoteCacheCandidate({
+      atomicCues,
+      cards: identifiedCards,
+      desiredFieldHashes,
+      finalMarkdown: markdownB,
+      hasDynamicDependencies,
+      lints,
+    });
     return {
+      atomicCues,
+      ...(cacheCandidate ? { cacheCandidate } : {}),
       identityWritesApplied,
       lints,
       ...(mediaErrors.length > 0 ? { mediaErrors } : {}),
@@ -408,10 +446,14 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
     results = await trace.span("anki.sync", async () =>
       executeSyncPlan({
         client: ankiClient,
+        ...(input.executionSession
+          ? { executionSession: input.executionSession }
+          : {}),
         highlightClozeEnabled: settings.highlightCloze.enabled,
         logger,
         notePath: note.path,
         plan,
+        renderedCardsByBlockId,
         ...(resolveLink ? { resolveLink } : {}),
         vaultName,
       }),
@@ -420,6 +462,7 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
     const msg = e instanceof Error ? e.message : String(e);
     logger.error("syncNote failed in Phase B", { notePath: note.path, error: msg });
     return {
+      atomicCues,
       error: msg,
       identityWritesApplied,
       lints,
@@ -440,6 +483,16 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
     await repository.saveNote(note, markdownC);
   }
 
+  const cacheCandidate = buildSyncNoteCacheCandidate({
+    atomicCues,
+    cards: identifiedCards,
+    desiredFieldHashes,
+    finalMarkdown: markdownC,
+    hasDynamicDependencies,
+    lints,
+    results,
+  });
+
   logger.info("syncNote ok", {
     notePath: note.path,
     okCreates: results.creates.filter((c) => c.status === "ok").length,
@@ -452,6 +505,8 @@ export async function syncNote(input: SyncNoteInput): Promise<SyncNoteResult> {
   });
 
   return {
+    atomicCues,
+    ...(cacheCandidate ? { cacheCandidate } : {}),
     ankiResults: results,
     identityWritesApplied,
     lints,

@@ -117,6 +117,7 @@ describe("syncNote — media-rewrite cue corruption (atomic cloze + image)", () 
       vaultName: VAULT,
     });
     expect(firstResult.status).toBe("ok");
+    expect(firstResult.cacheCandidate).toBeUndefined();
     const inSync = first.currentMarkdown();
 
     // --- Second sync: SAME note content, SAME media pipeline. --------------

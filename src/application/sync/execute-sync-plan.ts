@@ -1,13 +1,8 @@
 import type { ExecuteSyncPlanInput } from "../ports.js";
 import {
-  ANKI_CONTEXT_TEMPLATE,
-  ANKI_MODEL_BASIC,
-  ANKI_MODEL_CLOZE,
-  ANKI_MODEL_REMINDER,
-  ANKI_MODEL_REVERSED,
-  getAnkiModelSpecs,
   renderCardForAnki,
 } from "../../core/render/render-card.js";
+import { crossesClozeBoundary } from "../../core/sync/managed-note-state.js";
 import type { ExecuteSyncPlanResult } from "../../core/sync/sync-execution.js";
 import type { IdentifiedFlashcard } from "../../core/domain/card.js";
 import { NoopLogger, type Logger } from "../../core/logging/logger.js";
@@ -16,36 +11,7 @@ import {
   desiredAnkiTags,
   diffTags,
 } from "../../core/sync/tag-ownership.js";
-
-const REQUIRED_MODELS = [
-  ANKI_MODEL_BASIC,
-  ANKI_MODEL_REVERSED,
-  ANKI_MODEL_CLOZE,
-  ANKI_MODEL_REMINDER,
-];
-const CONTEXT_TOKEN = "{{Context}}";
-
-function extendManagedTemplates(
-  templates: Record<string, { Back: string; Front: string }>,
-): Record<string, { Back: string; Front: string }> {
-  return Object.fromEntries(
-    Object.entries(templates).map(([templateName, template]) => {
-      const front = template.Front.includes(CONTEXT_TOKEN)
-        ? template.Front
-        : `${ANKI_CONTEXT_TEMPLATE}${template.Front}`;
-      let back = template.Back.includes("{{Source}}")
-        ? template.Back
-        : `${template.Back}\n<br><br>{{Source}}`;
-      if (
-        !back.includes(CONTEXT_TOKEN) &&
-        !back.includes("{{FrontSide}}")
-      ) {
-        back = `${ANKI_CONTEXT_TEMPLATE}${back}`;
-      }
-      return [templateName, { Back: back, Front: front }];
-    }),
-  );
-}
+import { ensureManagedModels } from "./sync-execution-session.js";
 
 function errorMessage(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -68,18 +34,16 @@ function renderFor(
   });
 }
 
-function crossesClozeBoundary(fromModel: string, toModel: string): boolean {
-  return (fromModel === ANKI_MODEL_CLOZE) !== (toModel === ANKI_MODEL_CLOZE);
-}
-
 export async function executeSyncPlan(
   input: ExecuteSyncPlanInput,
 ): Promise<ExecuteSyncPlanResult> {
   const {
     client,
+    executionSession = {},
     highlightClozeEnabled = true,
     notePath,
     plan,
+    renderedCardsByBlockId,
     resolveLink,
     vaultName,
   } = input;
@@ -107,47 +71,7 @@ export async function executeSyncPlan(
   // Upgrade path: add the `Source` field if absent, then append the field to
   // the existing templates without replacing their HTML. Replacing templates
   // and CSS is available only through the explicit, backed-up style command.
-  const existingModels = await client.modelNames();
-  const existingModelSet = new Set(existingModels);
-  const specs = getAnkiModelSpecs();
-  for (const name of REQUIRED_MODELS) {
-    const spec = specs.find((s) => s.modelName === name);
-    if (spec === undefined) continue;
-    if (!existingModelSet.has(name)) {
-      logger.info("bootstrap: creating missing model", { model: name });
-      await client.createModel(spec);
-      continue;
-    }
-    const fields = await client.modelFieldNames(name);
-    const missingContext = !fields.includes("Context");
-    const missingSource = !fields.includes("Source");
-    if (missingContext || missingSource) {
-      logger.info("bootstrap: extending managed model fields", {
-        model: name,
-        existingFields: fields,
-        missingContext,
-        missingSource,
-      });
-      const templates = await client.modelTemplates(name);
-      const nextFields = [...fields];
-      if (missingContext) {
-        const sourceIndex = nextFields.indexOf("Source");
-        const contextIndex =
-          sourceIndex === -1 ? nextFields.length : sourceIndex;
-        await client.modelFieldAdd(name, "Context", contextIndex);
-        nextFields.splice(contextIndex, 0, "Context");
-      }
-      if (missingSource) {
-        await client.modelFieldAdd(name, "Source", nextFields.length);
-      }
-      await client.updateModelTemplates(
-        name,
-        extendManagedTemplates(templates),
-      );
-    } else {
-      logger.debug("bootstrap: model already v2-shaped", { model: name });
-    }
-  }
+  await ensureManagedModels(client, logger, executionSession);
 
   // 3. Bootstrap decks needed by CREATEs, confirmed recreations, and source-
   // owned deck moves.
@@ -158,8 +82,14 @@ export async function executeSyncPlan(
     ) === true;
   });
   if (plan.create.length > 0 || updatesNeedingDeck.length > 0) {
-    const existingDecks = await client.deckNames();
-    const existingDeckSet = new Set(existingDecks);
+    executionSession.decks ??= client.deckNames().then((names) => new Set(names));
+    let existingDeckSet: Set<string>;
+    try {
+      existingDeckSet = await executionSession.decks;
+    } catch (error) {
+      delete executionSession.decks;
+      throw error;
+    }
     const seen = new Set<string>();
     const cardsNeedingDeck = [
       ...plan.create.map((op) => op.card),
@@ -174,6 +104,7 @@ export async function executeSyncPlan(
       seen.add(deck);
       if (!existingDeckSet.has(deck)) {
         await client.createDeck(deck);
+        existingDeckSet.add(deck);
       }
     }
   }
@@ -187,13 +118,15 @@ export async function executeSyncPlan(
   // 4. CREATE ops.
   for (const op of plan.create) {
     try {
-      const rendered = renderFor(
-        op.card,
-        highlightClozeEnabled,
-        notePath,
-        vaultName,
-        resolveLink,
-      );
+      const rendered =
+        renderedCardsByBlockId?.get(op.card.blockId) ??
+        renderFor(
+          op.card,
+          highlightClozeEnabled,
+          notePath,
+          vaultName,
+          resolveLink,
+        );
       const nid = await client.addNote({
         deckName: rendered.deckName,
         modelName: rendered.modelName,
@@ -225,13 +158,15 @@ export async function executeSyncPlan(
   // 5. UPDATE ops.
   for (const op of plan.update) {
     try {
-      const rendered = renderFor(
-        op.card,
-        highlightClozeEnabled,
-        notePath,
-        vaultName,
-        resolveLink,
-      );
+      const rendered =
+        renderedCardsByBlockId?.get(op.card.blockId) ??
+        renderFor(
+          op.card,
+          highlightClozeEnabled,
+          notePath,
+          vaultName,
+          resolveLink,
+        );
       const existing = op.existing;
       const targetTags = desiredAnkiTags(
         rendered.tags,
