@@ -24,7 +24,7 @@ Use these notes with the current plugin build.
    - Inline-separator rendering: off
    - Hashtag rendering: on
 
-Run **Flashcards: Sync current note** on each numbered note. Then inspect its
+Run **Flashcards: Update Anki from current note** on each numbered note. Then inspect its
 cards in Anki.
 
 ## Notes

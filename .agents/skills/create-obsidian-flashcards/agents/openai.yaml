@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Obsidian Flashcards"
+  short_description: "Turn notes into effective, supported flashcards"
+  default_prompt: "Use $create-obsidian-flashcards to create effective flashcards from these Obsidian notes."

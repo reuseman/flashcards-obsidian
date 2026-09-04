@@ -1,68 +1,199 @@
-> :warning: **I am currently looking out for a co-maintainer.** Look at [#125](https://github.com/reuseman/flashcards-obsidian/issues/125), and if you are interested let me know :)
----
-
 # Flashcards
 
-[![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/reuseman/flashcards-obsidian?style=for-the-badge&sort=semver)](https://github.com/reuseman/flashcards-obsidian/releases/latest)
-![GitHub All Releases](https://img.shields.io/github/downloads/reuseman/flashcards-obsidian/total?style=for-the-badge)
+[![Latest release](https://img.shields.io/github/v/release/reuseman/flashcards-obsidian?style=for-the-badge&sort=semver)](https://github.com/reuseman/flashcards-obsidian/releases/latest)
+![Total downloads](https://img.shields.io/github/downloads/reuseman/flashcards-obsidian/total?style=for-the-badge)
 
-![logo](logo.png)
-Anki integration for [Obsidian](https://obsidian.md/).
+![Flashcards logo](logo.png)
 
-## Features
+Create Anki flashcards in [Obsidian](https://obsidian.md/) with normal
+Markdown. Review them in Anki and keep Obsidian as the source of truth.
 
-🗃️ Simple flashcards with **#card**  
-🎴 Reversed flashcards with **#card-reverse** or **#card/reverse**  
-📅 Spaced-only cards with **#card-spaced** or **#card/spaced**  
-✍️ Inline style with **Question::Answer**  
-✍️ Inline style reversed with **Question:::Answer**  
-📃 Cloze with **==Highlight==** or **{Curly brackets}** or  **{2:Cloze}**   
-🧠 **Context-aware** mode  
-🏷️ Global and local **tags**  
+> This README describes Flashcards v2, which is currently in pre-release
+> testing.
 
-🔢 Support for **LaTeX**  
-🖼️ Support for **images**  
-🎤 Support for **audios**   
-🔗 Support for **Obsidian URI**  
-⚓ Support for **reference to note**  
-📟 Support for **code syntax highlight**
+## How it works
 
-For other features check the [wiki](https://github.com/reuseman/flashcards-obsidian/wiki).
+You write and organize cards in Obsidian. The plugin creates or updates the
+matching notes in Anki.
 
-## How it works?
+- Obsidian owns card content, card type, deck, and authored tags.
+- Anki owns review history and scheduling.
+- Cards created directly in Anki are not changed.
+- Each Anki card links back to its exact source in Obsidian.
 
-The following is a demo where the three main operations are shown:
+This is one-way authoring, not two-way editing. If you change a linked card in
+Anki, the next update restores the content from Obsidian.
 
-1. **Insertion** of cards;
-2. **Update** of cards;
-3. **Deletion** of cards.
+## Requirements
 
-![Demo image](docs/demo.gif)
+- Obsidian 1.13.0 or newer.
+- The desktop version of Anki.
+- The [AnkiConnect add-on](https://ankiweb.net/shared/info/2055492159).
+- Anki must be running when you update cards.
 
-## How to use it?
+## Install
 
-The wiki explains in detail [how to use it](https://github.com/reuseman/flashcards-obsidian/wiki).
+1. In Obsidian, open **Settings → Community plugins**.
+2. Select **Browse**, search for **Flashcards**, and install the plugin.
+3. Enable **Flashcards**.
+4. In Anki, open **Tools → Add-ons → Get Add-ons**.
+5. Enter the AnkiConnect code `2055492159` and restart Anki.
 
-## How to install
+AnkiConnect uses `http://127.0.0.1:8765` by default. If your AnkiConnect setup
+requires an API key, select an Obsidian secret in the Flashcards settings.
 
-1. [Install](obsidian://show-plugin?id=flashcards-obsidian) this plugin on Obsidian:
+## Quick start
 
-   - Open Settings > Community plugins
-   - Make sure Safe mode is off
-   - Click Browse community plugins
-   - Search for "**Flashcards**"
-   - Click Install
-   - Once installed, close the community plugins window and activate the newly installed plugin
+Write a basic card in any Markdown note:
 
-2. Install [AnkiConnect](https://ankiweb.net/shared/info/2055492159) on Anki
-   - Tools > Add-ons -> Get Add-ons...
-   - Paste the code **2055492159** > Ok
+```markdown
+What is the capital of France?::Paris
+```
 
-3. Open the settings of the plugin, and while Anki is opened press "**Grant Permission**"
+Keep Anki open. Then run **Flashcards: Update Anki from current note** from the
+Obsidian command palette. You can also use the Flashcards button in the left
+sidebar.
 
-## Contributing
-Contributions via bug reports, bug fixes, are welcome. If you have ideas about features to be implemented, please open an issue so we can discuss the best way to implement it. For more details check [Contributing.md](docs/CONTRIBUTING.md)
+The plugin adds a small `^q-xxxx` anchor and a managed `flashcards` property.
+They connect the Obsidian card to its Anki note. Do not edit them by hand.
+
+## Card types
+
+### Basic
+
+```markdown
+What does HTTP mean?::Hypertext Transfer Protocol
+```
+
+### Reversed
+
+```markdown
+TCP:::Transmission Control Protocol
+```
+
+A reversed note creates cards in both directions. Use it only when both
+directions are useful.
+
+### Cloze
+
+```markdown
+The mitochondria is the ==powerhouse== of the cell.
+The {1:heart} pumps blood through the {1:circulatory system}.
+```
+
+`==text==` creates numbered clozes in source order. `{N:text}` lets you choose
+the number. Reuse a number when several parts should be hidden together.
+
+### Heading card
+
+```markdown
+## What is recursion? #card
+
+A function that calls itself and has a base case.
+```
+
+A heading card can contain several paragraphs, lists, code blocks, and lower
+headings. The next heading at the same or a higher level ends the answer.
+
+### Reminder
+
+```markdown
+Prefer reversible decisions when uncertainty is high. #card-reminder
+```
+
+A reminder has one piece of content and no answer. It returns through Anki's
+normal schedule.
+
+### Explicit multi-line card
+
+````markdown
+```flashcard
+front: What does CSS stand for?
+back: Cascading Style Sheets
+type: reversed
+```
+````
+
+The default `type` is `basic`. Other values are `reversed`, `cloze`, and
+`reminder`. Reminder blocks use `content:` instead of `front:` and `back:`.
+
+The plugin also supports card callouts, cards in lists, and atomic note cards.
+See the [v2 wiki](docs/wiki.md) for their exact rules and examples.
+
+## Markdown content
+
+Cards can contain:
+
+- emphasis, links, lists, quotes, and code;
+- LaTeX math;
+- Obsidian wikilinks, including heading and block links;
+- images and audio attachments.
+
+Card markers inside code, math, HTML comments, and ordinary blockquotes are not
+parsed as new cards.
+
+## Decks, tags, and context
+
+Set a deck for one note with frontmatter:
+
+```yaml
+---
+cards-deck: Knowledge::Biology
+tags:
+  - biology
+  - exam
+---
+```
+
+By default:
+
+- the note folder selects the deck when `cards-deck` is absent;
+- the fallback deck is `Default`;
+- every card gets the `obsidian` tag;
+- parent headings appear as context above the review question;
+- removing a linked card asks for confirmation before Anki deletes it.
+
+You can change these defaults in the Flashcards settings.
+
+## Commands
+
+- **Flashcards: Update Anki from current note** updates the active note.
+- **Flashcards: Update Anki from vault** updates every note in the vault.
+- **Flashcards: Check vault for v2 syntax migration** reports old syntax and
+  opens its source without changing files.
+- **Flashcards: Apply v2 Anki card style** previews, backs up, and updates
+  compatible managed Anki note types.
+
+Running an update again does not duplicate unchanged cards. Vault updates keep
+a disposable index to avoid reading unchanged card-free notes. Deleting this
+index is safe; the next update rebuilds it.
+
+## Existing cards and v1 notes
+
+Normal updates preserve Anki scheduling and review history when the note can be
+changed in place. Destructive changes ask first by default.
+
+V2 uses one strict syntax. Run **Flashcards: Check vault for v2 syntax
+migration** to find old markers and open each source location. The report is
+read-only.
+
+## Documentation
+
+- [V2 wiki](docs/wiki.md): complete syntax, defaults, and edge cases.
+- [Usage guide](docs/USAGE.md): setup and detailed update behavior.
+- [Syntax gallery](docs/card-types.html): visual reference for authoring forms,
+  parsed fields, card counts, and source boundaries.
+
+## Optional agent skill
+
+The repository includes
+[`$create-obsidian-flashcards`](.agents/skills/create-obsidian-flashcards/SKILL.md)
+for compatible coding agents. It can turn source notes into a selective set of
+retrieval cards, choose supported v2 syntax, and revise weak cards. It does not
+write the plugin's managed IDs or update Anki unless you ask.
 
 ## Support
-If flashcards plugin is useful to you and you want to support me, you can thank me with a coffee :)
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/V7V0ABKAF)
+
+If Flashcards is useful to you, you can support its development:
+
+[![Support on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/V7V0ABKAF)

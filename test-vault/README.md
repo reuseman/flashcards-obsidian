@@ -29,8 +29,9 @@ live AnkiConnect instance.
 ## Scenarios
 
 Each subfolder under `scenarios/` exercises a specific code path. Open the
-relevant note(s) and run the plugin commands (`Flashcards: Sync current note`
-or `Flashcards: Sync vault`) from the command palette.
+relevant note(s) and run the plugin commands
+(`Flashcards: Update Anki from current note` or
+`Flashcards: Update Anki from vault`) from the command palette.
 
 | Folder        | What it tests                                                               |
 | ------------- | --------------------------------------------------------------------------- |
@@ -53,6 +54,13 @@ extracts and renders each into an Anki payload, snapshotted at
 | `content/`      | Wikilinks, images, code, frontmatter (deck, tags).    |
 | `interactions/` | Known-bad combinations of the above (regression set). |
 
+The PNG fixtures are deliberately visible 640-pixel test graphics, not
+single-pixel placeholders. This makes the Obsidian and Anki media checks
+visually unambiguous.
+
+The WAV fixtures are deliberately audible, distinct test tones. They are not
+silence placeholders, so playback can be checked during the same smoke test.
+
 The harness strips written-back `^<id>` anchors before parsing and uses
 synthetic block IDs (`card-N`), so the same files can be opened in Obsidian
 and synced manually without affecting snapshots.
@@ -67,7 +75,8 @@ After a manual run:
   that a JSON file appears under the plugin's `backups` directory, and that the
   cards keep their existing scheduling while using the new answer-side Source
   action and path.
-- Run **Flashcards: Sync vault** a second time without editing any files. The
+- Run **Flashcards: Update Anki from vault** a second time without editing any
+  files. The
   completion notice should report unchanged card-free notes as skipped, while
   notes containing cards are still checked.
 

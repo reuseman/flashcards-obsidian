@@ -172,6 +172,38 @@ A function that calls itself.
 
 This has the same section boundary as putting `#card` in the heading.
 
+### Reminder card
+
+```markdown
+Keep the feedback loop short. #card-reminder
+```
+
+A reminder has one piece of content and no answer. It is useful for a quote,
+principle, behavior, or practice that should return occasionally. After you
+reveal it, Anki asks **How soon should this come back?** Anki's standard Again,
+Hard, Good, and Easy buttons control when it returns. They are not a strict
+yes/no input.
+
+A reminder paragraph owns only that paragraph. It does not use the next
+paragraph as an answer. A tagged heading uses only the heading text. For
+longer content, use an explicit block:
+
+````markdown
+```flashcard
+type: reminder
+content: Prefer reversible decisions when uncertainty is high.
+```
+````
+
+The public name is **Reminder**, and the Anki content field is `Content`. V2
+does not use `Prompt` because that word now commonly means an instruction to
+an LLM.
+
+V1 used `#card-spaced` and `#card/spaced`. Run **Flashcards: Check vault for
+v2 syntax migration** and replace either marker with `#card-reminder`. The
+next sync converts an existing linked `Obsidian-spaced` note in place, so its
+Anki note ID and review history remain.
+
 ### Card callout
 
 ```markdown
@@ -197,6 +229,20 @@ An inline card in a list item owns that item and all child blocks:
   This child paragraph is part of the same answer.
 ```
 
+A sibling list item is a separate card. Keep it at the same indentation:
+
+```markdown
+- First question?::First answer.
+
+  More detail for the first answer.
+
+- Second question?::Second answer.
+```
+
+Indented items belong to their parent card. They do not start a second card.
+To end the first card, start another item at the same indentation or leave the
+list and start another card block.
+
 A list containing cloze syntax becomes one cloze note, not one note per item:
 
 ```markdown
@@ -206,8 +252,8 @@ A list containing cloze syntax becomes one cloze note, not one note per item:
 
 ### Atomic note card
 
-An atomic note uses its filename, first paragraph, and the `test` frontmatter
-property.
+An atomic card uses the first paragraph as its authored content. The `test`
+frontmatter property selects the question type.
 
 ```markdown
 ---
@@ -217,10 +263,12 @@ test: title
 The first paragraph becomes the answer.
 ```
 
-`test: title` asks for the note title. `test: reversed` makes the title and
-first paragraph reversible. `test: cloze` creates a cloze from the first
-paragraph. A custom value, such as `test: Define recursion`, uses that value as
-the question.
+`test: title` asks for the note filename. `test: reversed` makes the filename
+and first paragraph reversible. `test: cloze` creates a cloze from the first
+paragraph and leaves Anki's Extra field empty. A custom value, such as
+`test: Define recursion`, uses that value as the question and the first
+paragraph as the complete answer. The plugin does not add the filename to a
+custom answer.
 
 ## Which syntax wins
 
@@ -254,6 +302,28 @@ of the same or a higher level, or until the next explicit card starts. Lower
 headings are part of the answer.
 
 ```markdown
+## First question
+
+#card
+
+First answer.
+
+### Detail included in the first answer
+
+More detail.
+
+## Second question
+
+#card
+
+Second answer.
+```
+
+Here, `### Detail...` stays in the first answer. `## Second question` ends the
+first card because it is at the same heading level. A `#` heading would also
+end it. A heading below `###` would stay inside the answer.
+
+```markdown
 ## What is a process? #card
 
 A running instance of a program.
@@ -279,6 +349,11 @@ continuation marker.
 The Markdown parser defines structural boundaries. Inline code, code blocks,
 math, links, emphasis, lists, and quotes keep their Markdown meaning. Card
 markers inside code or math are not parsed as cards.
+
+Outside automatic cloze fields, Obsidian `==highlight==` syntax renders as
+highlighted text in Anki. This includes text inside explicit basic or reversed
+cards. In a cloze card with **Highlight clozes** enabled, the same syntax
+creates a cloze instead. Highlight markers inside code or math stay literal.
 
 A cloze may contain a complete math expression when the cloze marker is
 outside the math delimiters:
@@ -394,8 +469,8 @@ You do not need to write default values in a note or change them in settings.
 | Folder deck prefix | Empty | Optional parent for folder-derived decks only. |
 | Folder tags | Off | Optionally add one hierarchical folder-path tag. |
 | Default tags | `obsidian` | Added to every card. |
-| Context | Heading path | Parent headings are added before the question. |
-| Context separator | ` > ` | Separates heading context and question. |
+| Context | Heading path | Parent headings appear above the active question. Reversed cards use the same context in both directions. |
+| Context separator | ` > ` | Separates nested heading parts inside the context. |
 | Basic separator | `::` | Defines an inline basic card. |
 | Reversed separator | `:::` | Defines an inline reversed card. |
 | Inline cards | On | Allows `::` and `:::` to create cards. |

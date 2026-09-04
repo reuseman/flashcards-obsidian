@@ -11,14 +11,15 @@ End-user manual for v2. For development notes, see `CONTRIBUTING.md`.
   *Turn on community plugins*; trust the author on first open).
 
 The first sync auto-creates Anki note types (`Obsidian-basic`,
-`Obsidian-basic-reversed`, `Obsidian-cloze`) and any decks it needs.
+`Obsidian-basic-reversed`, `Obsidian-cloze`, `Obsidian-reminder`) and any decks
+it needs.
 
 ## Commands
 
 From the command palette (`Cmd/Ctrl+P`):
 
-- **Flashcards: Sync current note** — runs the pipeline on the active note.
-- **Flashcards: Sync vault** — iterates every markdown note sequentially.
+- **Flashcards: Update Anki from current note** — updates Anki from the active note.
+- **Flashcards: Update Anki from vault** — updates Anki from every markdown note.
 - **Flashcards: Check vault for v2 syntax migration** — reports old syntax and
   opens each source location without changing the vault.
 - **Flashcards: Apply v2 Anki card style** — previews and backs up existing
@@ -70,6 +71,15 @@ back: Cascading Style Sheets, a stylesheet language for HTML and XML.
 `front:` and `back:` are required fields; an optional `type: reversed`
 produces a reversed card (default is basic). Keys may appear in any order.
 
+A fenced reminder has one `content:` field instead:
+
+````markdown
+```flashcard
+type: reminder
+content: Prefer reversible decisions when uncertainty is high.
+```
+````
+
 Field values may span multiple lines: a value is the text after `key:`
 plus every following line, up to the next key line or the closing fence,
 joined with newlines. Blank lines inside a value are preserved; only the
@@ -86,9 +96,9 @@ type: basic
 ````
 
 **Reserved-key caveat:** a continuation line that itself begins with
-`front:`, `back:`, or `type:` starts that key instead of being read as
-content. To include such a line verbatim in a value, reword it so it does
-not begin with a reserved key.
+`front:`, `back:`, `content:`, or `type:` starts that key instead of being
+read as content. To include such a line verbatim in a value, reword it so it
+does not begin with a reserved key.
 
 If `front:` or `back:` is missing or empty, no card is produced and a
 warning is logged.
@@ -103,6 +113,45 @@ A function that calls itself, with a base case to terminate.
 Recognised at headings (h1–h6) and paragraphs. `#card` is basic,
 `#card-reverse` or `#card/reverse` is reversed. The hashtag can sit inline
 (end of the question line) or on its own line below.
+
+A heading card owns its heading section. A lower-level heading stays in its
+answer. A heading at the same or a higher level ends the card. For example, a
+`##` card may contain `###` details; the next `##` or `#` starts a new section.
+
+An inline card in a list owns its list item, including indented paragraphs and
+nested lists. Another item at the same indentation can be another card:
+
+```text
+- First question?::First answer.
+
+  More detail for the first answer.
+
+- Second question?::Second answer.
+```
+
+The plugin writes `^q-xxxx` anchors to preserve card identity. They are source
+metadata and are not part of the rendered Anki card.
+
+### Reminder
+
+```text
+Keep the feedback loop short. #card-reminder
+```
+
+A reminder has one piece of authored content and no answer. After you reveal
+it, Anki asks **How soon should this come back?** Use Anki's normal scheduling
+buttons: **Again** returns it soon, **Good** uses the normal interval, and
+**Easy** waits longer. You can use the result of a personal check-in to choose
+the interval, but the buttons are not a strict yes/no input.
+
+A reminder paragraph owns only that paragraph. It does not consume the next
+paragraph as an answer. A tagged heading uses only its heading text. Use the
+fenced form when the content needs several lines.
+
+V1 used `#card-spaced` and `#card/spaced`. V2 does not parse those markers.
+Run **Flashcards: Check vault for v2 syntax migration**, replace the reported
+marker with `#card-reminder`, and sync. A linked v1 spaced note moves to the
+new reminder model without changing its Anki note ID or review history.
 
 Configurable via `hashtag.basicTag` (default `card`). Set
 `hashtag.enabled: false` to disable hashtag recognition entirely.
@@ -220,7 +269,7 @@ plugin folder (resets all plugin state).
 | `defaultDeck` | `Default` | Fallback deck if neither frontmatter nor folder picks one. |
 | `folderBasedDecks` | `true` | Map folder path to deck (`/` → `::`). |
 | `defaultTags` | `["obsidian"]` | Tags merged into every card. |
-| `contextStrategy` | `headings` | Text added before each card front. Use `headings`, `none`, or `note-title`. |
+| `contextStrategy` | `headings` | Context shown above the active question. Use `headings`, `none`, or `note-title`. |
 | `contextSeparator` | ` > ` | Text between context parts. Use `\n` for a new line. |
 | `inlineSeparator` | `::` | Basic inline card delimiter. |
 | `inlineReverseSeparator` | `:::` | Reversed inline card delimiter. |
