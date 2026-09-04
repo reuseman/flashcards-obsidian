@@ -234,6 +234,36 @@ describe("writebackSyncResults — CREATE", () => {
 // ---------------------------------------------------------------------------
 
 describe("writebackSyncResults — UPDATE", () => {
+  it("updates an Obsidian block-style entry without creating a duplicate", () => {
+    const md = [
+      "---",
+      "flashcards:",
+      "  q-abcd:",
+      "    nid: 1111111111111",
+      "    hash: oldhash",
+      "    sync: oldsync1",
+      "---",
+    ].join("\n");
+    const card = makeCard("q-abcd");
+    const r = results({
+      updates: [
+        {
+          op: updateOp(card, 1111111111111, "oldhash", "newhash"),
+          status: "ok",
+          syncHash: "newsync1",
+        },
+      ],
+    });
+
+    const { edits } = writebackSyncResults({ markdown: md, results: r });
+    const applied = applyTextEdits(md, edits);
+    expect(applied).toContain(
+      "  q-abcd: { nid: 1111111111111, hash: newhash, sync: newsync1 }",
+    );
+    expect(applied.match(/q-abcd:/g)).toHaveLength(1);
+    expect(applied).not.toContain("    nid:");
+  });
+
   it("refreshes the rendered-field sync hash after UPDATE", () => {
     const md = [
       "---",
@@ -353,6 +383,29 @@ describe("writebackSyncResults — UPDATE", () => {
 // ---------------------------------------------------------------------------
 
 describe("writebackSyncResults — DELETE", () => {
+  test("successful DELETE removes an entire block-style entry", () => {
+    const md = [
+      "---",
+      "flashcards:",
+      "  q-aaaa:",
+      "    nid: 1",
+      "    hash: hashaaaa",
+      "  q-bbbb: { nid: 2, hash: hashbbbb }",
+      "---",
+    ].join("\n");
+    const r = results({
+      deletes: [{ op: deleteOp("q-aaaa", 1), status: "ok" }],
+    });
+
+    const applied = applyTextEdits(
+      md,
+      writebackSyncResults({ markdown: md, results: r }).edits,
+    );
+    expect(applied).not.toContain("q-aaaa");
+    expect(applied).not.toContain("hashaaaa");
+    expect(applied).toContain("  q-bbbb: { nid: 2, hash: hashbbbb }");
+  });
+
   test("successful DELETE: entry line removed", () => {
     const md = [
       "---",

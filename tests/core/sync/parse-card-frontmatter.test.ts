@@ -22,8 +22,7 @@ import { parseCardFrontmatter } from "../../../src/core/sync/parse-card-frontmat
  *   "1714056234891": 1714056234891  (degenerate, allowed)
  *
  * Locked ambiguities (commented inline):
- *  - Block-style multi-line entry values (q-xxxx:\n  hash: ...) are NOT supported.
- *    They are counted as skipped lines.
+ *  - Block-style multi-line entry values written by Obsidian are supported.
  *  - Whitespace tolerance: only standard YAML spacing
  *    (`q-xxxx: { hash: ab12cd34 }`, with optional single leading/trailing spaces).
  *    Tighter or weirder spacing (`q-xxxx:{hash:ab12}` or `q-xxxx : { hash : ab12 }`)
@@ -242,24 +241,52 @@ describe("parseCardFrontmatter — unparseable lines counted as skipped", () => 
     expect(result.skippedLineCount).toBe(1);
   });
 
-  test("block-style multi-line entry (NOT supported) → skipped lines", () => {
-    // Locked: block-style nested values are not supported in this slice.
-    // The continuation lines under `q-abcd:` are counted as skipped.
+  test("block-style multi-line entry written by Obsidian is parsed", () => {
+    const md = [
+      "---",
+      "flashcards:",
+      "  q-abcd:",
+      "    nid: 1714056234891",
+      "    hash: ab12cd34",
+      "    sync: ef56gh78",
+      "  q-bbbb: { hash: bbbb2222 }",
+      "---",
+    ].join("\n");
+    const result = parseCardFrontmatter(md);
+    expect(result.entries).toEqual([
+      {
+        blockId: "q-abcd",
+        hash: "ab12cd34",
+        nid: 1714056234891,
+        sync: "ef56gh78",
+      },
+      { blockId: "q-bbbb", hash: "bbbb2222" },
+    ]);
+    expect(result.skippedLineCount).toBe(0);
+  });
+
+  test("block-style entry accepts cue and fields in any order", () => {
     const md = [
       "---",
       "flashcards:",
       "  q-abcd:",
       "    hash: ab12cd34",
-      "  q-bbbb: { hash: bbbb2222 }",
+      "    cue: cue12345",
+      "    nid: 1714056234891",
       "---",
     ].join("\n");
-    const result = parseCardFrontmatter(md);
-    // The valid one is parsed.
-    expect(result.entries).toContainEqual({ blockId: "q-bbbb", hash: "bbbb2222" });
-    // The block-style entry produces no parsed entry.
-    expect(result.entries.find((e) => e.blockId === "q-abcd")).toBeUndefined();
-    // skippedLineCount > 0 (at least one of the two lines is counted).
-    expect(result.skippedLineCount).toBeGreaterThan(0);
+
+    expect(parseCardFrontmatter(md)).toEqual({
+      entries: [
+        {
+          blockId: "q-abcd",
+          cue: "cue12345",
+          hash: "ab12cd34",
+          nid: 1714056234891,
+        },
+      ],
+      skippedLineCount: 0,
+    });
   });
 
   test("weird spacing rejected (locked)", () => {

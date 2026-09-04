@@ -1,9 +1,10 @@
 /**
- * Line-based parser for the `flashcards:` sub-block of a note's frontmatter.
+ * Narrow reader for the plugin-owned `flashcards:` frontmatter map.
  *
- * Intentionally not a YAML parser. We accept the narrow set of shapes the
- * writer emits, plus v1 numeric keys for migration. See the test file
- * `tests/core/sync/parse-card-frontmatter.test.ts` for the locked contract.
+ * The plugin writes compact flow mappings, while Obsidian may rewrite the
+ * same property as a block mapping. Both representations are part of the
+ * managed format. This deliberately remains smaller than a general YAML
+ * parser so unrelated user frontmatter is never interpreted as card state.
  */
 
 export interface FrontmatterCardEntry {
@@ -19,172 +20,259 @@ export interface ParsedCardFrontmatter {
   skippedLineCount: number;
 }
 
+export interface FlashcardsBlockRange {
+  entriesEnd: number;
+  entriesStart: number;
+}
+
+/** Entry details used by the writeback layer for precise text edits. */
+export interface ScannedFrontmatterCardEntry extends FrontmatterCardEntry {
+  indent: string;
+  keyText: string;
+  lineEnd: number;
+  lineEnding: string;
+  lineStart: number;
+}
+
+export interface ScannedCardFrontmatter extends ParsedCardFrontmatter {
+  block: FlashcardsBlockRange | null;
+  entries: ScannedFrontmatterCardEntry[];
+}
+
 const V2_KEY_RE = /^q-[abcdefghijkmnpqrstuvwxyz23456789]{4}$/;
 const V1_KEY_RE = /^\d{13}$/;
 
 interface LineInfo {
+  endOffset: number;
+  lineEnding: string;
+  startOffset: number;
   text: string;
 }
 
 export function parseCardFrontmatter(markdown: string): ParsedCardFrontmatter {
-  const fm = sliceFrontmatter(markdown);
-  if (fm === null) {
-    return { entries: [], skippedLineCount: 0 };
+  const { entries, skippedLineCount } = scanCardFrontmatter(markdown);
+  const validEntries = entries.filter((entry) => isValidBlockId(entry.blockId));
+  return {
+    entries: validEntries.map(({ blockId, cue, hash, nid, sync }) => ({
+      blockId,
+      ...(cue !== undefined ? { cue } : {}),
+      ...(hash !== undefined ? { hash } : {}),
+      ...(nid !== undefined ? { nid } : {}),
+      ...(sync !== undefined ? { sync } : {}),
+    })),
+    skippedLineCount: skippedLineCount + entries.length - validEntries.length,
+  };
+}
+
+/**
+ * Parse entries and retain their byte ranges. The range for a block-style
+ * entry owns its header and all nested field lines, so update/delete cannot
+ * leave orphaned YAML behind.
+ */
+export function scanCardFrontmatter(markdown: string): ScannedCardFrontmatter {
+  const fm = locateFrontmatter(markdown);
+  if (!fm) return { block: null, entries: [], skippedLineCount: 0 };
+
+  const fmText = markdown.slice(fm.contentStart, fm.contentEnd);
+  const lines = splitLinesWithOffsets(fmText);
+  const keyIndex = lines.findIndex((line) => /^flashcards:\s*$/.test(line.text));
+  if (keyIndex === -1) {
+    return { block: null, entries: [], skippedLineCount: 0 };
   }
 
-  const lines = fm.split(/\r?\n/).map<LineInfo>((text) => ({ text }));
-
-  // Find the `flashcards:` key line (must be exactly that, no inline value).
-  let startIdx = -1;
-  for (let i = 0; i < lines.length; i++) {
-    if (/^flashcards:\s*$/.test(lines[i]!.text)) {
-      startIdx = i;
-      break;
-    }
+  const entriesStart = fm.contentStart + lines[keyIndex]!.endOffset;
+  let endIndex = keyIndex + 1;
+  while (endIndex < lines.length) {
+    const line = lines[endIndex]!;
+    if (line.text.length > 0 && !/^[ \t]/.test(line.text)) break;
+    endIndex++;
   }
-  if (startIdx === -1) {
-    return { entries: [], skippedLineCount: 0 };
-  }
+  const entriesEnd =
+    endIndex === keyIndex + 1
+      ? entriesStart
+      : fm.contentStart + lines[endIndex - 1]!.endOffset;
+  const block = { entriesEnd, entriesStart };
 
-  // Sub-block runs while subsequent lines are indented (space/tab).
-  // Stop on first line at column 0 (sibling) or end of fm.
-  // Children must match `<indent>q-xxxx: <value>` or `<indent>"\d+": <value>` or `<indent>\d+: <value>`.
-  // Anything else within the indented block is a skipped line.
-  const byKey = new Map<string, FrontmatterCardEntry>();
+  const byKey = new Map<string, ScannedFrontmatterCardEntry>();
   let skipped = 0;
 
-  for (let j = startIdx + 1; j < lines.length; j++) {
-    const text = lines[j]!.text;
-    if (text.length === 0) {
-      // Blank line: tolerated, neither parsed nor counted as skipped.
-      continue;
-    }
-    if (!/^[ \t]/.test(text)) {
-      // Sibling key — end of sub-block.
-      break;
-    }
-    const entry = parseEntryLine(text);
-    if (entry === null) {
+  for (let i = keyIndex + 1; i < endIndex; i++) {
+    const line = lines[i]!;
+    if (line.text.length === 0) continue;
+
+    const header = parseEntryHeader(line.text);
+    if (!header) {
       skipped++;
       continue;
     }
-    if (byKey.has(entry.blockId)) {
-      // Duplicate key: previous occurrence becomes "skipped"; last wins.
-      skipped++;
+
+    let parsed: FrontmatterCardEntry | null;
+    let ownedEnd = i;
+    if (header.value !== undefined) {
+      parsed = parseInlineValue(header.blockId, header.value);
+    } else {
+      const fields: Partial<Omit<FrontmatterCardEntry, "blockId">> = {};
+      let validFieldCount = 0;
+      let j = i + 1;
+      for (; j < endIndex; j++) {
+        const child = lines[j]!;
+        if (child.text.length === 0) {
+          ownedEnd = j;
+          continue;
+        }
+        const childIndent = /^[ \t]*/.exec(child.text)![0].length;
+        if (childIndent <= header.indent.length) break;
+        ownedEnd = j;
+        const field = parseBlockField(child.text, header.indent.length);
+        if (!field || !setField(fields, field.name, field.value)) {
+          skipped++;
+          continue;
+        }
+        validFieldCount++;
+      }
+      i = j - 1;
+      parsed =
+        validFieldCount > 0
+          ? ({ blockId: header.blockId, ...fields } as FrontmatterCardEntry)
+          : null;
     }
-    byKey.set(entry.blockId, entry);
+
+    if (!parsed) {
+      skipped++;
+      continue;
+    }
+    if (byKey.has(parsed.blockId)) skipped++;
+
+    const lastLine = lines[ownedEnd]!;
+    byKey.set(parsed.blockId, {
+      ...parsed,
+      indent: header.indent,
+      keyText: header.keyText,
+      lineEnd: fm.contentStart + lastLine.endOffset,
+      lineEnding: lastLine.lineEnding,
+      lineStart: fm.contentStart + line.startOffset,
+    });
   }
 
-  return { entries: Array.from(byKey.values()), skippedLineCount: skipped };
+  return {
+    block,
+    entries: Array.from(byKey.values()),
+    skippedLineCount: skipped,
+  };
 }
 
-/**
- * Slice raw frontmatter content between leading `---` and closing `---`.
- * Returns null when no frontmatter block is present.
- */
-function sliceFrontmatter(markdown: string): string | null {
-  if (!markdown.startsWith("---")) return null;
-  const startMatch = /^(---)\r?\n/.exec(markdown);
-  if (!startMatch) return null;
-  const contentStart = startMatch[0].length;
-  const closingRe = /\r?\n---(?:\r?\n|$)/g;
-  closingRe.lastIndex = contentStart;
-  const closing = closingRe.exec(markdown);
-  if (!closing || closing.index < contentStart) return null;
-  return markdown.slice(contentStart, closing.index);
+interface EntryHeader {
+  blockId: string;
+  indent: string;
+  keyText: string;
+  value?: string;
 }
 
-/**
- * Parse one indented child line of the `flashcards:` sub-block.
- *
- * Accepted shapes (with exactly one space after each `:`):
- *   <indent>q-xxxx: { hash: H }
- *   <indent>q-xxxx: { nid: N }
- *   <indent>q-xxxx: { nid: N, hash: H }
- *   <indent>q-xxxx: N
- *   <indent>"NNN...": { ... }
- *   <indent>"NNN...": N
- *   <indent>NNN...: { ... }
- *   <indent>NNN...: N
- *
- * Returns null for anything else.
- */
-function parseEntryLine(line: string): FrontmatterCardEntry | null {
-  // Strict shape: leading indent, key, ": ", value, optional trailing spaces.
-  // Note `q-xxxx` allows the v2 character set; v1 is bare digits or quoted digits.
-  const m = /^[ \t]+(?:"(\d{13})"|'(\d{13})'|(\d{13})|(q-[a-z0-9]+)): (.+?)\s*$/.exec(line);
-  if (!m) return null;
-  const blockId = m[1] ?? m[2] ?? m[3] ?? m[4]!;
-  const value = m[5]!;
-
-  // v2 key validation (tightened charset).
-  if (blockId.startsWith("q-")) {
-    if (!V2_KEY_RE.test(blockId)) return null;
-  } else {
-    if (!V1_KEY_RE.test(blockId)) return null;
-  }
-
-  // Object form: `{ ... }`.
-  if (value.startsWith("{") && value.endsWith("}")) {
-    return parseObjectValue(blockId, value);
-  }
-
-  // Scalar form: a 13-digit number (nid).
-  if (/^\d{13}$/.test(value)) {
-    return { blockId, nid: Number.parseInt(value, 10) };
-  }
-
-  return null;
+function parseEntryHeader(line: string): EntryHeader | null {
+  const match = /^([ \t]+)(?:"(\d{13})"|'(\d{13})'|(\d{13})|(q-[a-z0-9]+)):(?: (.+?))?[ \t]*$/.exec(
+    line,
+  );
+  if (!match) return null;
+  const blockId = match[2] ?? match[3] ?? match[4] ?? match[5]!;
+  const indent = match[1]!;
+  const colon = line.indexOf(":", indent.length);
+  return {
+    blockId,
+    indent,
+    keyText: line.slice(indent.length, colon),
+    ...(match[6] !== undefined ? { value: match[6] } : {}),
+  };
 }
 
-/**
- * Parse `{ hash: H }`, `{ nid: N }`, `{ nid: N, hash: H }` (or hash-first).
- * Standard spacing only.
- */
-function parseObjectValue(
+function isValidBlockId(blockId: string): boolean {
+  return blockId.startsWith("q-")
+    ? V2_KEY_RE.test(blockId)
+    : V1_KEY_RE.test(blockId);
+}
+
+function parseInlineValue(
   blockId: string,
   value: string,
 ): FrontmatterCardEntry | null {
-  // Strip `{ ` and ` }`.
-  if (!value.startsWith("{ ") || !value.endsWith(" }")) return null;
-  const inner = value.slice(2, -2);
-  if (inner.length === 0) return null;
-
-  const parts = inner.split(", ");
-  let cue: string | undefined;
-  let hash: string | undefined;
-  let nid: number | undefined;
-  let sync: string | undefined;
-  for (const part of parts) {
-    const kv = /^(cue|hash|nid|sync): (.+)$/.exec(part);
-    if (!kv) return null;
-    const k = kv[1]!;
-    const v = kv[2]!;
-    if (k === "cue") {
-      if (!/^[A-Za-z0-9]+$/.test(v)) return null;
-      cue = v;
-    } else if (k === "hash") {
-      if (!/^[A-Za-z0-9]+$/.test(v)) return null;
-      hash = v;
-    } else if (k === "nid") {
-      if (!/^\d+$/.test(v)) return null;
-      nid = Number.parseInt(v, 10);
-    } else {
-      if (!/^[A-Za-z0-9]+$/.test(v)) return null;
-      sync = v;
-    }
+  if (/^\d{13}$/.test(value)) {
+    return { blockId, nid: Number.parseInt(value, 10) };
   }
-  if (
-    cue === undefined &&
-    hash === undefined &&
-    nid === undefined &&
-    sync === undefined
-  ) return null;
+  if (!value.startsWith("{ ") || !value.endsWith(" }")) return null;
 
-  const out: FrontmatterCardEntry = { blockId };
-  if (cue !== undefined) out.cue = cue;
-  if (hash !== undefined) out.hash = hash;
-  if (nid !== undefined) out.nid = nid;
-  if (sync !== undefined) out.sync = sync;
+  const fields: Partial<Omit<FrontmatterCardEntry, "blockId">> = {};
+  const parts = value.slice(2, -2).split(", ");
+  if (parts.length === 0) return null;
+  for (const part of parts) {
+    const field = /^(cue|hash|nid|sync): (.+)$/.exec(part);
+    if (!field || !setField(fields, field[1]!, field[2]!)) return null;
+  }
+  return Object.keys(fields).length > 0
+    ? ({ blockId, ...fields } as FrontmatterCardEntry)
+    : null;
+}
+
+function parseBlockField(
+  line: string,
+  parentIndentLength: number,
+): { name: string; value: string } | null {
+  const match = /^([ \t]+)(cue|hash|nid|sync): (.+?)[ \t]*$/.exec(line);
+  if (!match || match[1]!.length <= parentIndentLength) return null;
+  return { name: match[2]!, value: match[3]! };
+}
+
+function setField(
+  fields: Partial<Omit<FrontmatterCardEntry, "blockId">>,
+  name: string,
+  value: string,
+): boolean {
+  if (name === "nid") {
+    if (!/^\d+$/.test(value)) return false;
+    fields.nid = Number.parseInt(value, 10);
+    return true;
+  }
+  if (!/^[A-Za-z0-9]+$/.test(value)) return false;
+  if (name === "cue") fields.cue = value;
+  else if (name === "hash") fields.hash = value;
+  else if (name === "sync") fields.sync = value;
+  else return false;
+  return true;
+}
+
+function locateFrontmatter(
+  markdown: string,
+): { contentEnd: number; contentStart: number } | null {
+  const opening = /^---\r?\n/.exec(markdown);
+  if (!opening) return null;
+  const contentStart = opening[0].length;
+  const closing = /\r?\n---(?:\r?\n|$)/g;
+  closing.lastIndex = contentStart;
+  const match = closing.exec(markdown);
+  if (!match) return null;
+  return { contentEnd: match.index, contentStart };
+}
+
+function splitLinesWithOffsets(text: string): LineInfo[] {
+  const out: LineInfo[] = [];
+  let start = 0;
+  while (start < text.length) {
+    const newline = text.indexOf("\n", start);
+    if (newline === -1) {
+      out.push({
+        endOffset: text.length,
+        lineEnding: "",
+        startOffset: start,
+        text: text.slice(start),
+      });
+      break;
+    }
+    const hasCr = newline > start && text[newline - 1] === "\r";
+    out.push({
+      endOffset: newline + 1,
+      lineEnding: hasCr ? "\r\n" : "\n",
+      startOffset: start,
+      text: text.slice(start, hasCr ? newline - 1 : newline),
+    });
+    start = newline + 1;
+  }
   return out;
 }

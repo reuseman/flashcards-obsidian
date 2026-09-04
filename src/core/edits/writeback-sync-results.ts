@@ -5,6 +5,7 @@ import type {
 import { parseNoteMetadata } from "../parse/note-metadata.js";
 import type { TextEdit } from "./apply-text-edits.js";
 import { computeCueHash } from "./card-hash.js";
+import { scanCardFrontmatter } from "../sync/parse-card-frontmatter.js";
 
 /**
  * Phase 6 slice 6d — write sync execution results back into the `flashcards:`
@@ -40,22 +41,16 @@ const V1_BLOCK_ID_RE = /^\d{13}$/;
 
 interface ExistingEntry {
   blockId: string;
-  cue: string | undefined;
-  hash: string | undefined;
+  cue?: string;
+  hash?: string;
   // Byte range of the entry's full line, including trailing newline if present.
   lineEnd: number;
+  lineEnding: string;
   lineStart: number;
-  nid: number | undefined;
-  sync: string | undefined;
-  // Byte range of the value portion (after `key: `, before trailing newline).
-  valueEnd: number;
-  valueStart: number;
-}
-
-interface FlashcardsBlock {
-  // Offset just past the `flashcards:` line's trailing newline.
-  entriesEnd: number;
-  entriesStart: number;
+  nid?: number;
+  sync?: string;
+  indent: string;
+  keyText: string;
 }
 
 interface DesiredEntry {
@@ -73,13 +68,12 @@ export function writebackSyncResults(
   // 1. Parse current frontmatter state.
   const metadata = parseNoteMetadata(markdown);
   const fm = metadata.frontmatter;
-  const block = fm
-    ? findFlashcardsBlock(markdown, fm.contentStart, fm.contentEnd)
-    : null;
+  const scanned = scanCardFrontmatter(markdown);
+  const block = scanned.block;
 
   const existing = new Map<string, ExistingEntry>();
   if (block) {
-    for (const entry of collectExistingEntries(markdown, block)) {
+    for (const entry of scanned.entries) {
       existing.set(entry.blockId, entry);
     }
   }
@@ -196,12 +190,11 @@ export function writebackSyncResults(
     // action.kind === "set"
     const desiredText = renderValue(action.entry);
     if (ex) {
-      const currentValue = markdown.slice(ex.valueStart, ex.valueEnd);
-      if (currentValue === desiredText) continue; // idempotent
+      if (entriesEqual(ex, action.entry)) continue; // semantic idempotence
       edits.push({
-        start: ex.valueStart,
-        end: ex.valueEnd,
-        text: desiredText,
+        start: ex.lineStart,
+        end: ex.lineEnd,
+        text: `${ex.indent}${ex.keyText}: ${desiredText}${ex.lineEnding}`,
       });
     } else {
       insertions.push({ blockId, entry: action.entry });
@@ -263,164 +256,11 @@ function formatKey(blockId: string): string {
   return blockId;
 }
 
-/**
- * Locate the `flashcards:` key line and the byte range of its indented
- * sub-block. Mirrors the heuristic in `write-card-frontmatter.ts`.
- */
-function findFlashcardsBlock(
-  markdown: string,
-  contentStart: number,
-  contentEnd: number,
-): FlashcardsBlock | null {
-  const fmText = markdown.slice(contentStart, contentEnd);
-  const lines = splitLinesWithOffsets(fmText);
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]!;
-    if (!/^flashcards:\s*$/.test(line.text)) continue;
-    const subBlockStart = contentStart + line.endOffset;
-    let entriesEnd = subBlockStart;
-    for (let j = i + 1; j < lines.length; j++) {
-      const sub = lines[j]!;
-      if (sub.text.length === 0 || /^[ \t]/.test(sub.text)) {
-        entriesEnd = contentStart + sub.endOffset;
-        continue;
-      }
-      break;
-    }
-    return { entriesEnd, entriesStart: subBlockStart };
-  }
-  return null;
-}
-
-interface LineInfo {
-  endOffset: number;
-  startOffset: number;
-  text: string;
-}
-
-function splitLinesWithOffsets(text: string): LineInfo[] {
-  const out: LineInfo[] = [];
-  let i = 0;
-  while (i < text.length) {
-    const nl = text.indexOf("\n", i);
-    if (nl === -1) {
-      out.push({
-        endOffset: text.length,
-        startOffset: i,
-        text: text.slice(i),
-      });
-      break;
-    }
-    out.push({
-      endOffset: nl + 1,
-      startOffset: i,
-      text: text.slice(i, nl),
-    });
-    i = nl + 1;
-  }
-  return out;
-}
-
-/**
- * Walk the indented sub-block under `flashcards:` and collect existing
- * entries with full byte ranges (line + value).
- */
-function collectExistingEntries(
-  markdown: string,
-  block: FlashcardsBlock,
-): ExistingEntry[] {
-  const subText = markdown.slice(block.entriesStart, block.entriesEnd);
-  const lines = splitLinesWithOffsets(subText);
-  const out: ExistingEntry[] = [];
-
-  for (const line of lines) {
-    if (line.text.length === 0) continue;
-    if (!/^[ \t]/.test(line.text)) continue;
-
-    // Match `<indent><key>: <value><trailing whitespace>`.
-    // Key: quoted-digits, bare-digits, or `q-xxxx`.
-    const m = /^([ \t]+)(?:"(\d{13})"|(\d{13})|(q-[a-z0-9]+)): (.+?)\s*$/.exec(
-      line.text,
-    );
-    if (!m) continue;
-    const indent = m[1]!;
-    const blockId = (m[2] ?? m[3] ?? m[4])!;
-    const value = m[5]!;
-
-    // Find absolute offsets.
-    const lineStart = block.entriesStart + line.startOffset;
-    const lineEnd = block.entriesStart + line.endOffset;
-    // Value starts after `<indent><key>: `. Key length depends on quoting.
-    const keyText = m[2] !== undefined ? `"${m[2]}"` : (m[3] ?? m[4])!;
-    const valueStart = lineStart + indent.length + keyText.length + 2; // ": "
-    const valueEnd = valueStart + value.length;
-
-    const { nid, hash, cue, sync } = parseValue(value);
-
-    out.push({
-      blockId,
-      cue,
-      hash,
-      lineEnd,
-      lineStart,
-      nid,
-      sync,
-      valueEnd,
-      valueStart,
-    });
-  }
-  return out;
-}
-
-function parseValue(value: string): {
-  cue?: string;
-  hash?: string;
-  nid?: number;
-  sync?: string;
-} {
-  // Object form: `{ ... }`.
-  if (value.startsWith("{ ") && value.endsWith(" }")) {
-    const inner = value.slice(2, -2);
-    if (inner.length === 0) return {};
-    let cue: string | undefined;
-    let hash: string | undefined;
-    let nid: number | undefined;
-    let sync: string | undefined;
-    for (const part of inner.split(", ")) {
-      const kv = /^(cue|hash|nid|sync): (.+)$/.exec(part);
-      if (!kv) return {};
-      const k = kv[1]!;
-      const v = kv[2]!;
-      if (k === "cue") {
-        if (!/^[A-Za-z0-9]+$/.test(v)) return {};
-        cue = v;
-      } else if (k === "hash") {
-        if (!/^[A-Za-z0-9]+$/.test(v)) return {};
-        hash = v;
-      } else if (k === "nid") {
-        if (!/^\d+$/.test(v)) return {};
-        nid = Number.parseInt(v, 10);
-      } else {
-        if (!/^[A-Za-z0-9]+$/.test(v)) return {};
-        sync = v;
-      }
-    }
-    const out: {
-      cue?: string;
-      hash?: string;
-      nid?: number;
-      sync?: string;
-    } = {};
-    if (cue !== undefined) out.cue = cue;
-    if (hash !== undefined) out.hash = hash;
-    if (nid !== undefined) out.nid = nid;
-    if (sync !== undefined) out.sync = sync;
-    return out;
-  }
-  // Scalar shorthand: nid only.
-  if (/^\d{13}$/.test(value)) {
-    return { nid: Number.parseInt(value, 10) };
-  }
-  return {};
+function entriesEqual(existing: ExistingEntry, desired: DesiredEntry): boolean {
+  return (
+    existing.cue === desired.cue &&
+    existing.hash === desired.hash &&
+    existing.nid === desired.nid &&
+    existing.sync === desired.sync
+  );
 }

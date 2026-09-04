@@ -70,6 +70,37 @@ function makeFakeRepository(initial: string): FakeRepoHandle {
 }
 
 describe("previewSyncPlan (application) — shared cue-matching preview path", () => {
+  it("treats Obsidian block-style card metadata as existing, not new", () => {
+    const md = [
+      "---",
+      "flashcards:",
+      "  q-abcd:",
+      "    nid: 1714056234891",
+      "    hash: stalehash",
+      "    sync: stalesync",
+      "---",
+      "",
+      "What is parsed?:: An existing card. ^q-abcd",
+    ].join("\n");
+
+    const preview = previewSyncPlan({
+      markdown: md,
+      notePath: NOTE_PATH,
+      settings: settingsWith(),
+    });
+
+    expect(preview.create).toBe(0);
+    expect(preview.update).toBe(1);
+    expect(preview.frontmatter.entries).toEqual([
+      {
+        blockId: "q-abcd",
+        hash: "stalehash",
+        nid: 1714056234891,
+        sync: "stalesync",
+      },
+    ]);
+  });
+
   it("surfaces parser warnings as sync-time lints", () => {
     const preview = previewSyncPlan({
       markdown: "The {1:answer is not closed.",
