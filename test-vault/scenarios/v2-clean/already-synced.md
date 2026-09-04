@@ -1,7 +1,7 @@
 ---
 flashcards:
-  q-aaaa: { nid: 1788465159030, hash: mewtyxu3, sync: k87bbzhu }
-  q-bbbb: { nid: 1788465159080, hash: xb9en37t, sync: 68q3rkpd }
+  q-aaaa: { nid: 1700000000001, hash: abcdefgh }
+  q-bbbb: { nid: 1700000000002, hash: ijklmnop }
 ---
 
 # Pre-synced v2 note
