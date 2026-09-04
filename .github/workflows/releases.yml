@@ -33,9 +33,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          notes_file="docs/releases/${GITHUB_REF_NAME}.md"
+          notes=(--generate-notes)
+          if [[ -f "${notes_file}" ]]; then
+            notes=(--notes-file "${notes_file}")
+          fi
           gh release create "${GITHUB_REF_NAME}" \
             "${PLUGIN_NAME}-${GITHUB_REF_NAME}.zip" \
             main.js manifest.json styles.css \
             --title "${GITHUB_REF_NAME}" \
-            --notes "" \
+            "${notes[@]}" \
             --verify-tag

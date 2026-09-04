@@ -1,12 +1,8 @@
 # Flashcards v2 wiki
 
-> Draft for the unpublished v2 release. Future behavior is explicitly marked
-> as planned.
-
 This page explains how to write cards, what the plugin owns, and how unusual
 cases are handled. It uses simple technical English. See
-[`USAGE.md`](USAGE.md) for the current implementation and
-[`v2-readiness.md`](v2-readiness.md) for release work.
+[`USAGE.md`](USAGE.md) for setup and detailed update behavior.
 
 ## Product rule
 

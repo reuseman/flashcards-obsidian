@@ -8,8 +8,8 @@
 Create Anki flashcards in [Obsidian](https://obsidian.md/) with normal
 Markdown. Review them in Anki and keep Obsidian as the source of truth.
 
-> This README describes Flashcards v2, which is currently in pre-release
-> testing.
+This README describes Flashcards v2. The previous implementation and its
+documentation remain available on the [legacy v1 branch](https://github.com/reuseman/flashcards-obsidian/tree/v1).
 
 ## How it works
 

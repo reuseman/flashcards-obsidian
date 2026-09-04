@@ -50,3 +50,8 @@ docs/superpowers/
 .claude/
 CLAUDE.md
 /.obsidian/
+
+# Local v2 release workbench
+/docs/v2-feature-plan.md
+/docs/v2-handoff.md
+/docs/v2-readiness.md
