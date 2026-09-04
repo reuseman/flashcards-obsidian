@@ -342,6 +342,47 @@ describe("renderCardForAnki — basic card markdown→HTML", () => {
     expect(out.fields.Front).toContain("<del>old</del>");
   });
 
+  it("renders Obsidian highlights in non-cloze card fields", () => {
+    const out = renderCardForAnki(
+      baseCard({
+        answer: "The ==important answer== stays visible.",
+        front: "Remember ==this phrase==.",
+      }),
+      CTX,
+    );
+
+    expect(out.fields.Front).toBe(
+      "<p>Remember <mark>this phrase</mark>.</p>",
+    );
+    expect(out.fields.Back).toBe(
+      "<p>The <mark>important answer</mark> stays visible.</p>",
+    );
+  });
+
+  it("does not render highlight markers inside code or math", () => {
+    const out = renderCardForAnki(
+      baseCard({
+        front: "`==code==` and $==math==$ but ==visible==",
+      }),
+      CTX,
+    );
+
+    expect(out.fields.Front).toContain("<code>==code==</code>");
+    expect(out.fields.Front).toContain("\\(==math==\\)");
+    expect(out.fields.Front).toContain("<mark>visible</mark>");
+  });
+
+  it("leaves escaped and unmatched highlight markers literal", () => {
+    const out = renderCardForAnki(
+      baseCard({ front: String.raw`\==escaped\== and ==unfinished` }),
+      CTX,
+    );
+
+    expect(out.fields.Front).not.toContain("<mark>");
+    expect(out.fields.Front).toContain("==escaped==");
+    expect(out.fields.Front).toContain("==unfinished");
+  });
+
   it("renders callouts as blockquotes without leaking the control marker", () => {
     const out = renderCardForAnki(
       baseCard({
@@ -412,13 +453,13 @@ describe("renderCardForAnki — cloze conversion", () => {
     expect(out.fields.Text).not.toContain("==word==");
   });
 
-  it("can leave highlights as Markdown while still converting explicit clozes", () => {
+  it("renders highlights normally when auto-cloze is off", () => {
     const out = renderCardForAnki(
       clozeCard("keep ==highlight== and hide {2:answer}"),
       { ...CTX, highlightClozeEnabled: false },
     );
 
-    expect(out.fields.Text).toContain("==highlight==");
+    expect(out.fields.Text).toContain("<mark>highlight</mark>");
     expect(out.fields.Text).toContain("{{c2::answer}}");
     expect(out.fields.Text).not.toContain("{{c1::highlight}}");
   });

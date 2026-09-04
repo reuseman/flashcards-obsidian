@@ -8,7 +8,10 @@ import { unified } from "unified";
 import type { AnkiCreateModelSpec } from "../sync/anki-contract.js";
 import type { IdentifiedFlashcard } from "../domain/card.js";
 import { rewriteWikilinks } from "./rewrite-wikilinks.js";
-import { renderClozeForAnki } from "../parse/cloze-syntax.js";
+import {
+  parseClozeSyntax,
+  renderClozeForAnki,
+} from "../parse/cloze-syntax.js";
 import {
   collectProtectedMarkdownSpans,
   parseMarkdownTree,
@@ -317,6 +320,24 @@ function convertCloze(src: string, highlightClozeEnabled: boolean): string {
   });
 }
 
+function renderObsidianHighlights(src: string): string {
+  const tree = parseMarkdownTree(src);
+  const spans = parseClozeSyntax(
+    src,
+    collectProtectedMarkdownSpans(tree),
+  ).spans.filter((span) => span.kind === "auto");
+  let output = "";
+  let cursor = 0;
+
+  for (const span of spans) {
+    output += src.slice(cursor, span.start);
+    output += `<mark>${src.slice(span.bodyStart, span.bodyEnd)}</mark>`;
+    cursor = span.end;
+  }
+
+  return output + src.slice(cursor);
+}
+
 function remarkMathToAnki() {
   return (tree: Root): void => {
     visit(tree, (node: Nodes, index, parent) => {
@@ -368,7 +389,7 @@ const processor = unified()
   .use(rehypeStringify, { characterReferences: { useNamedReferences: true } });
 
 function md(src: string): string {
-  const out = String(processor.processSync(src));
+  const out = String(processor.processSync(renderObsidianHighlights(src)));
   return out.replace(/\s+$/, "");
 }
 
