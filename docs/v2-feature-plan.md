@@ -6,6 +6,9 @@ All linked GitHub issues describe v1. This file records the v2 decision so the
 same issues do not need to be researched again. GitHub issues remain open until
 the final v2 release pass.
 
+The next-session state and exact execution order are in
+[`v2-handoff.md`](v2-handoff.md). Start there instead of re-triaging issues.
+
 Status meanings:
 
 - **Covered**: v2 already provides the requested result. Verify the original
@@ -34,6 +37,12 @@ Status meanings:
       models.
 - [x] Skip unchanged notes proven to be card-free with a disposable vault-scan
       index; keep full reconciliation for notes containing cards.
+- [x] Remove generated sync state from committed test-vault fixtures and fix
+      the pre-commit guard so it catches v2 `^q-xxxx` anchors.
+- [ ] Decide and implement the presentation of internal `flashcards` metadata
+      (V2-14).
+- [ ] Manually verify existing-template Source repair, the backed-up Anki style
+      migration, and incremental scan behavior (V2-13, V2-15, V2-16).
 - [ ] Run the manual release smoke matrix.
 
 Custom model profiles and mobile support remain post-v2 design projects.

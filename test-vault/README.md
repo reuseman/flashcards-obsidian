@@ -76,7 +76,10 @@ npm run test-vault:reset
 ```
 
 A pre-commit hook (`scripts/check-test-vault-ids.sh`) rejects staged
-`test-vault/**.md` diffs that introduce block-id anchors, as a safety net.
+`test-vault/**.md` diffs that introduce plugin-written legacy/v2 block anchors
+or registry entries. Existing synthetic identities in migration scenarios are
+intentional; manual sync must not add new identity or sync state to the
+committed baseline.
 
 ## Resetting between runs
 

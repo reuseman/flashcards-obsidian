@@ -1,9 +1,12 @@
 # V2 release readiness
 
-Last reviewed: 2026-09-03
+Last reviewed: 2026-09-04
 
 This is the working plan for the unpublished v2 rewrite. It is not a public
 changelog and it does not change the status of existing GitHub issues.
+
+For the exact repository state and ordered work for the next session, start
+with [`v2-handoff.md`](v2-handoff.md).
 
 ## Important interpretation rule
 
@@ -39,7 +42,7 @@ automated behavior test or a repeatable manual check.
 
 - Branch: `rewrite-v2`
 - Minimum supported Obsidian version: 1.13.0
-- Automated suite: 73 test files, 817 tests passing
+- Automated suite: 74 test files, 826 tests passing
 - Last measured line coverage before this work: 77.14 percent
 - Full local gate: lint, Markdown lint, architecture check, tests, typecheck,
   and production build passing
@@ -74,14 +77,13 @@ the advertised v2 behavior before release.
 | V2-14 | Keep internal sync metadata out of the Properties UI | New v2 UX finding from live smoke | User-authored settings remain readable properties; machine-owned card identity and sync data stay note-local without filling the native Properties editor | DECISION | Candidate |
 | V2-15 | Apply the v2 design to existing managed Anki models safely | New v2 migration need | A command previews compatible models, backs up exact fields/templates/CSS before writing, and updates models without recreating notes | AUTO + MANUAL | Implemented; manual Anki check pending |
 | V2-16 | Avoid rescanning unchanged card-free notes | New v2 performance finding | After one full classification pass, vault sync skips content reads and parsing only for unchanged notes proven to contain no cards; changes, settings, errors, or cache loss fall back safely | AUTO + MANUAL | Implemented; manual timing pending |
+| V2-17 | Keep generated sync state out of tracked test fixtures | New repository-hygiene finding | The pre-commit guard rejects newly added legacy/v2 anchors and registry entries; manual-sync artifacts are removed; intentional synthetic identity fixtures remain | AUTO | Verified |
 
 ## Recommended execution order
 
-1. Keep V2-00, V2-01, V2-05, V2-06, V2-10, V2-12, V2-13, V2-15, and V2-16 green in CI.
-2. Keep V2-02, V2-03a, V2-03b, V2-03c, and V2-04 green.
-3. Keep V2-07, V2-08, and V2-09 green. Add the focused V2-07b migration check
-   without adding a second runtime parser.
-4. Run V2-11 after every release-gate item is verified.
+1. Run the focused live checks for V2-13, V2-15, and V2-16.
+2. Decide V2-14 and implement the chosen metadata presentation.
+3. Run V2-11 after every other release-gate item is verified.
 
 ## Behavior decisions and implementation
 
@@ -243,6 +245,26 @@ This is intentionally narrower than skipping every unchanged card note. A
 future optimization may batch live Anki verification before parsing those
 notes, but it must prove the same one-way ownership behavior first.
 
+### V2-17: generated test-vault state
+
+Commit `c86e432` contained local sync writeback in tracked feature and scenario
+fixtures: `flashcards` registries, Anki note IDs, sync hashes, and v2 block
+anchors. The old pre-commit guard matched long legacy IDs but missed the
+shorter `^q-xxxx` v2 form and first-phase registry entries.
+
+Implemented on 2026-09-04:
+
+- Added regression coverage for standalone and inline legacy/v2 anchors, full
+  registry entries, and first-phase hash-only entries.
+- The guard now rejects those forms only when a staged diff introduces them.
+- Removed manual-sync artifacts while preserving authored examples, wikilink
+  targets, and deliberate synthetic identities used by migration scenarios.
+- Verified feature snapshots and the full project gate after cleanup.
+
+This is repository hygiene, not a runtime card-sync defect. It is the first
+line of defense that keeps `npm run test-vault:reset` tied to a clean committed
+baseline.
+
 ## GitHub issue follow-up
 
 The issue number links this private v2 work to its original v1 report. It does
@@ -314,6 +336,7 @@ Before closing an issue:
 | V2-13 | `tests/adapters/anki/repair-managed-source-templates.test.ts`; Source action, path, escaping, and model CSS tests in `tests/adapters/anki/render-card.test.ts`; sync-command adapter test; live Anki inspection confirmed the Source field existed while all managed Back templates omitted it |
 | V2-15 | `tests/adapters/anki/manage-managed-model-style.test.ts`; model styling client tests; `tests/adapters/obsidian/anki-style-backup.test.ts`; confirmation, backup ordering, and failure-safety command tests |
 | V2-16 | `tests/adapters/obsidian/incremental-vault-sync.test.ts`; descriptor/cached-read adapter tests; skipped-note accounting in `tests/application/sync-vault.test.ts` |
+| V2-17 | `tests/repository/check-test-vault-ids.test.ts`; clean feature fixtures; full gate |
 | V2-F01 | Settings/config/command adapter tests; cloze extraction and rendering toggle tests; AnkiConnect key-envelope test |
 | V2-F02 | List ownership and callout cases in `tests/core/parse/extract-cards.test.ts`; callout rendering test |
 | V2-F03 | Managed light/dark/responsive CSS and Source markup in renderer tests; fenced cloze cases in renderer/parser tests; interactive states in `docs/card-types.html` |
