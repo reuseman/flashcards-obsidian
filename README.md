@@ -1,7 +1,10 @@
 > :warning: **I am currently looking out for a co-maintainer.** Look at [#125](https://github.com/reuseman/flashcards-obsidian/issues/125), and if you are interested let me know :)
 ---
 
-# Flashcards
+# Flashcards v1 (legacy)
+
+> This branch preserves Flashcards v1. For the supported version, see
+> [Flashcards v2](https://github.com/reuseman/flashcards-obsidian/blob/main/README.md).
 
 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/reuseman/flashcards-obsidian?style=for-the-badge&sort=semver)](https://github.com/reuseman/flashcards-obsidian/releases/latest)
 ![GitHub All Releases](https://img.shields.io/github/downloads/reuseman/flashcards-obsidian/total?style=for-the-badge)
@@ -27,7 +30,7 @@ Anki integration for [Obsidian](https://obsidian.md/).
 ⚓ Support for **reference to note**  
 📟 Support for **code syntax highlight**
 
-For other features check the [wiki](https://github.com/reuseman/flashcards-obsidian/wiki).
+For other features, see the [archived v1 manual](docs/wiki.md).
 
 ## How it works?
 
@@ -41,7 +44,7 @@ The following is a demo where the three main operations are shown:
 
 ## How to use it?
 
-The wiki explains in detail [how to use it](https://github.com/reuseman/flashcards-obsidian/wiki).
+The [archived v1 manual](docs/wiki.md) explains how to use it.
 
 ## How to install
 
