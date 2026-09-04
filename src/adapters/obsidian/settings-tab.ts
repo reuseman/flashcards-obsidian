@@ -24,14 +24,18 @@ type SettingsKey =
   | "renderPreview.cloze"
   | "renderPreview.enabled"
   | "renderPreview.hashtag"
-  | "renderPreview.inlineSeparator";
+  | "renderPreview.inlineSeparator"
+  | "showRibbonIcon";
 
 function isContextStrategy(value: unknown): value is ContextStrategy {
   return value === "headings" || value === "none" || value === "note-title";
 }
 
 export class FlashcardsSettingTab extends PluginSettingTab {
-  constructor(app: PluginHost["app"], private readonly plugin: PluginHost) {
+  constructor(
+    app: PluginHost["app"],
+    private readonly plugin: PluginHost,
+  ) {
     super(app, plugin);
   }
 
@@ -112,6 +116,15 @@ export class FlashcardsSettingTab extends PluginSettingTab {
             },
           },
           {
+            name: "Show ribbon button",
+            desc: "Show a left-sidebar button that updates Anki from the current note. Default: on.",
+            control: {
+              type: "toggle",
+              key: "showRibbonIcon",
+              defaultValue: DEFAULT_SETTINGS.showRibbonIcon,
+            },
+          },
+          {
             name: "Inline cards",
             desc: "Create cards from Q :: A and Q ::: A. Default: on.",
             control: {
@@ -183,7 +196,8 @@ export class FlashcardsSettingTab extends PluginSettingTab {
             control: {
               type: "toggle",
               key: "renderPreview.inlineSeparator",
-              defaultValue: DEFAULT_SETTINGS.renderPreview.features.inlineSeparator,
+              defaultValue:
+                DEFAULT_SETTINGS.renderPreview.features.inlineSeparator,
             },
           },
           {
@@ -209,6 +223,7 @@ export class FlashcardsSettingTab extends PluginSettingTab {
       case "folderBasedDecks":
       case "folderBasedTags":
       case "folderDeckPrefix":
+      case "showRibbonIcon":
         return this.plugin.settings[key];
       case "highlightCloze.enabled":
         return this.plugin.settings.highlightCloze.enabled;
@@ -227,7 +242,10 @@ export class FlashcardsSettingTab extends PluginSettingTab {
     }
   }
 
-  override async setControlValue(key: SettingsKey, value: unknown): Promise<void> {
+  override async setControlValue(
+    key: SettingsKey,
+    value: unknown,
+  ): Promise<void> {
     switch (key) {
       case "defaultDeck":
         if (typeof value === "string" && value.trim()) {
@@ -251,6 +269,7 @@ export class FlashcardsSettingTab extends PluginSettingTab {
         return;
       case "folderBasedDecks":
       case "folderBasedTags":
+      case "showRibbonIcon":
         if (typeof value === "boolean") {
           await this.plugin.updateSettings({ [key]: value });
         }
@@ -280,7 +299,10 @@ export class FlashcardsSettingTab extends PluginSettingTab {
       case "renderPreview.enabled":
         if (typeof value === "boolean") {
           await this.plugin.updateSettings({
-            renderPreview: { ...this.plugin.settings.renderPreview, enabled: value },
+            renderPreview: {
+              ...this.plugin.settings.renderPreview,
+              enabled: value,
+            },
           });
         }
         return;

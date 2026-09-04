@@ -77,6 +77,14 @@ describe("FlashcardsSettingTab", () => {
             }),
           }),
           expect.objectContaining({
+            name: "Show ribbon button",
+            control: expect.objectContaining({
+              type: "toggle",
+              key: "showRibbonIcon",
+              defaultValue: true,
+            }),
+          }),
+          expect.objectContaining({
             name: "Folder deck prefix",
             control: expect.objectContaining({
               type: "text",
@@ -119,10 +127,12 @@ describe("FlashcardsSettingTab", () => {
     host.settings.defaultDeck = "Study";
     host.settings.inline.enabled = false;
     host.settings.renderPreview.features.cloze = false;
+    host.settings.showRibbonIcon = false;
 
     expect(tab.getControlValue("defaultDeck")).toBe("Study");
     expect(tab.getControlValue("inline.enabled")).toBe(false);
     expect(tab.getControlValue("renderPreview.cloze")).toBe(false);
+    expect(tab.getControlValue("showRibbonIcon")).toBe(false);
   });
 
   it("persists top-level and nested control changes", async () => {
@@ -134,6 +144,7 @@ describe("FlashcardsSettingTab", () => {
     await tab.setControlValue("folderDeckPrefix", "  Study  ");
     await tab.setControlValue("folderBasedTags", true);
     await tab.setControlValue("renderPreview.cloze", false);
+    await tab.setControlValue("showRibbonIcon", false);
 
     expect(host.settings.defaultDeck).toBe("Study");
     expect(host.settings.contextStrategy).toBe("note-title");
@@ -146,7 +157,8 @@ describe("FlashcardsSettingTab", () => {
       ...DEFAULT_SETTINGS.renderPreview.features,
       cloze: false,
     });
-    expect(host.updateSettings).toHaveBeenCalledTimes(8);
+    expect(host.settings.showRibbonIcon).toBe(false);
+    expect(host.updateSettings).toHaveBeenCalledTimes(9);
   });
 
   it("ignores values that do not match the control type", async () => {

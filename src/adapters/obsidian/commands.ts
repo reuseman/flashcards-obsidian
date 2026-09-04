@@ -34,7 +34,20 @@ import type { SyncExecutionSession } from "../../application/ports.js";
 
 type Target = "current" | "vault";
 
-export function registerPluginCommands(plugin: PluginHost): void {
+export interface PluginActions {
+  updateAnkiFromCurrentNote: () => void;
+}
+
+export function registerPluginCommands(plugin: PluginHost): PluginActions {
+  const updateAnkiFromCurrentNote = (): void => {
+    const activeFile = plugin.app.workspace.getActiveFile();
+    if (!activeFile || activeFile.extension !== "md") {
+      new Notice("Open a Markdown note before updating Anki.");
+      return;
+    }
+    void runWithMigrationCheck(plugin, "current");
+  };
+
   plugin.addCommand({
     callback: () => {
       void runAnkiStyleMigration(plugin);
@@ -55,7 +68,7 @@ export function registerPluginCommands(plugin: PluginHost): void {
     checkCallback: (checking) => {
       const activeFile = plugin.app.workspace.getActiveFile();
       if (!activeFile || activeFile.extension !== "md") return false;
-      if (!checking) void runWithMigrationCheck(plugin, "current");
+      if (!checking) updateAnkiFromCurrentNote();
       return true;
     },
     id: "flashcards-sync-current-note",
@@ -69,6 +82,8 @@ export function registerPluginCommands(plugin: PluginHost): void {
     id: "flashcards-sync-vault",
     name: "Update Anki from vault",
   });
+
+  return { updateAnkiFromCurrentNote };
 }
 
 async function runAnkiStyleMigration(plugin: PluginHost): Promise<void> {
@@ -137,7 +152,7 @@ async function runAnkiStyleMigration(plugin: PluginHost): Promise<void> {
 function createAnkiClient(plugin: PluginHost): AnkiConnectClient {
   const secretName = plugin.settings.ankiConnectApiKeySecret;
   const apiKey = secretName
-    ? plugin.app.secretStorage.getSecret(secretName) ?? undefined
+    ? (plugin.app.secretStorage.getSecret(secretName) ?? undefined)
     : undefined;
   return new AnkiConnectClient({ ...(apiKey ? { apiKey } : {}) });
 }
@@ -372,8 +387,7 @@ async function dispatch(
           resolveLink,
           settings: plugin.settings,
           processedNoteCount: incremental.processedNoteCount,
-          skippedUnchangedNoteCount:
-            incremental.skippedUnchangedNoteCount,
+          skippedUnchangedNoteCount: incremental.skippedUnchangedNoteCount,
           vaultName,
         });
         try {
@@ -417,7 +431,9 @@ function summarizeNote(result: SyncNoteResult): string {
   const deletes = r ? r.deletes.filter((d) => d.status === "ok").length : 0;
   const failedOps = countFailedOps(r);
   const failedSuffix =
-    failedOps > 0 ? ` (${failedOps} card op${failedOps === 1 ? "" : "s"} failed — see sync.log)` : "";
+    failedOps > 0
+      ? ` (${failedOps} card op${failedOps === 1 ? "" : "s"} failed — see sync.log)`
+      : "";
   const recovered = result.recoveredMissingCount;
   const recoveredSuffix =
     recovered > 0
@@ -432,8 +448,12 @@ function summarizeVault(result: SyncVaultResult): string {
     0,
   );
   const parts: string[] = [];
-  if (result.failedNotes > 0) parts.push(`${result.failedNotes} note${result.failedNotes === 1 ? "" : "s"} failed`);
-  if (failedOps > 0) parts.push(`${failedOps} card op${failedOps === 1 ? "" : "s"} failed`);
+  if (result.failedNotes > 0)
+    parts.push(
+      `${result.failedNotes} note${result.failedNotes === 1 ? "" : "s"} failed`,
+    );
+  if (failedOps > 0)
+    parts.push(`${failedOps} card op${failedOps === 1 ? "" : "s"} failed`);
   const failedSuffix =
     parts.length > 0 ? ` (${parts.join(", ")} — see sync.log)` : "";
   return (

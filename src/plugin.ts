@@ -6,6 +6,10 @@ import { ObsidianMarkdownRepository } from "./adapters/obsidian/obsidian-markdow
 import type { PluginHost } from "./adapters/obsidian/plugin-host.js";
 import { FlashcardsSettingTab } from "./adapters/obsidian/settings-tab.js";
 import {
+  registerFlashcardsRibbon,
+  setRibbonVisibility,
+} from "./adapters/obsidian/ribbon.js";
+import {
   computeActiveNoteStatus,
   computePendingV1Count,
   renderActiveNoteStatus,
@@ -32,6 +36,7 @@ export default class FlashcardsPlugin extends Plugin implements PluginHost {
   private fileLogger: ObsidianFileLogger | undefined;
   private activeNoteStatusEl: HTMLElement | undefined;
   private pendingV1StatusEl: HTMLElement | undefined;
+  private ribbonEl: HTMLElement | undefined;
 
   override async onload(): Promise<void> {
     this.settings = mergeSettings(await this.loadData());
@@ -43,7 +48,12 @@ export default class FlashcardsPlugin extends Plugin implements PluginHost {
     renderPendingV1(this.pendingV1StatusEl, 0);
 
     this.addSettingTab(new FlashcardsSettingTab(this.app, this));
-    registerPluginCommands(this);
+    const actions = registerPluginCommands(this);
+    this.ribbonEl = registerFlashcardsRibbon(
+      this,
+      actions.updateAnkiFromCurrentNote,
+    );
+    setRibbonVisibility(this.ribbonEl, this.settings.showRibbonIcon);
 
     this.registerWorkspaceEvents();
     registerRenderPreview(this, () => this.settings);
@@ -78,6 +88,9 @@ export default class FlashcardsPlugin extends Plugin implements PluginHost {
       prev.v1MigrationDecisionMade !== this.settings.v1MigrationDecisionMade
     ) {
       void this.refreshPendingV1Status();
+    }
+    if (prev.showRibbonIcon !== this.settings.showRibbonIcon && this.ribbonEl) {
+      setRibbonVisibility(this.ribbonEl, this.settings.showRibbonIcon);
     }
   }
 

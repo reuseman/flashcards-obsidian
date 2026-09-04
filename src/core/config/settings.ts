@@ -45,6 +45,7 @@ export interface FlashcardsSettings {
   logToFile: boolean;
   perfTracing: boolean;
   renderPreview: RenderPreviewSettings;
+  showRibbonIcon: boolean;
   v1MigrationDecisionMade: boolean;
 }
 
@@ -82,6 +83,7 @@ export const DEFAULT_SETTINGS: FlashcardsSettings = {
       hashtag: true,
     },
   },
+  showRibbonIcon: true,
   v1MigrationDecisionMade: false,
 };
 
@@ -106,24 +108,28 @@ export function mergeSettings(
     candidate.legacy && typeof candidate.legacy === "object"
       ? candidate.legacy
       : undefined;
-  const oldHashtagMapped: Partial<HashtagSettings> | undefined = oldLegacyCandidate
-    ? {
-        ...(typeof oldLegacyCandidate.enabled === "boolean"
-          ? { enabled: oldLegacyCandidate.enabled }
-          : {}),
-        ...(typeof oldLegacyCandidate.hashtagBasic === "string"
-          ? { basicTag: oldLegacyCandidate.hashtagBasic }
-          : {}),
-      }
-    : undefined;
+  const oldHashtagMapped: Partial<HashtagSettings> | undefined =
+    oldLegacyCandidate
+      ? {
+          ...(typeof oldLegacyCandidate.enabled === "boolean"
+            ? { enabled: oldLegacyCandidate.enabled }
+            : {}),
+          ...(typeof oldLegacyCandidate.hashtagBasic === "string"
+            ? { basicTag: oldLegacyCandidate.hashtagBasic }
+            : {}),
+        }
+      : undefined;
 
   const renderPreviewCandidate =
     candidate.renderPreview && typeof candidate.renderPreview === "object"
       ? (candidate.renderPreview as Partial<RenderPreviewSettings>)
       : undefined;
   const renderPreviewFeaturesCandidate =
-    renderPreviewCandidate?.features && typeof renderPreviewCandidate.features === "object"
-      ? (renderPreviewCandidate.features as Partial<RenderPreviewSettings["features"]> & {
+    renderPreviewCandidate?.features &&
+    typeof renderPreviewCandidate.features === "object"
+      ? (renderPreviewCandidate.features as Partial<
+          RenderPreviewSettings["features"]
+        > & {
           legacyHashtag?: boolean;
         })
       : undefined;
@@ -148,7 +154,9 @@ export function mergeSettings(
     atomic: mergeSyntaxToggle(defaults.atomic, candidate.atomic),
     cloze: mergeSyntaxToggle(defaults.cloze, candidate.cloze),
     defaultTags: Array.isArray(candidate.defaultTags)
-      ? candidate.defaultTags.filter((value): value is string => typeof value === "string")
+      ? candidate.defaultTags.filter(
+          (value): value is string => typeof value === "string",
+        )
       : defaults.defaultTags,
     hashtag: {
       ...defaults.hashtag,

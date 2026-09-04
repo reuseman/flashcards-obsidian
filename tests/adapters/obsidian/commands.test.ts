@@ -143,7 +143,7 @@ function createHost() {
     updateSettings: vi.fn(),
   } as unknown as PluginHost;
 
-  registerPluginCommands(host);
+  const actions = registerPluginCommands(host);
   const current = commands.find(
     (command) => command.id === "flashcards-sync-current-note",
   );
@@ -157,6 +157,7 @@ function createHost() {
   );
   if (!ankiStyle?.callback) throw new Error("Anki-style command missing.");
   return {
+    actions,
     ankiStyle,
     commands,
     current,
@@ -205,6 +206,17 @@ describe("Obsidian sync commands", () => {
     expect(
       commands.find((command) => command.id === "flashcards-sync-vault")?.name,
     ).toBe("Update Anki from vault");
+  });
+
+  it("exposes the current-note action for the ribbon", () => {
+    const { actions, host } = createHost();
+    host.app.workspace.getActiveFile = () => null;
+
+    actions.updateAnkiFromCurrentNote();
+
+    expect(mocks.notices.at(-1)?.message).toBe(
+      "Open a Markdown note before updating Anki.",
+    );
   });
 
   it("passes the selected Obsidian secret to AnkiConnect", async () => {

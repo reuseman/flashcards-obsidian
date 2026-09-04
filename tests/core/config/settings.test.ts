@@ -1,5 +1,8 @@
 import { describe, expect, test } from "vitest";
-import { DEFAULT_SETTINGS, mergeSettings } from "../../../src/core/config/settings.js";
+import {
+  DEFAULT_SETTINGS,
+  mergeSettings,
+} from "../../../src/core/config/settings.js";
 
 describe("renderPreview settings", () => {
   test("defaults: enabled true, inline-separator off, others on", () => {
@@ -36,6 +39,7 @@ describe("WI-7: per-syntax toggles", () => {
     expect(DEFAULT_SETTINGS.ankiConnectApiKeySecret).toBe("");
     expect(DEFAULT_SETTINGS.folderBasedTags).toBe(false);
     expect(DEFAULT_SETTINGS.folderDeckPrefix).toBe("");
+    expect(DEFAULT_SETTINGS.showRibbonIcon).toBe(true);
   });
 
   test("mergeSettings fills defaults for inline/cloze/fenced/atomic from a pre-WI-7 persisted config", () => {
@@ -47,6 +51,7 @@ describe("WI-7: per-syntax toggles", () => {
     expect(merged.fenced).toEqual({ enabled: true });
     expect(merged.atomic).toEqual({ enabled: true });
     expect(merged.ankiConnectApiKeySecret).toBe("");
+    expect(merged.showRibbonIcon).toBe(true);
   });
 
   test("mergeSettings preserves a persisted override on one toggle block", () => {
@@ -81,7 +86,8 @@ describe("mergeSettings back-compat (pre-rename keys)", () => {
     });
     expect(merged.renderPreview.features.hashtag).toBe(false);
     expect(
-      (merged.renderPreview.features as { legacyHashtag?: unknown }).legacyHashtag,
+      (merged.renderPreview.features as { legacyHashtag?: unknown })
+        .legacyHashtag,
     ).toBeUndefined();
   });
 
