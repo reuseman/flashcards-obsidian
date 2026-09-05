@@ -181,7 +181,7 @@ read-only.
 
 - [V2 wiki](docs/wiki.md): complete syntax, defaults, and edge cases.
 - [Usage guide](docs/USAGE.md): setup and detailed update behavior.
-- [Syntax gallery](docs/card-types.html): visual reference for authoring forms,
+- [Syntax gallery](https://reuseman.github.io/flashcards-obsidian/): visual reference for authoring forms,
   parsed fields, card counts, and source boundaries.
 
 ## Optional agent skill
