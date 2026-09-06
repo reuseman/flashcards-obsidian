@@ -229,7 +229,10 @@ describe("Obsidian sync commands", () => {
     expect(host.app.secretStorage.getSecret).toHaveBeenCalledWith(
       "flashcards-anki-key",
     );
-    expect(mocks.ankiClientOptions[0]).toEqual({ apiKey: "secret-value" });
+    expect(mocks.ankiClientOptions[0]).toEqual({
+      apiKey: "secret-value",
+      transport: expect.any(Function),
+    });
   });
 
   it("repairs managed Context and Source templates before syncing the current note", async () => {

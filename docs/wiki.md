@@ -81,10 +81,23 @@ index is never used as card identity.
 
 The default AnkiConnect endpoint is `http://127.0.0.1:8765`.
 
+After installing AnkiConnect, restart Anki and keep Anki open while updating
+cards. To check the connection, open <http://127.0.0.1:8765> in a browser. The
+page should show `Anki-Connect`.
+
 If AnkiConnect requires an API key, open the Flashcards settings and select an
 Obsidian secret under **AnkiConnect API key**. The plugin stores only the
 secret name in its data. Obsidian stores the key in `SecretStorage`. The
 default is no API key.
+
+### AnkiConnect connection problems
+
+If an update says that AnkiConnect cannot be reached:
+
+1. Confirm that Anki Desktop is open.
+2. Confirm that AnkiConnect appears under **Anki → Tools → Add-ons**.
+3. Restart Anki after installing or changing AnkiConnect.
+4. Check <http://127.0.0.1:8765> in a browser.
 
 ## Card syntax
 

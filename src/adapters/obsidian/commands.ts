@@ -16,6 +16,7 @@ import { createKindRecreationConfirmer } from "./kind-recreation-confirm-modal.j
 import { createAnkiStyleConfirmer } from "./anki-style-confirm-modal.js";
 import { writeAnkiStyleBackup } from "./anki-style-backup.js";
 import { prepareIncrementalVaultSync } from "./incremental-vault-sync.js";
+import { obsidianAnkiConnectTransport } from "./anki-connect-transport.js";
 import { buildMediaRewriteMap, resolveMedia } from "./media-resolver.js";
 import { createWikilinkResolver } from "./wikilink-resolver.js";
 import { backfillV1Vault } from "../../application/backfill-v1-vault.js";
@@ -154,7 +155,10 @@ function createAnkiClient(plugin: PluginHost): AnkiConnectClient {
   const apiKey = secretName
     ? (plugin.app.secretStorage.getSecret(secretName) ?? undefined)
     : undefined;
-  return new AnkiConnectClient({ ...(apiKey ? { apiKey } : {}) });
+  return new AnkiConnectClient({
+    ...(apiKey ? { apiKey } : {}),
+    transport: obsidianAnkiConnectTransport,
+  });
 }
 
 async function showSyntaxMigrationReport(plugin: PluginHost): Promise<void> {

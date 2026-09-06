@@ -38,9 +38,22 @@ Anki, the next update restores the content from Obsidian.
 3. Enable **Flashcards**.
 4. In Anki, open **Tools → Add-ons → Get Add-ons**.
 5. Enter the AnkiConnect code `2055492159` and restart Anki.
+6. Keep Anki open while updating cards from Obsidian.
 
 AnkiConnect uses `http://127.0.0.1:8765` by default. If your AnkiConnect setup
 requires an API key, select an Obsidian secret in the Flashcards settings.
+
+To check AnkiConnect, open <http://127.0.0.1:8765> in a browser while Anki is
+running. The page should show `Anki-Connect`.
+
+### AnkiConnect connection problems
+
+If Flashcards cannot reach AnkiConnect:
+
+1. Confirm that Anki Desktop is open.
+2. Confirm that AnkiConnect appears under **Anki → Tools → Add-ons**.
+3. Restart Anki after installing or changing AnkiConnect.
+4. Open <http://127.0.0.1:8765> in a browser. It should show `Anki-Connect`.
 
 ## Quick start
 

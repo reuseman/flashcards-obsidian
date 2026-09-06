@@ -290,8 +290,8 @@ plugin folder (resets all plugin state).
 ## Troubleshooting
 
 **Sync fails — AnkiConnect not reachable.**
-Start Anki. Confirm the AnkiConnect add-on is installed and the listen
-port is 8765.
+Start Anki. Confirm the AnkiConnect add-on is installed, restart Anki, and open
+<http://127.0.0.1:8765> in a browser. It should show `Anki-Connect`.
 
 **"Note was not found: 12345…" warnings.**
 The `flashcards:` map has an entry whose `nid` no longer exists in Anki

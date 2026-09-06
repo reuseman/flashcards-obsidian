@@ -15,7 +15,20 @@ export interface AnkiConnectClientOptions {
   endpoint?: string;
   apiKey?: string;
   fetch?: typeof fetch;
+  transport?: AnkiConnectTransport;
 }
+
+export interface AnkiConnectTransportResponse {
+  ok: boolean;
+  status: number;
+  json: () => Promise<unknown>;
+}
+
+/** HTTP seam used by Obsidian to avoid Electron's browser CORS restrictions. */
+export type AnkiConnectTransport = (
+  endpoint: string,
+  envelope: Record<string, unknown>,
+) => Promise<AnkiConnectTransportResponse>;
 
 export type AnkiModelTemplates = Record<
   string,
@@ -39,16 +52,21 @@ export interface AnkiResponse<TResult> {
 export class AnkiConnectClient implements AnkiGateway {
   private readonly endpoint: string;
   private readonly apiKey: string | undefined;
-  private readonly fetchImpl: typeof fetch;
+  private readonly transport: AnkiConnectTransport;
 
   constructor(opts: AnkiConnectClientOptions = {}) {
     this.endpoint = opts.endpoint ?? DEFAULT_ENDPOINT;
     this.apiKey = opts.apiKey;
-    // Bind `fetch` to its host object — when reassigned to a property and
-    // called as `this.fetchImpl(...)`, browsers throw "Illegal invocation"
-    // because `fetch` requires `this === window`. Tests inject their own
-    // fetch (already bound to its closure), so this only matters at runtime.
-    this.fetchImpl = opts.fetch ?? globalThis.fetch.bind(globalThis);
+    const fetchImpl = opts.fetch ?? globalThis.fetch.bind(globalThis);
+    this.transport =
+      opts.transport ??
+      (async (endpoint, envelope) => {
+        return fetchImpl(endpoint, {
+          body: JSON.stringify(envelope),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+      });
   }
 
   async invoke<TResult>(request: AnkiRequest): Promise<TResult> {
@@ -61,11 +79,7 @@ export class AnkiConnectClient implements AnkiGateway {
       envelope.key = this.apiKey;
     }
 
-    const response = await this.fetchImpl(this.endpoint, {
-      body: JSON.stringify(envelope),
-      headers: { "Content-Type": "application/json" },
-      method: "POST",
-    });
+    const response = await this.transport(this.endpoint, envelope);
 
     if (!response.ok) {
       throw new Error(`AnkiConnect HTTP ${response.status}`);
