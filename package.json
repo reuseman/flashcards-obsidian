@@ -1,6 +1,6 @@
 {
   "name": "flashcards-obsidian",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Anki flashcards for markdown notes with an Obsidian adapter.",
   "main": "main.js",
   "type": "module",
