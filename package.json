@@ -1,6 +1,6 @@
 {
   "name": "flashcards-obsidian",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Anki flashcards for markdown notes with an Obsidian adapter.",
   "main": "main.js",
   "type": "module",
@@ -22,7 +22,7 @@
     "bench": "node --experimental-strip-types scripts/bench-run.ts",
     "bench:compare": "node --experimental-strip-types scripts/bench-compare.ts",
     "bench:baseline": "cp .perf-current.json .perf-baseline.json",
-    "test-vault:reset": "git checkout HEAD -- test-vault/scenarios/ test-vault/features/ && rm -f test-vault/.obsidian/plugins/flashcards-obsidian/data.json test-vault/.obsidian/plugins/flashcards-obsidian/sync.log && echo '✓ test-vault reset. Reload Obsidian (Cmd/Ctrl+R) to pick up clean state.'",
+    "test-vault:reset": "git checkout HEAD -- test-vault/scenarios/ test-vault/features/ && rm -f test-vault/.obsidian/plugins/flashcards-obsidian/data.json test-vault/.obsidian/plugins/flashcards-obsidian/sync.log && echo '\u2713 test-vault reset. Reload Obsidian (Cmd/Ctrl+R) to pick up clean state.'",
     "check:test-vault-ids": "bash scripts/check-test-vault-ids.sh",
     "fixture-media": "node --experimental-strip-types scripts/gen-fixture-media.ts",
     "typecheck": "tsc --noEmit",
