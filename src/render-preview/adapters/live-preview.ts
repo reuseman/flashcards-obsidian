@@ -9,27 +9,27 @@ import {
 } from "@codemirror/view";
 import { RangeSetBuilder } from "@codemirror/state";
 
-import { mergeMatches } from "../dom-utils.js";
-import type { Feature } from "../feature.js";
+import { createMatchElement, matchElementKey, mergeMatches } from "../dom-utils.js";
+import type { Feature, MatchElement } from "../feature.js";
 
 export interface DecorationRange {
   from: number;
   to: number;
-  html: string;
+  el: MatchElement;
 }
 
-class HtmlWidget extends WidgetType {
-  constructor(private readonly html: string) {
+class MatchWidget extends WidgetType {
+  private readonly key: string;
+  constructor(private readonly spec: MatchElement) {
     super();
+    this.key = matchElementKey(spec);
   }
-  override eq(other: HtmlWidget): boolean {
-    return other.html === this.html;
+  override eq(other: MatchWidget): boolean {
+    return other.key === this.key;
   }
-  override toDOM(): HTMLElement {
-    const tpl = document.createElement("template");
-    tpl.innerHTML = this.html;
-    const node = tpl.content.firstElementChild;
-    return (node as HTMLElement) ?? document.createElement("span");
+  override toDOM(view: EditorView): HTMLElement {
+    // The editor's own document, so the widget also works in a popout window.
+    return createMatchElement(this.spec, view.dom.ownerDocument);
   }
   override ignoreEvent(): boolean {
     return false;
@@ -59,7 +59,7 @@ export function buildDecorationsForText(
     const to = lineStart + m.end;
     const revealed = selectionRanges.some((s) => s.from <= to && from <= s.to);
     if (revealed) continue;
-    out.push({ from, to, html: m.html });
+    out.push({ from, to, el: m.el });
   }
   return out;
 }
@@ -100,7 +100,7 @@ export function renderPreviewExtension(features: Feature[]) {
               builder.add(
                 r.from,
                 r.to,
-                Decoration.replace({ widget: new HtmlWidget(r.html) }),
+                Decoration.replace({ widget: new MatchWidget(r.el) }),
               );
             }
             pos = line.to + 1;

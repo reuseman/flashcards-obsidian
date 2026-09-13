@@ -67,7 +67,7 @@ class RealPerfTrace implements PerfTrace {
       });
     }
     this.record(label, performance.now() - start);
-    return out as T;
+    return out;
   }
 
   childCounter(label: string): { add(ms: number): void } {

@@ -18,6 +18,13 @@ function createApp(activeFile: object | null = null) {
   const modify = vi.fn(async () => undefined);
   const app = {
     vault: {
+      // The real Vault resolves any path in the vault, including the active
+      // note, which the fixture keeps outside `files`.
+      getFileByPath: (path: string) =>
+        [...files, activeFile].find(
+          (file): file is (typeof files)[number] =>
+            (file as { path?: string } | null)?.path === path,
+        ) ?? null,
       getMarkdownFiles: () => files,
       cachedRead,
       modify,
@@ -97,7 +104,7 @@ describe("ObsidianMarkdownRepository", () => {
     expect(cachedRead).toHaveBeenCalledOnce();
   });
 
-  it("saves through Vault.modify using the original file handle", async () => {
+  it("saves through Vault.modify against the file resolved from the note path", async () => {
     const file = { basename: "Active", path: "Active.md" };
     const { app, modify } = createApp(file);
     const repository = new ObsidianMarkdownRepository(app as never);
@@ -107,5 +114,17 @@ describe("ObsidianMarkdownRepository", () => {
     await repository.saveNote(note, "changed");
 
     expect(modify).toHaveBeenCalledWith(file, "changed");
+  });
+
+  it("refuses to save a note that has disappeared from the vault", async () => {
+    const { app, modify } = createApp({ basename: "Active", path: "Active.md" });
+    const repository = new ObsidianMarkdownRepository(app as never);
+    const note = await repository.getActiveNote();
+    if (!note) throw new Error("Expected an active note fixture.");
+
+    await expect(
+      repository.saveNote({ ...note, path: "Gone.md" }, "changed"),
+    ).rejects.toThrow("Gone.md");
+    expect(modify).not.toHaveBeenCalled();
   });
 });

@@ -14,9 +14,11 @@ describe("hashtag feature", () => {
     const out = feat.detect("Question text #card");
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({ start: 14, end: 19 });
-    expect(out[0]!.html).toBe(
-      `<span class="ff-hashtag-tag" title="Hashtag (#card) syntax">#card</span>`,
-    );
+    expect(out[0]!.el).toEqual({
+      cls: "ff-hashtag-tag",
+      text: "#card",
+      title: "Hashtag (#card) syntax",
+    });
   });
 
   test("matches `#card-reverse` and `#card/reverse`", () => {

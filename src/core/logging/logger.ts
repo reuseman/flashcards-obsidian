@@ -29,10 +29,12 @@ export class ConsoleLogger implements Logger {
   }
 
   debug(message: string, data?: unknown): void {
-    if (this.enabled("debug")) console.log("[Flashcards][DEBUG]", message, data ?? "");
+    if (this.enabled("debug"))
+      console.debug("[Flashcards][DEBUG]", message, data ?? "");
   }
   info(message: string, data?: unknown): void {
-    if (this.enabled("info")) console.log("[Flashcards][INFO]", message, data ?? "");
+    if (this.enabled("info"))
+      console.debug("[Flashcards][INFO]", message, data ?? "");
   }
   warn(message: string, data?: unknown): void {
     if (this.enabled("warn")) console.warn("[Flashcards][WARN]", message, data ?? "");

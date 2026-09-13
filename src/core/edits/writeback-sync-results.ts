@@ -100,7 +100,7 @@ export function writebackSyncResults(
       entry: {
         ...(cue !== undefined ? { cue } : {}),
         hash: r.op.hash,
-        nid: r.nid!,
+        nid: r.nid,
         ...(r.syncHash !== undefined ? { sync: r.syncHash } : {}),
       },
     });

@@ -133,7 +133,7 @@ export function scanCardFrontmatter(markdown: string): ScannedCardFrontmatter {
       i = j - 1;
       parsed =
         validFieldCount > 0
-          ? ({ blockId: header.blockId, ...fields } as FrontmatterCardEntry)
+          ? { blockId: header.blockId, ...fields }
           : null;
     }
 
@@ -207,7 +207,7 @@ function parseInlineValue(
     if (!field || !setField(fields, field[1]!, field[2]!)) return null;
   }
   return Object.keys(fields).length > 0
-    ? ({ blockId, ...fields } as FrontmatterCardEntry)
+    ? { blockId, ...fields }
     : null;
 }
 

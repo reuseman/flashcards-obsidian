@@ -1,4 +1,4 @@
-import { mergeMatches } from "../dom-utils.js";
+import { createMatchElement, mergeMatches } from "../dom-utils.js";
 import type { Feature, Match } from "../feature.js";
 
 /**
@@ -11,19 +11,26 @@ export function applyReadingMode(root: HTMLElement, features: Feature[]): void {
   const textFeatures = features.filter((f) => f.scope === "text");
   if (textFeatures.length === 0) return;
 
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-    acceptNode(node) {
-      let p: Node | null = node.parentNode;
-      while (p && p !== root) {
-        if (p instanceof Element) {
-          const tag = p.tagName;
-          if (tag === "CODE" || tag === "PRE") return NodeFilter.FILTER_REJECT;
+  const walker = root.ownerDocument.createTreeWalker(
+    root,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode(node) {
+        let p: Node | null = node.parentNode;
+        while (p && p !== root) {
+          // `nodeType` rather than `instanceof Element`: in a popout window the
+          // node comes from a different realm, where `instanceof` is false for
+          // the same kind of element.
+          if (p.nodeType === Node.ELEMENT_NODE) {
+            const tag = (p as Element).tagName;
+            if (tag === "CODE" || tag === "PRE") return NodeFilter.FILTER_REJECT;
+          }
+          p = p.parentNode;
         }
-        p = p.parentNode;
-      }
-      return NodeFilter.FILTER_ACCEPT;
+        return NodeFilter.FILTER_ACCEPT;
+      },
     },
-  });
+  );
 
   const nodes: Text[] = [];
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
@@ -41,19 +48,20 @@ function processTextNode(node: Text, features: Feature[]): void {
   const merged = mergeMatches(perFeature);
   if (merged.length === 0) return;
 
-  const frag = document.createDocumentFragment();
+  // Use the node's own document: in a popout window it is not the global
+  // `document`, and a node created by the wrong document cannot be inserted.
+  const doc = node.ownerDocument;
+  const frag = doc.createDocumentFragment();
   let cursor = 0;
   for (const m of merged) {
     if (m.start > cursor) {
-      frag.appendChild(document.createTextNode(source.slice(cursor, m.start)));
+      frag.appendChild(doc.createTextNode(source.slice(cursor, m.start)));
     }
-    const tpl = document.createElement("template");
-    tpl.innerHTML = m.html;
-    frag.appendChild(tpl.content);
+    frag.appendChild(createMatchElement(m.el, doc));
     cursor = m.end;
   }
   if (cursor < source.length) {
-    frag.appendChild(document.createTextNode(source.slice(cursor)));
+    frag.appendChild(doc.createTextNode(source.slice(cursor)));
   }
   node.parentNode?.replaceChild(frag, node);
 }

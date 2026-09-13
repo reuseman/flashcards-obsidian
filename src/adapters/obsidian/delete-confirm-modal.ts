@@ -90,7 +90,7 @@ class DeleteConfirmModal extends Modal {
       .addButton((btn) =>
         btn
           .setButtonText("Delete")
-          .setWarning()
+          .setDestructive()
           .onClick(() => {
             this.finish(true);
           }),

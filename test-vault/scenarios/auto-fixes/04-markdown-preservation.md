@@ -4,7 +4,7 @@ What do **TCP** and [UDP](https://en.wikipedia.org/wiki/User_Datagram_Protocol) 
 
 Call `pump()` to move **==blood==** through [arteries](https://en.wikipedia.org/wiki/Artery).
 
-Describe the diagram ![[../../features/content/diagram.png]]::It is an embedded image.
+Which diagram is embedded here? ![[../../features/content/diagram.png]]::It is an embedded image.
 
 This code-like text is not a card: `left::right`.
 

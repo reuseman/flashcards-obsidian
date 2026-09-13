@@ -14,16 +14,18 @@ describe("inline-separator feature", () => {
     const out = feat.detect("Question:: Answer");
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({ start: 8, end: 10 });
-    expect(out[0]!.html).toBe(`<span class="ff-sep" data-kind="basic">→</span>`);
+    expect(out[0]!.el).toEqual({ cls: "ff-sep", text: "→", data: { kind: "basic" } });
   });
 
   test("matches `:::` as reversed, not basic", () => {
     const out = feat.detect("Front::: Back");
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({ start: 5, end: 8 });
-    expect(out[0]!.html).toBe(
-      `<span class="ff-sep" data-kind="reversed">⇄</span>`,
-    );
+    expect(out[0]!.el).toEqual({
+      cls: "ff-sep",
+      text: "⇄",
+      data: { kind: "reversed" },
+    });
   });
 
   test("does NOT match `::` inside a cloze `{{c1::body}}`", () => {
@@ -52,8 +54,10 @@ describe("inline-separator feature", () => {
   test("stray unmatched backtick does not swallow following separators", () => {
     const out = feat.detect("text ` then Q:: A");
     expect(out).toHaveLength(1);
-    expect(out[0]!.html).toBe(
-      `<span class="ff-sep" data-kind="basic">→</span>`,
-    );
+    expect(out[0]!.el).toEqual({
+      cls: "ff-sep",
+      text: "→",
+      data: { kind: "basic" },
+    });
   });
 });

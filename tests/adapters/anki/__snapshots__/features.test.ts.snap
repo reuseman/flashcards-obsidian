@@ -1,5 +1,145 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`test-vault/features snapshot coverage > renders card-types/atomic/chunking.md 1`] = `
+[
+  {
+    "deckName": "card-types::atomic",
+    "fields": {
+      "Back": "<p>Grouping individual items into larger meaningful units so that working memory
+holds more material without holding more elements.</p>",
+      "Context": "",
+      "Front": "<p>chunking</p>",
+      "Source": "<a class="flashcards-source" href="obsidian://open?vault=Vault&file=card-types%2Fatomic%2Fchunking.md#%5Ecard-0"><span class="flashcards-source-action">Edit source in Obsidian ↗</span><br><small class="flashcards-source-path">card-types/atomic/chunking</small></a>",
+    },
+    "modelName": "Obsidian-basic-reversed",
+    "tags": [
+      "obsidian",
+      "feature-fixture",
+    ],
+  },
+]
+`;
+
+exports[`test-vault/features snapshot coverage > renders card-types/atomic/interleaving.md 1`] = `
+[
+  {
+    "deckName": "card-types::atomic",
+    "fields": {
+      "Back": "<p>Mixing related skills within one session instead of practising each in a
+separate block; it feels harder and lowers immediate performance, but improves
+retention and the ability to tell problem types apart.</p>",
+      "Context": "",
+      "Front": "<p>interleaving</p>",
+      "Source": "<a class="flashcards-source" href="obsidian://open?vault=Vault&file=card-types%2Fatomic%2Finterleaving.md#%5Ecard-0"><span class="flashcards-source-action">Edit source in Obsidian ↗</span><br><small class="flashcards-source-path">card-types/atomic/interleaving</small></a>",
+    },
+    "modelName": "Obsidian-basic",
+    "tags": [
+      "obsidian",
+      "feature-fixture",
+    ],
+  },
+]
+`;
+
+exports[`test-vault/features snapshot coverage > renders card-types/atomic/retrieval-practice.md 1`] = `
+[
+  {
+    "deckName": "card-types::atomic",
+    "fields": {
+      "Back": "<p>Pulling information out of memory strengthens it more than putting it back in:
+the effort of reconstruction is what consolidates the trace, which is why
+re-reading feels easier but retains less.</p>",
+      "Context": "",
+      "Front": "<p>retrieval-practice</p>",
+      "Source": "<a class="flashcards-source" href="obsidian://open?vault=Vault&file=card-types%2Fatomic%2Fretrieval-practice.md#%5Ecard-0"><span class="flashcards-source-action">Edit source in Obsidian ↗</span><br><small class="flashcards-source-path">card-types/atomic/retrieval-practice</small></a>",
+    },
+    "modelName": "Obsidian-basic",
+    "tags": [
+      "obsidian",
+      "feature-fixture",
+    ],
+  },
+  {
+    "deckName": "card-types::atomic",
+    "fields": {
+      "Back": "<p>Pulling information out of memory strengthens it more than putting it back in:
+the effort of reconstruction is what consolidates the trace, which is why
+re-reading feels easier but retains less.</p>",
+      "Context": "",
+      "Front": "<p>Re-reading a chapter feels productive. What does it fail at, and why?</p>",
+      "Source": "<a class="flashcards-source" href="obsidian://open?vault=Vault&file=card-types%2Fatomic%2Fretrieval-practice.md#%5Ecard-1"><span class="flashcards-source-action">Edit source in Obsidian ↗</span><br><small class="flashcards-source-path">card-types/atomic/retrieval-practice</small></a>",
+    },
+    "modelName": "Obsidian-basic",
+    "tags": [
+      "obsidian",
+      "feature-fixture",
+    ],
+  },
+]
+`;
+
+exports[`test-vault/features snapshot coverage > renders card-types/atomic/spacing-effect.md 1`] = `
+[
+  {
+    "deckName": "card-types::atomic",
+    "fields": {
+      "Back": "<p>Spread the practice: the same total time produces stronger long-term retention
+when spaced, because partial forgetting between sessions forces effortful
+reconstruction.</p>",
+      "Context": "",
+      "Front": "<p>You have 6 hours for an exam 30 days away — one Saturday or 15 minutes a day?</p>",
+      "Source": "<a class="flashcards-source" href="obsidian://open?vault=Vault&file=card-types%2Fatomic%2Fspacing-effect.md#%5Ecard-0"><span class="flashcards-source-action">Edit source in Obsidian ↗</span><br><small class="flashcards-source-path">card-types/atomic/spacing-effect</small></a>",
+    },
+    "modelName": "Obsidian-basic",
+    "tags": [
+      "obsidian",
+      "feature-fixture",
+    ],
+  },
+]
+`;
+
+exports[`test-vault/features snapshot coverage > renders card-types/atomic/two-way-prepositions.md 1`] = `
+[
+  {
+    "deckName": "card-types::atomic",
+    "fields": {
+      "Context": "",
+      "Extra": "",
+      "Source": "<a class="flashcards-source" href="obsidian://open?vault=Vault&file=card-types%2Fatomic%2Ftwo-way-prepositions.md#%5Ecard-0"><span class="flashcards-source-action">Edit source in Obsidian ↗</span><br><small class="flashcards-source-path">card-types/atomic/two-way-prepositions</small></a>",
+      "Text": "<p>German two-way prepositions take the {{c1::accusative}} when the verb expresses
+motion toward a goal, and the {{c2::dative}} when it expresses location.</p>",
+    },
+    "modelName": "Obsidian-cloze",
+    "tags": [
+      "obsidian",
+      "feature-fixture",
+    ],
+  },
+]
+`;
+
+exports[`test-vault/features snapshot coverage > renders card-types/callout.md 1`] = `
+[
+  {
+    "deckName": "card-types",
+    "fields": {
+      "Back": "<p>The callout is a container: its title is the question and its body is the
+answer.</p>
+<p>Card-like text inside it, such as this::is not a separate card.</p>",
+      "Context": "<p>Card callout</p>",
+      "Front": "<p>What makes a callout card explicit?</p>",
+      "Source": "<a class="flashcards-source" href="obsidian://open?vault=Vault&file=card-types%2Fcallout.md#%5Ecard-0"><span class="flashcards-source-action">Edit source in Obsidian ↗</span><br><small class="flashcards-source-path">card-types/callout</small></a>",
+    },
+    "modelName": "Obsidian-basic",
+    "tags": [
+      "obsidian",
+      "feature-fixture",
+    ],
+  },
+]
+`;
+
 exports[`test-vault/features snapshot coverage > renders card-types/cloze.md 1`] = `
 [
   {

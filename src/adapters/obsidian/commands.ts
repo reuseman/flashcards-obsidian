@@ -161,7 +161,7 @@ async function showSyntaxMigrationReport(plugin: PluginHost): Promise<void> {
       await repository.getAllMarkdownNotes(),
     );
     if (items.length === 0) {
-      new Notice("No Flashcards v2 syntax migrations found.");
+      new Notice("No flashcards v2 syntax migrations found.");
       return;
     }
     new SyntaxMigrationModal(plugin.app, {
@@ -327,7 +327,7 @@ async function dispatch(
     if (target === "current") {
       const note = await repository.getActiveNote();
       if (!note) {
-        new Notice("No active markdown note.");
+        new Notice("No active Markdown note.");
         return;
       }
       const inProgress = new Notice(`Syncing ${note.path}…`, 0);

@@ -38,7 +38,10 @@ export function resolveConfiguredLaunchCommand(plugin: PluginHost): string {
 function notifyWaiting(message: string): AnkiWaitHandle {
   const notice = new Notice(message, 0);
   let cancelled = false;
-  notice.noticeEl.addEventListener("click", () => {
+  // `containerEl`, not `messageEl`: the whole notice is the cancel target, so a
+  // click on its padding counts too (this is what the deprecated `noticeEl`
+  // used to be).
+  notice.containerEl.addEventListener("click", () => {
     cancelled = true;
   });
   return {
@@ -65,7 +68,7 @@ function waitForAnki(
     },
     sleep: (ms) =>
       new Promise((resolve) => {
-        setTimeout(resolve, ms);
+        window.setTimeout(resolve, ms);
       }),
     timeoutMs: plugin.settings.ankiLaunch.waitSeconds * 1000,
   });

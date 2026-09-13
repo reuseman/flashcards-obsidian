@@ -162,6 +162,32 @@ describe("extractCardsFromMarkdown", () => {
       expect(result.cards[0]?.answer).toContain("It needs a base case.");
     });
 
+    test("the identity anchor written below the callout stays out of the answer", () => {
+      // The plugin writes `^q-xxxx` on the line directly after the closing
+      // `>`; lazy continuation makes it part of the callout's last paragraph.
+      const result = extractCardsFromMarkdown(
+        [
+          "> [!CARD] What is recursion?",
+          "> A function that calls itself.",
+          "^q-abcd",
+        ].join("\n"),
+        { notePath: "Callout.md", settings: DEFAULT_SETTINGS },
+      );
+
+      expect(result.cards).toHaveLength(1);
+      expect(result.cards[0]?.answer).toBe("A function that calls itself.");
+      expect(result.cards[0]?.answer).not.toContain("q-abcd");
+    });
+
+    test("a v1 numeric anchor below the callout is stripped too", () => {
+      const result = extractCardsFromMarkdown(
+        ["> [!CARD] Question", "> Answer.", "^1234567890123"].join("\n"),
+        { notePath: "Callout.md", settings: DEFAULT_SETTINGS },
+      );
+
+      expect(result.cards[0]?.answer).toBe("Answer.");
+    });
+
     test("the callout body cannot create extra inline or cloze cards", () => {
       const result = extractCardsFromMarkdown(
         [

@@ -451,7 +451,12 @@ function extractCalloutCards(
     }
 
     cards.push({
-      answer: lines.slice(1).join("\n").trim(),
+      // The anchor written for this card lands on the line after the closing
+      // `>`, with no blank line between, so Markdown lazy-continuation pulls
+      // it into the callout's last paragraph. Strip it like every other
+      // syntax does, or it shows up in the Anki answer and shifts the content
+      // hash between the pre- and post-anchor parse.
+      answer: stripTrailingAnchor(lines.slice(1).join("\n").trim()),
       deckName: resolvedDeck,
       front,
       kind: "basic",

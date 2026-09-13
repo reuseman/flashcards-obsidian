@@ -15,7 +15,7 @@ describe("live-preview adapter — buildDecorationsForText", () => {
     );
     expect(ranges).toHaveLength(1);
     expect(ranges[0]).toMatchObject({ from: 4, to: 17 });
-    expect(ranges[0]!.html).toContain("ff-cloze");
+    expect(ranges[0]!.el.cls).toBe("ff-cloze");
   });
 
   test("offsets are relative to document, not line", () => {
@@ -40,9 +40,7 @@ describe("live-preview adapter — buildDecorationsForText", () => {
 
   test("anchor decoration with no other features active", () => {
     const ranges = buildDecorationsForText("Q:: A ^q-abcd", 0, [], features);
-    expect(ranges.map((r) => r.html)).toEqual([
-      expect.stringContaining("ff-anchor"),
-    ]);
+    expect(ranges.map((r) => r.el.cls)).toEqual(["ff-anchor"]);
   });
 
   test("returns empty when no features", () => {

@@ -14,6 +14,7 @@ the plugin adds identity metadata during update.
 | Exact explicit boundaries | Fenced card or card callout |
 | One principle should return periodically | Reminder |
 | The whole note is intentionally one concept | Atomic note |
+| One claim worth asking several ways | Atomic note, several `test:` items |
 
 ## Inline cards
 
@@ -113,19 +114,60 @@ the answer.
 ## Atomic note cards
 
 Use atomic syntax only when the note is intentionally authored as one card.
-The first paragraph is its content.
+The answer is always the first paragraph of the body. Everything after the
+first paragraph is never read.
+
+Write `test:` as a list of strings. A bare scalar is accepted and normalised
+to a one-item list, but the list form is the convention — it keeps the
+Obsidian Properties panel consistent across notes.
 
 ```markdown
 ---
-test: Define recursion
+test:
+  - Define recursion
 ---
 
 A function that calls itself and has a base case.
 ```
 
-`test: title` uses the filename as the question. `test: reversed` makes the
-filename and first paragraph reversible. `test: cloze` creates a cloze from
-the first paragraph.
+Each item produces one card. An item is either a reserved keyword or a
+question you write:
+
+| Item | Question | Result |
+| --- | --- | --- |
+| `title` | the filename | basic |
+| `reversed` | filename and first paragraph, both directions | one note, two cards |
+| `cloze` | first paragraph with its `==spans==` hidden | cloze |
+| any other string | that string | basic |
+
+Several items ask the same claim from different angles and share one answer:
+
+```markdown
+---
+test:
+  - title
+  - "Re-reading feels productive. What does it fail at?"
+---
+```
+
+That note produces two cards with the same answer. Use multiple items only
+when the cues probe the *same* claim. Cues that need different answers mean
+the note is not atomic — split it instead.
+
+Rules that silently produce zero cards if broken. Check them before writing:
+
+- Items must be unique. A repeated item invalidates the whole `test:` key.
+- A question you write must not equal the filename, and must not duplicate
+  what another item derives. Both collide with the card `title` produces.
+- `reversed` and `cloze` may each appear at most once.
+- Nested maps or non-string items are an error, never guessed at.
+
+Two further conditions are reported as warnings and leave the note alone: a
+`test:` key with no first paragraph, and a `cloze` item whose first paragraph
+contains no `==span==`.
+
+A note without a `test:` key is not a card. That is the correct default for
+bridge notes, structure notes, and anything whose value is its links.
 
 ## Boundaries and precedence
 

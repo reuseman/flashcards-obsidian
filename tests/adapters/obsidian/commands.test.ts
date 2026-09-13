@@ -24,12 +24,20 @@ const mocks = vi.hoisted(() => ({
   syncNote: vi.fn(),
 }));
 
+// Obsidian plugin code runs in a browser realm and uses `window` timers; the
+// bare node test env has no `window`, so stub the one member that is used.
+// Delegates lazily rather than capturing `globalThis.setTimeout` up front, so
+// `vi.useFakeTimers()` inside a test still takes effect.
+vi.stubGlobal("window", {
+  setTimeout: (fn: () => void, ms?: number) => globalThis.setTimeout(fn, ms),
+});
+
 vi.mock("obsidian", () => ({
   Notice: class {
     hide = vi.fn();
     message: string;
     // `notifyWaiting` attaches the cancel handler here.
-    noticeEl = { addEventListener: vi.fn() };
+    containerEl = { addEventListener: vi.fn() };
 
     constructor(message: string) {
       this.message = message;
@@ -441,7 +449,7 @@ describe("Anki availability gate", () => {
     );
     expect(mocks.launchAnkiCommand).not.toHaveBeenCalled();
     expect(mocks.notices).toHaveLength(1);
-    expect(mocks.notices[0]?.message).toBe("No active markdown note.");
+    expect(mocks.notices[0]?.message).toBe("No active Markdown note.");
   });
 
   it("starts Anki with the detected command and continues once it answers", async () => {

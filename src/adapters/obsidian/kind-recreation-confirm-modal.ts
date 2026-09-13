@@ -45,7 +45,7 @@ class KindRecreationConfirmModal extends Modal {
       .addButton((button) =>
         button
           .setButtonText("Recreate")
-          .setWarning()
+          .setDestructive()
           .onClick(() => this.finish(true)),
       )
       .addButton((button) =>

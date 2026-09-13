@@ -14,18 +14,37 @@ import { DEFAULT_SETTINGS } from "../../../src/core/config/settings.js";
 interface FakeElement {
   attributes: Record<string, string>;
   children: Array<{ text?: string }>;
+  classList: FakeClassList;
   createSpan(options?: { text?: string }): HTMLElement;
   empty(): void;
   setAttribute(name: string, value: string): void;
   setText(text: string): void;
-  style: Record<string, string>;
   text: string;
+}
+
+/** Minimal stand-in for `DOMTokenList` — only what status-bar.ts calls. */
+class FakeClassList {
+  private readonly tokens = new Set<string>();
+  add(token: string): void {
+    this.tokens.add(token);
+  }
+  remove(token: string): void {
+    this.tokens.delete(token);
+  }
+  toggle(token: string, force: boolean): void {
+    if (force) this.tokens.add(token);
+    else this.tokens.delete(token);
+  }
+  contains(token: string): boolean {
+    return this.tokens.has(token);
+  }
 }
 
 function fakeElement(): HTMLElement & FakeElement {
   const element: FakeElement = {
     attributes: {},
     children: [],
+    classList: new FakeClassList(),
     createSpan(options) {
       const child = options?.text === undefined ? {} : { text: options.text };
       this.children.push(child);
@@ -41,7 +60,6 @@ function fakeElement(): HTMLElement & FakeElement {
     setText(text) {
       this.text = text;
     },
-    style: {},
     text: "",
   };
   return element as HTMLElement & FakeElement;
@@ -55,7 +73,7 @@ describe("Obsidian status-bar rendering", () => {
 
     renderActiveNoteStatus(element, null);
 
-    expect(element.style.display).toBe("none");
+    expect(element.classList.contains("flashcards-status-hidden")).toBe(true);
     expect(element.text).toBe("");
   });
 
@@ -64,7 +82,7 @@ describe("Obsidian status-bar rendering", () => {
 
     renderActiveNoteStatus(element, "Note: 2 new");
 
-    expect(element.style.display).toBe("");
+    expect(element.classList.contains("flashcards-status-hidden")).toBe(false);
     expect(element.text).toBe("Note: 2 new");
   });
 
@@ -74,7 +92,7 @@ describe("Obsidian status-bar rendering", () => {
 
     renderPendingV1(element, 0);
 
-    expect(element.style.display).toBe("none");
+    expect(element.classList.contains("flashcards-status-hidden")).toBe(true);
     expect(element.children).toEqual([]);
   });
 
@@ -83,7 +101,7 @@ describe("Obsidian status-bar rendering", () => {
 
     renderPendingV1(element, 3);
 
-    expect(element.style.display).toBe("inline-flex");
+    expect(element.classList.contains("flashcards-status-pending")).toBe(true);
     expect(element.children.at(-1)?.text).toBe("Vault: 3 pending migration");
     expect(element.attributes["aria-label"]).toContain("3 flashcards");
     expect(setIcon).toHaveBeenCalledWith(element.children[0], "alert-triangle");

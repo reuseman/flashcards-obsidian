@@ -65,9 +65,12 @@ export async function computePendingV1Count(
   return total;
 }
 
-/** Toggles visibility via inline style — avoids needing a stylesheet entry. */
+/**
+ * Toggles visibility via a stylesheet class rather than an inline style, so a
+ * theme can restyle or override the status-bar items.
+ */
 function setVisible(el: HTMLElement, visible: boolean): void {
-  el.style.display = visible ? "" : "none";
+  el.classList.toggle("flashcards-status-hidden", !visible);
 }
 
 export function renderActiveNoteStatus(
@@ -86,15 +89,13 @@ export function renderActiveNoteStatus(
 export function renderPendingV1(el: HTMLElement, count: number): void {
   if (count <= 0) {
     setVisible(el, false);
+    el.classList.remove("flashcards-status-pending");
     el.empty();
     return;
   }
   setVisible(el, true);
   el.empty();
-  el.style.color = "var(--text-warning)";
-  el.style.display = "inline-flex";
-  el.style.alignItems = "center";
-  el.style.gap = "4px";
+  el.classList.add("flashcards-status-pending");
   const iconSpan = el.createSpan();
   setIcon(iconSpan, "alert-triangle");
   el.createSpan({ text: `Vault: ${count} pending migration` });

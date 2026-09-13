@@ -18,11 +18,11 @@ CSS snippet can still override it.
 
 ## What to look at
 
-The mitochondria is the {{c1::powerhouse}} of the cell.
+Chlorophyll absorbs {{c1::light energy}} in the thylakoid membrane.
 
 Numbered shorthand: the {2:lungs} exchange gases.
 
-==Highlighted cloze== inside a sentence.
+==Contrast sample== inside a sentence.
 
 A longer paragraph so the highlight is judged against normal body text rather
 than in isolation: the {{c1::hippocampus}} consolidates declarative memory,

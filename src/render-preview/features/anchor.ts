@@ -1,4 +1,3 @@
-import { escapeHtml } from "../dom-utils.js";
 import type { Feature, Match } from "../feature.js";
 
 // Must match insert-card-anchors.ts: V2 `^q-XXXX` with the 32-char custom
@@ -17,7 +16,7 @@ export const anchor: Feature = {
         matches.push({
           start: idx,
           end: idx + m[0].length,
-          html: `<span class="ff-anchor" title="${escapeHtml(m[0])}">·</span>`,
+          el: { cls: "ff-anchor", text: "·", title: m[0] },
         });
       }
     }

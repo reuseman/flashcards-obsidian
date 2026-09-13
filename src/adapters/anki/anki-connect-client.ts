@@ -49,6 +49,21 @@ export interface AnkiResponse<TResult> {
   result: TResult;
 }
 
+/**
+ * Adapts a `fetch` implementation to the transport seam. Only used by callers
+ * that supply their own `fetch` — inside Obsidian the plugin injects the
+ * `requestUrl`-backed transport instead, because Electron blocks a plain
+ * cross-origin `fetch` to AnkiConnect.
+ */
+function createFetchTransport(fetchImpl: typeof fetch): AnkiConnectTransport {
+  return async (endpoint, envelope) =>
+    fetchImpl(endpoint, {
+      body: JSON.stringify(envelope),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    });
+}
+
 export class AnkiConnectClient implements AnkiGateway {
   private readonly endpoint: string;
   private readonly apiKey: string | undefined;
@@ -57,16 +72,15 @@ export class AnkiConnectClient implements AnkiGateway {
   constructor(opts: AnkiConnectClientOptions = {}) {
     this.endpoint = opts.endpoint ?? DEFAULT_ENDPOINT;
     this.apiKey = opts.apiKey;
-    const fetchImpl = opts.fetch ?? globalThis.fetch.bind(globalThis);
-    this.transport =
+    const transport =
       opts.transport ??
-      (async (endpoint, envelope) => {
-        return fetchImpl(endpoint, {
-          body: JSON.stringify(envelope),
-          headers: { "Content-Type": "application/json" },
-          method: "POST",
-        });
-      });
+      (opts.fetch ? createFetchTransport(opts.fetch) : undefined);
+    if (!transport) {
+      throw new Error(
+        "AnkiConnectClient requires either a `transport` or a `fetch` implementation.",
+      );
+    }
+    this.transport = transport;
   }
 
   async invoke<TResult>(request: AnkiRequest): Promise<TResult> {

@@ -14,11 +14,18 @@
   // Respect .gitignore so agent workflow files (tasks.md, plan.md, agent.md,
   // CLAUDE.md, .codex/) aren't scanned.
   "gitignore": true,
+  // Without a positive glob markdownlint-cli2 matches nothing and the whole
+  // gate silently passes, so state it explicitly.
+  "globs": ["**/*.md"],
   "ignores": [
     "node_modules/**",
-    // Test-vault scenarios are flashcard-syntax fixtures, not prose docs;
-    // .obsidian/ is plugin-generated. Same for the v1 example vault.
+    // Test-vault scenarios and feature notes are flashcard-syntax fixtures,
+    // not prose docs: they carry plugin-written `^q-xxxx` anchors and start
+    // with a body paragraph when the note itself is the card. The vault's own
+    // README and note.md are prose and stay linted. .obsidian/ is
+    // plugin-generated, and the same goes for the v1 example vault.
     "test-vault/scenarios/**",
+    "test-vault/features/**",
     "test-vault/.obsidian/**",
     "docs/test-vault/**",
     "docs/demo.md",

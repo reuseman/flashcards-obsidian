@@ -1,6 +1,7 @@
 import js from "@eslint/js";
 import { defineConfig } from "eslint/config";
 import globals from "globals";
+import obsidianmd from "eslint-plugin-obsidianmd";
 import tseslint from "typescript-eslint";
 
 export default defineConfig(
@@ -20,6 +21,15 @@ export default defineConfig(
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  // Obsidian's own guideline rules — the same set the community plugin
+  // scorecard runs against a release. Keeping them here means a regression
+  // fails `npm run check` instead of surfacing on the public plugin page.
+  // Scoped to what actually ships (src/ + the two manifests); tests, scripts
+  // and build config are not part of the reviewed artifact.
+  {
+    files: ["src/**/*.ts", "package.json"],
+    extends: [obsidianmd.configs.recommended],
+  },
   {
     files: ["**/*.ts"],
     languageOptions: {
@@ -55,6 +65,17 @@ export default defineConfig(
           { group: ["@codemirror/*"], message: "Pure render-preview modules must not import from CodeMirror." },
         ],
       }],
+    },
+  },
+  {
+    // `createEl` / `createSpan` / `createFragment` are Obsidian globals. The
+    // render-preview modules are deliberately environment-agnostic (see the
+    // no-restricted-imports block above) so they can be unit-tested under
+    // plain jsdom, and they already take the target `Document` explicitly —
+    // which is the cross-window safety the rule is really after.
+    files: ["src/render-preview/**/*.ts"],
+    rules: {
+      "obsidianmd/prefer-create-el": "off",
     },
   },
 );

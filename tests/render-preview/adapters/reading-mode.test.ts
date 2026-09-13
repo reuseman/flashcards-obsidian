@@ -48,6 +48,16 @@ describe("reading-mode adapter", () => {
     expect(out).toBe("<p>{{c1::x}} ^q-abcd #card</p>");
   });
 
+  test("markup inside a cloze body is rendered as text, not as HTML", () => {
+    const el = document.createElement("div");
+    el.textContent = "{{c1::<img src=x onerror=boom>}}";
+    applyReadingMode(el, buildRegistry(DEFAULT_SETTINGS));
+    expect(el.querySelector("img")).toBeNull();
+    expect(el.querySelector(".ff-cloze")?.textContent).toBe(
+      "<img src=x onerror=boom>",
+    );
+  });
+
   test("does not descend into code blocks", () => {
     const out = render("<pre><code>{{c1::x}}</code></pre>");
     expect(out).toContain("{{c1::x}}");

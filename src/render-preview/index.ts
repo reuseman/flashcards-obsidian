@@ -21,7 +21,7 @@ export function registerRenderPreview(
 ): void {
   plugin.registerMarkdownPostProcessor((el) => {
     const features = buildRegistry(getSettings());
-    if (features.length > 0) applyReadingMode(el as HTMLElement, features);
+    if (features.length > 0) applyReadingMode(el, features);
   });
 
   plugin.registerEditorExtension(

@@ -1,6 +1,6 @@
 # Flashcards — usage
 
-End-user manual for v2. For development notes, see `CONTRIBUTING.md`.
+End-user manual for v2. For development notes, see `../CONTRIBUTING.md`.
 
 ## Requirements
 
@@ -160,10 +160,90 @@ new reminder model without changing its Anki note ID or review history.
 Configurable via `hashtag.basicTag` (default `card`). Set
 `hashtag.enabled: false` to disable hashtag recognition entirely.
 
+### Card callout
+
+```markdown
+> [!CARD] What is recursion?
+> A function that calls itself.
+>
+> It needs a base case to stop.
+```
+
+The callout title is the question and the callout body is the answer. Use it
+when you want the card's start and end to be obvious in the note.
+
+Everything inside the callout belongs to that one card. Card-like text in the
+body, such as `this::that`, stays part of the answer instead of becoming a
+second card. Add `-` or `+` after `[!CARD]` to make the callout foldable, and
+a `:` after it if you prefer `> [!CARD] : Question`.
+
+### Atomic note (`test:` in frontmatter)
+
+Use this when the whole note is one idea and you want the note itself to be
+the card. There is no syntax in the body at all — you add a `test:` key to the
+frontmatter:
+
+```markdown
+---
+test:
+  - "Why does spacing beat cramming?"
+---
+
+The same total practice time retains better when spread out, because partial
+forgetting between sessions forces effortful reconstruction.
+
+This paragraph is never part of the card.
+```
+
+**The answer is always the first paragraph of the note.** Anything after it —
+evidence, citations, links — stays out of the card. The question comes from
+each item in the `test:` list. An item can be:
+
+| `test:` item | Question | Cards |
+| --- | --- | --- |
+| `title` | the file name | 1 basic |
+| `reversed` | file name and first paragraph, both directions | 1 note, 2 cards |
+| `cloze` | first paragraph with its `==spans==` hidden | 1 cloze |
+| any other text | that text, written by you | 1 basic |
+
+List several items to ask the same idea in several ways. They share one
+answer:
+
+```markdown
+---
+test:
+  - title
+  - "Re-reading feels productive. What does it fail at?"
+---
+```
+
+That note produces two cards with the same answer.
+
+Rules worth knowing:
+
+- Write `test:` as a list. A single value on one line also works, but the list
+  form keeps the Properties panel consistent across notes.
+- Every item must be different, and a question you write must not repeat the
+  file name. A repeat makes the whole `test:` key invalid and the note
+  produces no cards. The reason and the note path are written to the log
+  (see [Logging](#logging)).
+- `reversed` and `cloze` can each appear once.
+- A note with no `test:` key is not a card. That is the normal state for most
+  notes.
+- To put the file name on the back of the card as well, set the context
+  strategy to **Note title** in settings.
+
+If the note has a `test:` key, the plugin stops looking for `::`, `==cloze==`
+and other body syntax in that note, so prose stays prose.
+
+Two more problems are logged as warnings rather than errors: a **thin card**
+(a `test:` key but no first paragraph) and a **cloze item with no `==spans==`
+in the first paragraph**. Both leave the note alone until you fix it.
+
 ### What is *not* parsed
 
-Cards inside code fences, blockquotes, and HTML comments are skipped.
-Cards inside callouts are skipped (treated as blockquotes).
+Cards inside code fences and HTML comments are skipped. Ordinary blockquotes
+are skipped too — only a `[!CARD]` callout is read as a card.
 
 ## Decks
 

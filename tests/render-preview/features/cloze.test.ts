@@ -15,18 +15,22 @@ describe("cloze feature", () => {
     const out = cloze.detect("The {{c1::powerhouse}} of the cell.");
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({ start: 4, end: 22 });
-    expect(out[0]!.html).toBe(
-      `<span class="ff-cloze" data-c="1">powerhouse</span>`,
-    );
+    expect(out[0]!.el).toEqual({
+      cls: "ff-cloze",
+      text: "powerhouse",
+      data: { c: "1" },
+    });
   });
 
   test("matches single-brace short form", () => {
     const out = cloze.detect("Hello {1:world} here");
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({ start: 6, end: 15 });
-    expect(out[0]!.html).toBe(
-      `<span class="ff-cloze" data-c="1">world</span>`,
-    );
+    expect(out[0]!.el).toEqual({
+      cls: "ff-cloze",
+      text: "world",
+      data: { c: "1" },
+    });
   });
 
   test("does NOT match ==highlight==", () => {
@@ -40,10 +44,9 @@ describe("cloze feature", () => {
     expect(out[1]!.start).toBeGreaterThan(out[0]!.end);
   });
 
-  test("escapes HTML in body", () => {
+  test("markup in the body stays literal text, never parsed as HTML", () => {
     const out = cloze.detect("{{c1::a<b>c}}");
-    expect(out[0]!.html).toContain("a&lt;b&gt;c");
-    expect(out[0]!.html).not.toContain("<b>");
+    expect(out[0]!.el.text).toBe("a<b>c");
   });
 
   test("non-overlapping matches sorted by start", () => {

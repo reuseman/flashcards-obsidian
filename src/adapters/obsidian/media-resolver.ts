@@ -1,4 +1,4 @@
-import type { App, TFile } from "obsidian";
+import type { App } from "obsidian";
 
 import type { MediaRef } from "../../core/render/extract-media.js";
 import type { MediaRewriteMap } from "../../core/render/rewrite-media.js";
@@ -61,7 +61,7 @@ async function sha1Hex(bytes: Uint8Array): Promise<string> {
   // sidesteps `SharedArrayBuffer` typing complications when the input is a
   // view over an offset slice.
   const copy = bytes.slice();
-  const digest = await crypto.subtle.digest("SHA-1", copy.buffer as ArrayBuffer);
+  const digest = await crypto.subtle.digest("SHA-1", copy.buffer);
   return bytesToHex(new Uint8Array(digest));
 }
 
@@ -98,7 +98,7 @@ export async function resolveMedia(
     }
     let bytes: Uint8Array;
     try {
-      const buf = await app.vault.readBinary(dest as TFile);
+      const buf = await app.vault.readBinary(dest);
       bytes = new Uint8Array(buf);
     } catch {
       errors.push({ raw, filename, reason: "read-failed" });

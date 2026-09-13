@@ -49,9 +49,9 @@ export const createInlineSeparator: FeatureFactory = (
       const matches: Match[] = [];
       const claimed: { start: number; end: number }[] = [];
 
-      for (const [sep, html] of [
-        [reversed, `<span class="ff-sep" data-kind="reversed">⇄</span>`],
-        [basic, `<span class="ff-sep" data-kind="basic">→</span>`],
+      for (const [sep, el] of [
+        [reversed, { cls: "ff-sep", text: "⇄", data: { kind: "reversed" } }],
+        [basic, { cls: "ff-sep", text: "→", data: { kind: "basic" } }],
       ] as const) {
         if (!sep) continue;
         let idx = 0;
@@ -63,7 +63,7 @@ export const createInlineSeparator: FeatureFactory = (
             !intersects(idx, end, code) &&
             !intersects(idx, end, claimed)
           ) {
-            matches.push({ start: idx, end, html });
+            matches.push({ start: idx, end, el });
             claimed.push({ start: idx, end });
           }
           idx = end;

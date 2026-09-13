@@ -1076,7 +1076,7 @@ It needs a base case.</pre>
             </div>
             <div class="pills" aria-label="Card properties">
               <span class="pill">Basic</span>
-              <span class="pill">1 note · 1 card</span>
+              <span class="pill">1 card per cue</span>
               <span class="pill explicit">Explicit</span>
             </div>
           </header>
@@ -1085,14 +1085,28 @@ It needs a base case.</pre>
               <span class="panel-label">Photosynthesis.md</span>
               <pre><span class="token">---</span>
 test:
+  - title
   - "What does chlorophyll do?"
 <span class="token">---</span>
 
-Chlorophyll absorbs light energy.</pre>
+Chlorophyll absorbs light energy.
+
+This paragraph is never part of the card.</pre>
             </section>
             <section class="panel" aria-label="Atomic note result">
-              <span class="panel-label">Result · 1 card</span>
+              <span class="panel-label">Result · 2 cards</span>
               <div class="result">
+                <div class="result-card">
+                  <p class="result-card-title">Basic · title</p>
+                  <div class="field">
+                    <span class="field-label">Question</span>
+                    <p>Photosynthesis</p>
+                  </div>
+                  <div class="field">
+                    <span class="field-label">Answer</span>
+                    <p>Chlorophyll absorbs light energy.</p>
+                  </div>
+                </div>
                 <div class="result-card">
                   <p class="result-card-title">Basic · custom question</p>
                   <div class="field">
@@ -1110,8 +1124,10 @@ Chlorophyll absorbs light energy.</pre>
           <div class="boundary">
             <span class="boundary-label">Boundary</span>
             <span>
-              The first paragraph is the complete answer. A custom question
-              does not add the filename.
+              The first paragraph is the complete answer; nothing after it is
+              read. Each list item becomes its own card and they share that
+              answer. Items must all differ, and a custom question must not
+              repeat the filename.
               <span class="options">
                 <span class="option">title</span>
                 <span class="option">custom question</span>

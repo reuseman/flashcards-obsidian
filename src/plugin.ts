@@ -68,10 +68,21 @@ export default class FlashcardsPlugin extends Plugin implements PluginHost {
     new Notice("Flashcards v2 scaffold loaded.");
   }
 
-  override async onunload(): Promise<void> {
+  override onunload(): void {
     this.logger.info("plugin unloading");
-    await this.fileLogger?.flush();
-    await this.saveData(this.settings);
+    // Obsidian calls `onunload` synchronously and ignores a returned promise,
+    // so returning one only creates a floating promise nothing ever awaits.
+    // Kick the flush off explicitly and let it settle in the background.
+    void this.flushOnUnload();
+  }
+
+  private async flushOnUnload(): Promise<void> {
+    try {
+      await this.fileLogger?.flush();
+      await this.saveData(this.settings);
+    } catch (error) {
+      this.logger.error("failed to flush state on unload", error);
+    }
   }
 
   async updateSettings(next: Partial<FlashcardsSettings>): Promise<void> {

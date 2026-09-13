@@ -85,10 +85,13 @@
   padding: var(--metadata-input-padding);
 }
 
-.metadata-property[data-property-key="flashcards"]
+/* `body` is here purely to out-specify Obsidian's own
+   `.metadata-property-value > *` rule without resorting to `!important`. */
+body
+  .metadata-property[data-property-key="flashcards"]
   .metadata-property-value
   > * {
-  display: none !important;
+  display: none;
 }
 
 .metadata-property[data-property-key="flashcards"]
@@ -103,4 +106,18 @@
   font-weight: var(--font-normal);
   line-height: var(--line-height-tight);
   padding: var(--size-2-1) var(--size-4-2);
+}
+
+/* Status-bar items. Kept in the stylesheet rather than set inline so themes
+   and snippets can override them. `hidden` is declared last so it wins over
+   `pending` if an element ever carries both. */
+.flashcards-status-pending {
+  align-items: center;
+  color: var(--text-warning);
+  display: inline-flex;
+  gap: var(--size-2-1);
+}
+
+.flashcards-status-hidden {
+  display: none;
 }

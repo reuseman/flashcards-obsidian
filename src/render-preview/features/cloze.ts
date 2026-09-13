@@ -1,4 +1,3 @@
-import { escapeHtml } from "../dom-utils.js";
 import type { Feature, Match } from "../feature.js";
 
 const RE = /\{\{c(\d+)::([^}]+)\}\}|\{(\d+):([^}]+)\}/g;
@@ -15,7 +14,7 @@ export const cloze: Feature = {
       matches.push({
         start: idx,
         end: idx + m[0].length,
-        html: `<span class="ff-cloze" data-c="${n}">${escapeHtml(body)}</span>`,
+        el: { cls: "ff-cloze", text: body, data: { c: n } },
       });
     }
     matches.sort((a, b) => a.start - b.start);

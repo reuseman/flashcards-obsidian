@@ -1,21 +1,36 @@
 import { describe, expect, test } from "vitest";
-import { escapeHtml, mergeMatches } from "../../src/render-preview/dom-utils.js";
+import {
+  matchElementKey,
+  mergeMatches,
+} from "../../src/render-preview/dom-utils.js";
 import type { Match } from "../../src/render-preview/feature.js";
 
-describe("escapeHtml", () => {
-  test("escapes &, <, >, \", '", () => {
-    expect(escapeHtml(`a & b < c > d " e ' f`)).toBe(
-      "a &amp; b &lt; c &gt; d &quot; e &#39; f",
+describe("matchElementKey", () => {
+  test("equal specs produce equal keys", () => {
+    expect(matchElementKey({ cls: "a", text: "x", data: { c: "1" } })).toBe(
+      matchElementKey({ cls: "a", text: "x", data: { c: "1" } }),
     );
   });
 
-  test("passes through plain text unchanged", () => {
-    expect(escapeHtml("hello world")).toBe("hello world");
+  test("differing text produces differing keys", () => {
+    expect(matchElementKey({ cls: "a", text: "x" })).not.toBe(
+      matchElementKey({ cls: "a", text: "y" })
+    );
+  });
+
+  test("differing title produces differing keys", () => {
+    expect(matchElementKey({ cls: "a", text: "x", title: "t" })).not.toBe(
+      matchElementKey({ cls: "a", text: "x" }),
+    );
   });
 });
 
 describe("mergeMatches", () => {
-  const m = (start: number, end: number, html: string): Match => ({ start, end, html });
+  const m = (start: number, end: number, cls: string): Match => ({
+    start,
+    end,
+    el: { cls, text: cls },
+  });
 
   test("returns empty for empty input", () => {
     expect(mergeMatches([])).toEqual([]);

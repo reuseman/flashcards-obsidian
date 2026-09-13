@@ -11,15 +11,17 @@ describe("anchor feature", () => {
     const out = anchor.detect("Question:: Answer ^q-abcd");
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({ start: 18, end: 25 });
-    expect(out[0]!.html).toBe(`<span class="ff-anchor" title="^q-abcd">·</span>`);
+    expect(out[0]!.el).toEqual({ cls: "ff-anchor", text: "·", title: "^q-abcd" });
   });
 
   test("matches V1 13-digit anchor", () => {
     const out = anchor.detect("Question:: Answer ^1234567890123");
     expect(out).toHaveLength(1);
-    expect(out[0]!.html).toBe(
-      `<span class="ff-anchor" title="^1234567890123">·</span>`,
-    );
+    expect(out[0]!.el).toEqual({
+      cls: "ff-anchor",
+      text: "·",
+      title: "^1234567890123",
+    });
   });
 
   test("does NOT match `^q-` with wrong-length suffix", () => {

@@ -33,7 +33,11 @@ export class ObsidianMarkdownRepository implements MarkdownRepository {
   async readMarkdownNote(
     descriptor: MarkdownNoteDescriptor,
   ): Promise<MarkdownNote> {
-    const file = descriptor.file as TFile;
+    // The port types `file` as `unknown` so the core stays free of Obsidian
+    // types. Rather than casting the opaque handle back to a `TFile`, look the
+    // path up again — that returns a properly typed file and surfaces the case
+    // where the note was deleted or renamed since it was listed.
+    const file = this.requireFile(descriptor.path);
     return {
       file,
       markdown: await this.app.vault.cachedRead(file),
@@ -57,8 +61,16 @@ export class ObsidianMarkdownRepository implements MarkdownRepository {
   }
 
   async saveNote(note: MarkdownNote, markdown: string): Promise<void> {
-    // `note.file` is typed `unknown` at the port boundary; it is always a
-    // `TFile` produced by the read methods above.
-    await this.app.vault.modify(note.file as TFile, markdown);
+    // As in `readMarkdownNote`: resolve by path instead of unwrapping the
+    // opaque `note.file` handle.
+    await this.app.vault.modify(this.requireFile(note.path), markdown);
+  }
+
+  private requireFile(path: string): TFile {
+    const file = this.app.vault.getFileByPath(path);
+    if (file === null) {
+      throw new Error(`Markdown note no longer exists in the vault: ${path}`);
+    }
+    return file;
   }
 }

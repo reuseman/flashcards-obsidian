@@ -9,10 +9,18 @@ const mocks = vi.hoisted(() => ({
 vi.mock("obsidian", () => ({
   Notice: class {
     hide = vi.fn();
-    noticeEl = { addEventListener: vi.fn() };
+    containerEl = { addEventListener: vi.fn() };
     constructor(public message: string) {}
   },
 }));
+// Obsidian plugin code runs in a browser realm and uses `window` timers; the
+// bare node test env has no `window`, so stub the one member that is used.
+// Delegates lazily rather than capturing `globalThis.setTimeout` up front, so
+// `vi.useFakeTimers()` inside a test still takes effect.
+vi.stubGlobal("window", {
+  setTimeout: (fn: () => void, ms?: number) => globalThis.setTimeout(fn, ms),
+});
+
 vi.mock("../../../src/adapters/anki/anki-connect-client.js", () => ({
   AnkiConnectClient: class {
     version = mocks.ankiVersion;

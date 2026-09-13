@@ -1,15 +1,33 @@
-import type { Match } from "./feature.js";
+import type { Match, MatchElement } from "./feature.js";
 
-const HTML_ESCAPES: Record<string, string> = {
-  "&": "&amp;",
-  "<": "&lt;",
-  ">": "&gt;",
-  '"': "&quot;",
-  "'": "&#39;",
-};
+/**
+ * Build the DOM node for a match.
+ *
+ * `doc` is the document the node is destined for — in a popout window that is
+ * not the same object as the global `document`, and a node created by the
+ * wrong document cannot be inserted. Callers pass the `ownerDocument` of the
+ * container they are about to write into.
+ */
+export function createMatchElement(
+  spec: MatchElement,
+  doc: Document,
+): HTMLSpanElement {
+  const el = doc.createElement("span");
+  el.className = spec.cls;
+  el.textContent = spec.text;
+  if (spec.title !== undefined) el.setAttribute("title", spec.title);
+  for (const [key, value] of Object.entries(spec.data ?? {})) {
+    el.setAttribute(`data-${key}`, value);
+  }
+  return el;
+}
 
-export function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]!);
+/**
+ * Stable identity for a match element, used to decide whether a CodeMirror
+ * widget can be reused instead of re-created.
+ */
+export function matchElementKey(spec: MatchElement): string {
+  return JSON.stringify([spec.cls, spec.text, spec.title ?? null, spec.data ?? {}]);
 }
 
 /**

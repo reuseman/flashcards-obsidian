@@ -1,5 +1,4 @@
 import type { FlashcardsSettings } from "../../core/config/settings.js";
-import { escapeHtml } from "../dom-utils.js";
 import type { Feature, FeatureFactory, Match } from "../feature.js";
 
 function escapeRegex(s: string): string {
@@ -28,7 +27,11 @@ export const createHashtag: FeatureFactory = (
         matches.push({
           start: idx,
           end: idx + m[0].length,
-          html: `<span class="ff-hashtag-tag" title="Hashtag (#card) syntax">${escapeHtml(m[0])}</span>`,
+          el: {
+            cls: "ff-hashtag-tag",
+            text: m[0],
+            title: "Hashtag (#card) syntax",
+          },
         });
       }
       return matches;
