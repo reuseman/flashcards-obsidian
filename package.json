@@ -50,7 +50,7 @@
     "jsdom": "29.1.1",
     "knip": "6.34.0",
     "likec4": "1.46.0",
-    "markdownlint-cli2": "0.22.1",
+    "markdownlint-cli2": "0.24.0",
     "nano-staged": "1.0.2",
     "prettier": "3.8.3",
     "typescript": "6.0.3",
