@@ -25,14 +25,14 @@ import { extractCardsFromMarkdown } from "../../../src/core/parse/extract-cards.
  *
  * WI-1 (§4.2 of the card-syntax-anchor-model design): every card's identity
  * anchor lives on its OWN line, immediately after the card's content block,
- * for ALL four syntaxes. The write edit is `"\n^" + blockId` inserted at
- * `source.endOffset` (start === end === endOffset). This was already the
- * fenced behaviour; inline / cloze / hashtag now match it (the old
- * inline-append ` ^id` branch is removed).
+ * for ALL four syntaxes. Table-ending content has a blank line before its
+ * anchor so formatters do not treat it as another row. Other content uses
+ * `"\n^" + blockId` at `source.endOffset` (start === end === endOffset).
  *
  * Read rule: `findExistingAnchor` MUST detect an anchor that is either
  *  (1) on its own line immediately after the content block (the line right
- *      after `source.endOffset`), OR
+ *      after `source.endOffset`, allowing one blank line for a standalone
+ *      anchor block), OR
  *  (2) at the end of the card's source range (legacy inline placement, for
  *      back-compatible reading of not-yet-migrated notes).
  * Both v2 (`^q-xxxx`) and v1 (`^<13 digits>`) forms in both positions.
@@ -291,7 +291,8 @@ describe("insertCardAnchors — leaves unrelated text alone", () => {
 });
 
 // WI-1 read rule (§4.2): findExistingAnchor must detect an anchor either on
-// its own line immediately after the content block OR at the end of the
+// its own line after the content block (optionally separated by one blank
+// line) OR at the end of the
 // card's source range (legacy trailing). These fixtures place the anchor on
 // the line *after* source.endOffset so the own-line case is exercised
 // independently of parser range quirks.
