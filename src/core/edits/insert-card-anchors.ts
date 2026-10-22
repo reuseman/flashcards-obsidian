@@ -1,4 +1,5 @@
 import type { Flashcard, IdentifiedFlashcard } from "../domain/card.js";
+import { parseMarkdownTree } from "../parse/markdown-tree.js";
 import type { TextEdit } from "./apply-text-edits.js";
 
 const BLOCK_ID_ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";
@@ -40,7 +41,7 @@ export function insertCardAnchors(
       continue;
     }
 
-    const existing = findExistingAnchor(markdown, card);
+    const existing = findExistingAnchor(markdown, card, cards);
     if (existing) {
       usedIds.add(existing.blockId);
       outCards.push({ ...card, blockId: existing.blockId });
@@ -85,6 +86,7 @@ interface ExistingAnchor {
 function findExistingAnchor(
   markdown: string,
   card: Flashcard,
+  cards: Flashcard[],
 ): ExistingAnchor | null {
   const text = markdown.slice(card.source.startOffset, card.source.endOffset);
   const trimmed = text.replace(/\s+$/, "");
@@ -95,12 +97,48 @@ function findExistingAnchor(
   const v1 = trimmed.match(V1_ANCHOR_AT_END_RE);
   if (v1) return { blockId: v1[0].slice(1) };
 
-  // Own-line anchor on the line immediately after the content block.
+  // Formatters separate table block IDs with a blank line. Only accept a
+  // whole anchor line, without crossing content belonging to another card.
   const after = markdown.slice(card.source.endOffset);
-  const m = /^\n(\^q-[abcdefghijkmnpqrstuvwxyz23456789]{4}|\^\d{13})\b/.exec(after);
-  if (m) return { blockId: m[1]!.slice(1) };
+  const m = /^\r?\n(?:[ \t]*\r?\n)?(\^q-[abcdefghijkmnpqrstuvwxyz23456789]{4}|\^\d{13})[ \t]*(?=\r?\n|$)/.exec(after);
+  if (m) {
+    if (/^\r?\n[ \t]*\r?\n/.test(after)) {
+      // A separated ID must be its own block, not the first line of some
+      // following prose. Parse just its next line to retain Markdown block
+      // boundaries (e.g. a heading can follow without another blank line).
+      const followingLine = after.slice(m[0].length).split(/\r?\n/, 2)[1] ?? "";
+      const block = parseMarkdownTree(`${m[1]}\n${followingLine}`).children[0];
+      if (block?.type !== "paragraph" || block.position?.end.offset !== m[1]!.length) {
+        return null;
+      }
+    }
+    const anchorStart = card.source.endOffset + m[0].indexOf("^");
+    const belongsToAnotherCard = cards.some((other) =>
+      other !== card &&
+      other.source.startOffset <= anchorStart &&
+      anchorStart < other.source.endOffset,
+    );
+    if (!belongsToAnotherCard) return { blockId: m[1]!.slice(1) };
+  }
 
   return null;
+}
+
+function endsWithTable(text: string): boolean {
+  const lines = text.trimEnd().split(/\r?\n/);
+  for (let i = lines.length - 1; i > 0; i--) {
+    const line = lines[i]!;
+    if (line.trim() === "") break;
+    if (
+      line.includes("|") &&
+      /^[ \t]*\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$/.test(line) &&
+      lines[i - 1]!.includes("|") &&
+      lines.slice(i + 1).every((row) => row.includes("|"))
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function buildEdit(markdown: string, card: Flashcard, blockId: string): TextEdit {
@@ -118,11 +156,12 @@ function buildEdit(markdown: string, card: Flashcard, blockId: string): TextEdit
     };
   }
 
-  // WI-1: every card's identity anchor lives on its own line, immediately
-  // after the content block, for all other cases.
+  // A blank line keeps a table's block ID out of its final row. Other card
+  // forms retain their existing immediate own-line placement.
+  const newline = text.includes("\r\n") ? "\r\n" : "\n";
   return {
     end: card.source.endOffset,
     start: card.source.endOffset,
-    text: `\n^${blockId}`,
+    text: `${newline.repeat(endsWithTable(text) ? 2 : 1)}^${blockId}`,
   };
 }
