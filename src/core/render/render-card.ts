@@ -398,7 +398,7 @@ function buildSourceLink(ctx: RenderContext, blockId: string): string {
   const vault = encodeURIComponent(ctx.vaultName);
   const file = encodeURIComponent(ctx.notePath);
   const frag = encodeURIComponent(blockId);
-  const url = `obsidian://open?vault=${vault}&file=${file}#%5E${frag}`;
+  const url = `obsidian://open?vault=${vault}&file=${file}%23%5E${frag}`;
   const path = escapeHtml(ctx.notePath.replace(/\.md$/i, ""));
   return `<a class="flashcards-source" href="${url}"><span class="flashcards-source-action">Edit source in Obsidian ↗</span><br><small class="flashcards-source-path">${path}</small></a>`;
 }
